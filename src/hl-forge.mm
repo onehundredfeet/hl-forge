@@ -46,6 +46,8 @@ bool hlForgeInitialize(const char *name) {
    #error Trying to use a renderer API not supported by this demo
 #endif
 
+	// all this configuration should moved to a higher level
+	
 	//set directories for the selected api
 	switch (api)
 	{
