@@ -1,4 +1,5 @@
 [NoDelete]
 interface Globals {
-
+	[Internal="hlForgeInitialize", Static]
+	bool initialize(String name);
 };

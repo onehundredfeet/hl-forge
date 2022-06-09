@@ -6,10 +6,21 @@ import  h3d.impl.Driver;
 class ForgeDriver extends h3d.impl.Driver{
     var onContextLost : Void -> Void;
 
-
+    static var _initialized = false;
+    static function init_once() {
+        if (!_initialized) {
+            _initialized = forge.Native.Globals.initialize("Haxe Forge");
+            if (!_initialized) {
+                throw "Could not initialize forge";
+            }
+        }
+    }
     public function new() {
 //		window = @:privateAccess dx.Window.windows[0];
 //		Driver.setErrorHandler(onDXError);
+
+        init_once();
+
 		reset();
     }
 
@@ -18,21 +29,27 @@ class ForgeDriver extends h3d.impl.Driver{
         // copied from DX driver
 		onContextLost = onCreate.bind(true);
 		haxe.Timer.delay(onCreate.bind(false), 1); // seems arbitrary
+
+        if (forceSoftware) throw "Software mode not supported";
 	}
 
     // second function called
     public override function allocIndexes( count : Int, is32 : Bool ) : IndexBuffer {
         throw "Not implemented";
+        /*
         // copied from dx
 		var bits = is32 ? 2 : 1;
 		var res = dx.Driver.createBuffer(count << bits, Default, IndexBuffer, None, None, 0, null);
 		if( res == null ) return null;
 		return { res : res, count : count, bits : bits  };
+        */
+        return null;
 	}
 
     function reset() {
 
     }
+
     public override function hasFeature( f : Feature ) {
         throw "Not implemented";
         // copied from DX driver

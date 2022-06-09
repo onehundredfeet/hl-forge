@@ -4,6 +4,6 @@
 void heuristicTest(void (*fn)());
 void heuristicTest2(float (*fn)(int));
 
-bool hlForgeInitialize();
+bool hlForgeInitialize(const char *name);
 
 #endif
