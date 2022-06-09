@@ -1,5 +1,5 @@
 genhl:
-	haxe -cp generator  -lib hl-idl --macro "mirage.Generator.generateCpp()"
+	haxe -cp generator  -lib hl-idl --macro "forge.Generator.generateCpp()"
 	
 genjs:
-	haxe -cp generator -lib hl-idl --macro "mirage.Generator.generateJs()"
+	haxe -cp generator -lib hl-idl --macro "forge.Generator.generateJs()"

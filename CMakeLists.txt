@@ -29,32 +29,35 @@ if (NOT HDLL_DESTINATION)
     set(HDLL_DESTINATION "/usr/local/lib")
 endif()
 
+if (NOT FORGE_LIB_DIR)
+    set(FORGE_LIB_DIR "ext/forge")
+    set(FORGE_LIB_INC "${FORGE_LIB_DIR}/Common_3")
+    set(FORGE_LIB_SRC "${FORGE_LIB_DIR}/Common_3")
+    set(FORGE_OS_SRC "${FORGE_LIB_DIR}/Common_3/OS")
+    set(FORGE_TP_SRC "${FORGE_LIB_DIR}/Common_3/ThirdParty/OpenSource")
+endif()
 
 
-set(
-        INSTANT_MESH_SRC
-        ${INSTANT_MESH_SRC_DIR}/meshstats.cpp
-        ${INSTANT_MESH_SRC_DIR}/hierarchy.cpp
-        ${INSTANT_MESH_SRC_DIR}/field.cpp
-        ${INSTANT_MESH_SRC_DIR}/dedge.cpp
-        ${INSTANT_MESH_SRC_DIR}/normal.cpp
-        ${INSTANT_MESH_SRC_DIR}/adjacency.cpp
-        ${INSTANT_MESH_SRC_DIR}/subdivide.cpp
-        ${INSTANT_MESH_SRC_DIR}/bvh.cpp
-        ${INSTANT_MESH_SRC_DIR}/extract.cpp
-        ${INSTANT_MESH_SRC_DIR}/reorder.cpp
-        
+set( FORGE_OS_SRCS 
+    ${FORGE_OS_SRC}/Logging/Log.c
+    ${FORGE_OS_SRC}/Darwin/DarwinThread.c
+    ${FORGE_OS_SRC}/Darwin/DarwinLog.c
+    ${FORGE_OS_SRC}/Darwin/CocoaFileSystem.mm
+    ${FORGE_OS_SRC}/FileSystem/FileSystem.cpp
+    ${FORGE_OS_SRC}/FileSystem/UnixFileSystem.cpp
+    ${FORGE_OS_SRC}/MemoryTracking/MemoryTracking.c
+)
+
+set (FORGE_TP_SRCS
+#    ${FORGE_TP_SRC}/FluidStudios/MemoryManager/mmgr.c
 )
 
 add_library(forge.hdll SHARED
-${FORGE_SRC_DIR}/quadrangulate.cxx
-${FORGE_SRC_DIR}/forge.cxx
-${FORGE_SRC_DIR}/forge_cells.cxx
-${FORGE_SRC_DIR}/forge_regex.cxx
-${INSTANT_MESH_SRC}
 src/hl-idl-helpers.cpp
 src/forge.cpp
-src/hl-forge.cpp
+src/hl-forge.mm
+${FORGE_OS_SRCS}
+${FORGE_TP_SRCS}
 )
 
 set_target_properties(forge.hdll
@@ -64,27 +67,20 @@ OUTPUT_NAME forge
 SUFFIX .hdll
 )
 
+set_property(TARGET forge.hdll PROPERTY CXX_STANDARD 17)
+
 cmake_policy(SET CMP0015 NEW)
 
 target_include_directories(forge.hdll
 PRIVATE
 ${FORGE_INC_DIR}
-${CINOLIB_INC_DIR}
-${EIGEN_INC_DIR}
-${CDT_INC_DIR}
-${INSTANT_INC_DIR}
+${FORGE_LIB_INC}
 ${HL_INCLUDE_DIR}
-${PSS_INC_DIR}
-${DSET_INC_DIR}
-${TBB_INC_DIR}
-${PCG32_INC_DIR}
-${RAPIDJSON_INC_DIR}
-${RANDOM_INC_DIR}
-${EXPRTK_INC_DIR}
-${ONIGURUMA_INC_DIR}
-${MESHOPTIMIZER_INC_DIR}
 )
 
+find_library( METAL_LIB Metal)
+find_library( QUARTZ_LIB QuartzCore)
+find_library( FOUNDATION_LIB Foundation)
 
 if (UNIX)
     # Some special flags are needed for GNU GCC compiler
@@ -97,6 +93,6 @@ else()
     find_library(LIBHL NAMES libhl HINTS ${HL_LIB_DIR} )
 endif (UNIX)
 
-target_link_libraries(forge.hdll ${LIBHL} ${LIBTBB} ${LIBFMT} ${LIBBOOSTFILESYSTEM} ${LIBONIGURUMA} )
+target_link_libraries(forge.hdll ${LIBHL} ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB})
 
 install(TARGETS forge.hdll DESTINATION ${HDLL_DESTINATION})

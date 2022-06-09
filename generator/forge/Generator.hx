@@ -1,4 +1,4 @@
-package mirage;
+package forge;
 
 #if eval
 class Generator {
@@ -11,13 +11,12 @@ class Generator {
 #pragma warning(disable:4316)
 #endif
 
-#include <mirage/mirage.h>
 
-#include \"hl-mirage.h\"
+#include \"hl-forge.h\"
 ";
 	
 	public static function generateCpp() {	
-		var options = { idlFile : "generator/mirage.idl", nativeLib : "mirage", outputDir : "src", includeCode : INCLUDE, autoGC : true };
+		var options = { idlFile : "generator/forge.idl", nativeLib : "forge", outputDir : "src", includeCode : INCLUDE, autoGC : true };
 		webidl.Generate.generateCpp(options);
 	}
 
