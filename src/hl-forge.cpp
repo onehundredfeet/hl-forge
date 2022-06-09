@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "hl-forge.h"
 
 #include <Renderer/IRenderer.h>
@@ -47,7 +46,7 @@ bool hlForgeInitialize(const char *name) {
 #endif
 
 	// all this configuration should moved to a higher level
-	
+
 	//set directories for the selected api
 	switch (api)
 	{
@@ -84,4 +83,16 @@ bool hlForgeInitialize(const char *name) {
 
 
 	return true;
+}
+
+Renderer *createRenderer(const char *name) {
+	RendererDesc rendererDesc = {};
+	Renderer *renderer = nullptr;
+	initRenderer(name, &rendererDesc, &renderer);
+
+	return renderer;
+}
+
+void destroyRenderer( Renderer *) {
+	
 }

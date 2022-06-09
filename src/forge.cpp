@@ -291,11 +291,23 @@ inline static void _idc_copy_array( varray *dst, double *src,  int count) {
 
 extern "C" {
 
+static void finalize_Renderer( _ref(Renderer)* _this ) { destroyRenderer(_this->value ); }
+HL_PRIM void HL_NAME(Renderer_delete)( _ref(Renderer)* _this ) {
+	destroyRenderer(_this->value );
+}
+DEFINE_PRIM(_VOID, Renderer_delete, _IDL);
 HL_PRIM bool HL_NAME(Globals_initialize1)(vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	auto ___retvalue = (hlForgeInitialize(name__cstr));
 	return ___retvalue;
 }
 DEFINE_PRIM(_BOOL, Globals_initialize1, _STRING);
+
+HL_PRIM _ref(Renderer)* HL_NAME(Renderer_new1)(vstring * name) {
+	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
+	auto ___retvalue = alloc_ref((createRenderer(name__cstr)),Renderer);
+	return ___retvalue;
+}
+DEFINE_PRIM(_IDL, Renderer_new1, _STRING);
 
 }

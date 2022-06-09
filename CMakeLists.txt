@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
-project (forge C CXX OBJC OBJCXX)
+project (forge C CXX )
 
+if(APPLE)
+    enable_language(OBJC)
+    enable_language(OBJCXX)
+endif()
 
 if (NOT FORGE_ROOT) 
 set(FORGE_ROOT "../forge")
@@ -35,6 +39,9 @@ if (NOT FORGE_LIB_DIR)
     set(FORGE_LIB_SRC "${FORGE_LIB_DIR}/Common_3")
     set(FORGE_OS_SRC "${FORGE_LIB_DIR}/Common_3/OS")
     set(FORGE_TP_SRC "${FORGE_LIB_DIR}/Common_3/ThirdParty/OpenSource")
+    set(FORGE_MW_SRC "${FORGE_LIB_DIR}/Middleware_3")
+    set(FORGE_RDR_SRC "${FORGE_LIB_DIR}/Common_3/Renderer")
+    set(FORGE_EASTL_DIR "${FORGE_TP_SRC}/EASTL")
 endif()
 
 
@@ -45,20 +52,54 @@ set( FORGE_OS_SRCS
     ${FORGE_OS_SRC}/Darwin/CocoaFileSystem.mm
     ${FORGE_OS_SRC}/FileSystem/FileSystem.cpp
     ${FORGE_OS_SRC}/FileSystem/UnixFileSystem.cpp
+    ${FORGE_OS_SRC}/FileSystem/SystemRun.cpp
     ${FORGE_OS_SRC}/MemoryTracking/MemoryTracking.c
 )
 
+set ( FORGE_MW_SRCS
+    ${FORGE_MW_SRC}/ParallelPrimitives/ParallelPrimitives.cpp
+)
+
 set (FORGE_TP_SRCS
+    ${FORGE_TP_SRC}/basis_universal/transcoder/basisu_transcoder.cpp
+    ${FORGE_TP_SRC}/meshoptimizer/src/vcacheoptimizer.cpp
+    ${FORGE_TP_SRC}/meshoptimizer/src/vfetchoptimizer.cpp
+    ${FORGE_TP_SRC}/meshoptimizer/src/indexgenerator.cpp
+    ${FORGE_TP_SRC}/meshoptimizer/src/overdrawoptimizer.cpp
+    ${FORGE_TP_SRC}/meshoptimizer/src/allocator.cpp
 #    ${FORGE_TP_SRC}/FluidStudios/MemoryManager/mmgr.c
+)
+
+set (FORGE_RENDERER_SRCS
+    ${FORGE_RDR_SRC}/Renderer.cpp
+    ${FORGE_RDR_SRC}/Metal/MetalRenderer.mm
+    ${FORGE_RDR_SRC}/Metal/MetalRaytracing.mm
+    ${FORGE_RDR_SRC}/Metal/MetalShaderReflection.mm
+    ${FORGE_RDR_SRC}/ResourceLoader.cpp
+    ${FORGE_RDR_SRC}/CommonShaderReflection.cpp
+    
+)
+
+set(FORGE_EASTL_SRCS
+    ${FORGE_EASTL_DIR}/eastl.cpp
+   # ${FORGE_EASTL_DIR}/EAStdC/EASprintf.cpp
+  #  ${FORGE_EASTL_DIR}/EAStdC/EAMemory.cpp
+ #   ${FORGE_EASTL_DIR}/allocator_forge.cpp
+#    ${FORGE_EASTL_DIR}/allocator_eastl.cpp
 )
 
 add_library(forge.hdll SHARED
 src/hl-idl-helpers.cpp
 src/forge.cpp
-src/hl-forge.mm
+src/hl-forge.cpp
 ${FORGE_OS_SRCS}
 ${FORGE_TP_SRCS}
+${FORGE_RENDERER_SRCS}
+${FORGE_MW_SRCS}
+${FORGE_EASTL_SRCS}
 )
+
+set_source_files_properties(${FORGE_RENDERER_SRCS} ${FORGE_MW_SRCS} src/forge.cpp src/hl-forge.cpp PROPERTIES COMPILE_FLAGS "-x objective-c++")
 
 set_target_properties(forge.hdll
 PROPERTIES
@@ -81,6 +122,9 @@ ${HL_INCLUDE_DIR}
 find_library( METAL_LIB Metal)
 find_library( QUARTZ_LIB QuartzCore)
 find_library( FOUNDATION_LIB Foundation)
+find_library( IOKIT_LIB IOKit)
+find_library( METAL_PERF_SHADER_LIB MetalPerformanceShaders)
+
 
 if (UNIX)
     # Some special flags are needed for GNU GCC compiler
@@ -93,6 +137,8 @@ else()
     find_library(LIBHL NAMES libhl HINTS ${HL_LIB_DIR} )
 endif (UNIX)
 
-target_link_libraries(forge.hdll ${LIBHL} ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB})
+
+
+target_link_libraries(forge.hdll ${LIBHL} ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB})
 
 install(TARGETS forge.hdll DESTINATION ${HDLL_DESTINATION})

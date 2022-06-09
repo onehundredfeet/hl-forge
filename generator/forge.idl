@@ -3,3 +3,8 @@ interface Globals {
 	[Internal="hlForgeInitialize", Static]
 	bool initialize(String name);
 };
+
+[Destruct="destroyRenderer"]
+interface Renderer {
+	[Substitute="createRenderer"] void Renderer(String name);
+};
