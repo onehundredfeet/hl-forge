@@ -1,0 +1,5 @@
+-lib hlsdl
+-lib heaps
+--class-path .
+--hl bin/main.hl
+--main example.Main
