@@ -7,6 +7,7 @@
 #include <OS/Interfaces/IInput.h>
 #include <OS/Interfaces/IMemory.h>
 
+
 bool hlForgeInitialize(const char *name) {
     //init memory allocator
 	if (!initMemAlloc(name))
@@ -111,9 +112,15 @@ void destroyRenderer( Renderer *) {
 
 }
 
-SwapChain *createSwapChain(Renderer *renderer, Queue *queue, int width, int height, int chainCount, bool hdr10) {
+SwapChain *createSwapChain(SDL_Window *window, Renderer *renderer, Queue *queue, int width, int height, int chainCount, bool hdr10) {
+
+	SDL_SysWMinfo wmInfo;
+	SDL_VERSION(&wmInfo.version);
+	SDL_GetWindowWMInfo(window, &wmInfo);
+
+
 	SwapChainDesc swapChainDesc = {};
-	swapChainDesc.mWindowHandle = pWindow->handle;
+	swapChainDesc.mWindowHandle.window = wmInfo.info.cocoa.window;
 	swapChainDesc.mPresentQueueCount = 1;
 	swapChainDesc.ppPresentQueues = &queue;
 	swapChainDesc.mWidth = width;

@@ -330,14 +330,14 @@ HL_PRIM _ref(Queue)* HL_NAME(Renderer_createQueue0)(_ref(Renderer)* _this) {
 }
 DEFINE_PRIM(_IDL, Renderer_createQueue0, _IDL);
 
-HL_PRIM _ref(SwapChain)* HL_NAME(Renderer_createSwapChain4)(_ref(Renderer)* _this, _ref(Queue)* queue, int width, int height, int count) {
-	return alloc_ref((createSwapChain( _unref(_this) , _unref(queue), width, height, count)),SwapChain);
-}
-DEFINE_PRIM(_IDL, Renderer_createSwapChain4, _IDL _IDL _I32 _I32 _I32);
-
 HL_PRIM void HL_NAME(Renderer_removeQueue1)(_ref(Renderer)* _this, _ref(Queue)* pGraphicsQueue) {
 	(removeQueue( _unref(_this) , _unref(pGraphicsQueue)));
 }
 DEFINE_PRIM(_VOID, Renderer_removeQueue1, _IDL _IDL);
+
+HL_PRIM _ref(SwapChain)* HL_NAME(Window_createSwapChain6)(_ref(SDL_Window)* _this, _ref(Renderer)* renderer, _ref(Queue)* queue, int width, int height, int count, bool hdr10) {
+	return alloc_ref((createSwapChain( _unref(_this) , _unref(renderer), _unref(queue), width, height, count, hdr10)),SwapChain);
+}
+DEFINE_PRIM(_IDL, Window_createSwapChain6, _IDL _IDL _IDL _I32 _I32 _I32 _BOOL);
 
 }
