@@ -11,5 +11,6 @@ bool hlForgeInitialize(const char *name);
 
 Renderer *createRenderer(const char *name);
 void destroyRenderer( Renderer * );
-
+Queue* createQueue(Renderer *renderer);
+SwapChain* createSwapChain(Renderer *renderer, Queue *queue, int width, int height, int chainCount);
 #endif

@@ -291,6 +291,16 @@ inline static void _idc_copy_array( varray *dst, double *src,  int count) {
 
 extern "C" {
 
+static void finalize_Queue( _ref(Queue)* _this ) { (_this->value ); }
+HL_PRIM void HL_NAME(Queue_delete)( _ref(Queue)* _this ) {
+	(_this->value );
+}
+DEFINE_PRIM(_VOID, Queue_delete, _IDL);
+static void finalize_SwapChain( _ref(SwapChain)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(SwapChain_delete)( _ref(SwapChain)* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, SwapChain_delete, _IDL);
 static void finalize_Renderer( _ref(Renderer)* _this ) { destroyRenderer(_this->value ); }
 HL_PRIM void HL_NAME(Renderer_delete)( _ref(Renderer)* _this ) {
 	destroyRenderer(_this->value );
@@ -303,11 +313,31 @@ HL_PRIM bool HL_NAME(Globals_initialize1)(vstring * name) {
 }
 DEFINE_PRIM(_BOOL, Globals_initialize1, _STRING);
 
+HL_PRIM void HL_NAME(Queue_waitIdle0)(_ref(Queue)* _this) {
+	(waitQueueIdle( _unref(_this) ));
+}
+DEFINE_PRIM(_VOID, Queue_waitIdle0, _IDL);
+
 HL_PRIM _ref(Renderer)* HL_NAME(Renderer_new1)(vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	auto ___retvalue = alloc_ref((createRenderer(name__cstr)),Renderer);
 	return ___retvalue;
 }
 DEFINE_PRIM(_IDL, Renderer_new1, _STRING);
+
+HL_PRIM _ref(Queue)* HL_NAME(Renderer_createQueue0)(_ref(Renderer)* _this) {
+	return alloc_ref((createQueue( _unref(_this) )),Queue);
+}
+DEFINE_PRIM(_IDL, Renderer_createQueue0, _IDL);
+
+HL_PRIM _ref(SwapChain)* HL_NAME(Renderer_createSwapChain4)(_ref(Renderer)* _this, _ref(Queue)* queue, int width, int height, int count) {
+	return alloc_ref((createSwapChain( _unref(_this) , _unref(queue), width, height, count)),SwapChain);
+}
+DEFINE_PRIM(_IDL, Renderer_createSwapChain4, _IDL _IDL _I32 _I32 _I32);
+
+HL_PRIM void HL_NAME(Renderer_removeQueue1)(_ref(Renderer)* _this, _ref(Queue)* pGraphicsQueue) {
+	(removeQueue( _unref(_this) , _unref(pGraphicsQueue)));
+}
+DEFINE_PRIM(_VOID, Renderer_removeQueue1, _IDL _IDL);
 
 }

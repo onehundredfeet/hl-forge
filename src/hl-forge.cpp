@@ -90,9 +90,44 @@ Renderer *createRenderer(const char *name) {
 	Renderer *renderer = nullptr;
 	initRenderer(name, &rendererDesc, &renderer);
 
+	if (renderer != nullptr) {
+		//init resource loader interface
+		initResourceLoaderInterface(renderer);
+	}
+
 	return renderer;
 }
 
+Queue* createQueue(Renderer *renderer) {
+		//create graphics queue
+	QueueDesc queueDesc = {};
+	queueDesc.mType = QUEUE_TYPE_GRAPHICS;
+	queueDesc.mFlag = QUEUE_FLAG_NONE;//use QUEUE_FLAG_INIT_MICROPROFILE to enable profiling;
+	Queue*   pGraphicsQueue = NULL;
+	addQueue(renderer, &queueDesc, &pGraphicsQueue);
+	return pGraphicsQueue;
+}
 void destroyRenderer( Renderer *) {
-	
+
+}
+
+SwapChain *createSwapChain(Renderer *renderer, Queue *queue, int width, int height, int chainCount, bool hdr10) {
+	SwapChainDesc swapChainDesc = {};
+	swapChainDesc.mWindowHandle = pWindow->handle;
+	swapChainDesc.mPresentQueueCount = 1;
+	swapChainDesc.ppPresentQueues = &queue;
+	swapChainDesc.mWidth = width;
+	swapChainDesc.mHeight = height;
+	swapChainDesc.mImageCount = chainCount;
+
+	if (hdr10)
+		swapChainDesc.mColorFormat = TinyImageFormat_R10G10B10A2_UNORM;
+	else
+		swapChainDesc.mColorFormat = getRecommendedSwapchainFormat(false, true);
+
+	swapChainDesc.mColorClearValue = {{1, 1, 1, 1}};
+	swapChainDesc.mEnableVsync = false;
+	SwapChain *pSwapChain = nullptr;
+	addSwapChain(renderer, &swapChainDesc, &pSwapChain);
+	return pSwapChain;
 }

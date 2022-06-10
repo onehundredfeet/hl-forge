@@ -4,7 +4,26 @@ interface Globals {
 	bool initialize(String name);
 };
 
+[Destruct=""]
+interface Queue {
+	[CObject, Internal="waitQueueIdle"] void waitIdle();
+
+};
+
+interface SwapChain {
+
+};
+
+interface Window {
+	
+};
+
 [Destruct="destroyRenderer"]
 interface Renderer {
 	[Substitute="createRenderer"] void Renderer(String name);
+
+	[CObject] Queue createQueue();
+	[CObject] SwapChain createSwapChain(Queue queue, int width, int height, int count);
+
+	[CObject] void removeQueue(Queue pGraphicsQueue);
 };
