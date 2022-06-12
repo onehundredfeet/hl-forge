@@ -1,5 +1,8 @@
 -lib hlsdl
+-lib hl-idl
 -lib heaps
 --class-path .
 --hl bin/main.hl
 --main example.Main
+-D heaps_forge
+-D heaps_no_gl

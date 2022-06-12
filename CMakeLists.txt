@@ -92,6 +92,7 @@ add_library(forge.hdll SHARED
 src/hl-idl-helpers.cpp
 src/forge.cpp
 src/hl-forge.cpp
+src/hl-forge-metal.mm
 ${FORGE_OS_SRCS}
 ${FORGE_TP_SRCS}
 ${FORGE_RENDERER_SRCS}
@@ -126,7 +127,7 @@ find_library( IOKIT_LIB IOKit)
 find_library( METAL_PERF_SHADER_LIB MetalPerformanceShaders)
 find_library( SHADERC_LIB shaderc_combined)
 find_library( SDL_LIB SDL2)
-
+find_library( APPKITLIB AppKit)
 
 if (UNIX)
     # Some special flags are needed for GNU GCC compiler
@@ -141,6 +142,6 @@ endif (UNIX)
 
 
 
-target_link_libraries(forge.hdll ${LIBHL} ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB} ${SHADERC_LIB} ${SDL_LIB})
+target_link_libraries(forge.hdll ${LIBHL} ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB} ${SHADERC_LIB} ${SDL_LIB} ${APPKITLIB})
 
 install(TARGETS forge.hdll DESTINATION ${HDLL_DESTINATION})

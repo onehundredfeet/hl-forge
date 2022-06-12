@@ -4,27 +4,63 @@ interface Globals {
 	bool initialize(String name);
 };
 
-[Destruct=""]
+[NoDelete]
 interface Queue {
 	[CObject, Internal="waitQueueIdle"] void waitIdle();
 
 };
 
+[NoDelete]
 interface SwapChain {
 
 };
 
 
-[Destruct="destroyRenderer"]
+[NoDelete]
 interface Renderer {
-	[Substitute="createRenderer"] void Renderer(String name);
+	[Const,Static, Internal="createRenderer"] Renderer create(String name);
 
-	[CObject] Queue createQueue();
+	//Const is a hack to get it to not generate a finalizer
+	[CObject, Const] Queue createQueue();
 
 	[CObject] void removeQueue(Queue pGraphicsQueue);
 };
 
+
+
 [Internal="SDL_Window", NoDelete]
 interface Window {
-	[CObject] SwapChain createSwapChain(Renderer renderer, Queue queue, int width, int height, int count, bool hdr10);	
+//	[Static,Const,Internal="forge_sdl_get_window"] Window getWindow( Window ptr );
+	[CObject,Const] SwapChain createSwapChain( Renderer renderer, Queue queue, int width, int height, int count, bool hdr10);	
+	//[CObject,Const, Internal="forge_create_metal_view"] VoidPtr createView();
 };
+
+
+interface SyncToken {
+
+};
+
+[NoDelete]
+interface Buffer {
+	[CObject, Internal="forge_sdl_buffer_update_region"] void updateRegion(bytes data, int toffset, int size, int soffset);
+	[CObject, Internal="forge_sdl_buffer_update"] void update(bytes data);
+};
+
+interface BufferLoadDesc {
+//	Buffer**    ppBuffer;
+//	const void* pData;
+//	BufferDesc  mDesc;
+	/// Force Reset buffer to NULL
+//	bool mForceReset;
+
+	void BufferLoadDesc();
+
+	[Internal="mForceReset"] attribute bool forceReset;
+	//[Internal="pData"] attribute VoidPtr data;
+	//[Cast="Buffer**", Internal="ppBuffer"] attribute VoidPtr buffer;
+	[CObject, Internal="forge_sdl_buffer_load",Const]Buffer load(SyncToken syncToken);
+
+	[CObject, Internal="forge_sdl_buffer_load_desc_set_index_buffer"] void setIndexbuffer( int size, bytes data, bool shared );
+
+};
+

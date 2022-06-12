@@ -12,7 +12,8 @@ abstract Shader(Null<Int>) {
 abstract Texture(Null<Int>) {
 }
 
-abstract Buffer(Null<Int>) {
+@:forward
+abstract Buffer(forge.Native.Buffer) from forge.Native.Buffer to forge.Native.Buffer {
 }
 
 abstract Framebuffer(Null<Int>) {

@@ -1,4 +1,8 @@
+#define HL_NAME(x) forge_##x
+#include <hl.h>
+
 #include "hl-forge.h"
+#include "hl-forge-meta.h"
 
 #include <Renderer/IRenderer.h>
 #include <Renderer/IShaderReflection.h>
@@ -118,9 +122,18 @@ SwapChain *createSwapChain(SDL_Window *window, Renderer *renderer, Queue *queue,
 	SDL_VERSION(&wmInfo.version);
 	SDL_GetWindowWMInfo(window, &wmInfo);
 
+//	SDL_WindowData* data = (__bridge SDL_WindowData *)window->driverdata;
+ //   NSView *view = data.nswindow.contentView;
+
+	printf("SDL_Window %p\n", window);
+	printf("NSWindow %p\n", wmInfo.info.cocoa.window);
+	void *view = getNSViewFromNSWindow(wmInfo.info.cocoa.window);
+	printf("NSVIew %p\n", view);
+
+//	NSView *view = [nswin contentView];
 
 	SwapChainDesc swapChainDesc = {};
-	swapChainDesc.mWindowHandle.window = wmInfo.info.cocoa.window;
+	swapChainDesc.mWindowHandle.window = view;
 	swapChainDesc.mPresentQueueCount = 1;
 	swapChainDesc.ppPresentQueues = &queue;
 	swapChainDesc.mWidth = width;
@@ -138,3 +151,79 @@ SwapChain *createSwapChain(SDL_Window *window, Renderer *renderer, Queue *queue,
 	addSwapChain(renderer, &swapChainDesc, &pSwapChain);
 	return pSwapChain;
 }
+
+SDL_Window *forge_sdl_get_window(void *ptr) {
+	return static_cast<SDL_Window *>(ptr);
+}
+
+Buffer*forge_sdl_buffer_load( BufferLoadDesc *bld, SyncToken *token) {
+	printf("Loading buffer \n");
+	Buffer *tmp = nullptr;
+	bld->ppBuffer = &tmp;
+	printf("adding resource %p %p\n", bld, token);
+	addResource( bld, token);
+	return tmp;
+}
+
+void forge_sdl_buffer_load_desc_set_index_buffer( BufferLoadDesc *bld, int size, void *data, bool shared) {
+		bld->mDesc.mDescriptors = DESCRIPTOR_TYPE_INDEX_BUFFER;
+		if (shared) {
+			bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+		} else {
+			bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+		}
+		bld->mDesc.mSize = size;
+		bld->pData = data;
+//		
+
+}
+
+#undef new
+
+void forge_sdl_buffer_update(Buffer *buffer, void *data) {
+	BufferUpdateDesc desc = {buffer};
+	beginUpdateResource(&desc);
+	memcpy(desc.pMappedData, data, buffer->mSize);
+	endUpdateResource(&desc, NULL);
+}
+
+void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int size, int soffset) {
+	BufferUpdateDesc desc = {buffer};
+	desc.mDstOffset = toffset;
+	desc.mSize = size;
+	beginUpdateResource(&desc);
+	memcpy(desc.pMappedData, &((char *)data)[soffset], size);
+	endUpdateResource(&desc, NULL);
+}
+
+SDL_MetalView forge_create_metal_view(SDL_Window *win) {
+	return SDL_Metal_CreateView(win);
+}
+
+template <typename T> struct pref {
+	void (*finalize)( pref<T> * );
+	T *value;
+};
+template<typename T> pref<T> *_alloc_const( const T *value ) {
+	if (value == nullptr) return nullptr;
+	pref<T> *r = (pref<T>*)hl_gc_alloc_noptr(sizeof(pref<T>));
+	r->finalize = NULL;
+	r->value = (T*)value;
+	return r;
+}
+#define _ref(t) pref<t>
+
+HL_PRIM  _ref(SDL_Window)*HL_NAME(forge_get_sdl_window)(void *ptr) {
+	printf("Forge SDL Pointer is %p\n", ptr);
+	return _alloc_const((SDL_Window *)ptr);
+}
+
+/*
+HL_PRIM HL_CONST _ref(SDL_Window)* HL_NAME(Window_getWindow1)(void* ptr) {
+	return alloc_ref_const((forge_sdl_get_window(ptr)),Window);
+}
+DEFINE_PRIM(_IDL, Window_getWindow1, _BYTES);
+*/
+
+DEFINE_PRIM(_BYTES, forge_get_sdl_window, TWIN);
+

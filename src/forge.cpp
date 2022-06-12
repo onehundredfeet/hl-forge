@@ -32,6 +32,7 @@ template <typename T> struct pref {
 
 #define _ref(t) pref<t>
 #define _unref(v) v->value
+#define _unref_ptr_safe(v) (v != nullptr ? v->value : nullptr)
 #define alloc_ref(r,t) _alloc_ref(r,finalize_##t)
 #define alloc_ref_const(r, _) _alloc_const(r)
 #define HL_CONST
@@ -291,21 +292,16 @@ inline static void _idc_copy_array( varray *dst, double *src,  int count) {
 
 extern "C" {
 
-static void finalize_Queue( _ref(Queue)* _this ) { (_this->value ); }
-HL_PRIM void HL_NAME(Queue_delete)( _ref(Queue)* _this ) {
-	(_this->value );
-}
-DEFINE_PRIM(_VOID, Queue_delete, _IDL);
-static void finalize_SwapChain( _ref(SwapChain)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(SwapChain_delete)( _ref(SwapChain)* _this ) {
+static void finalize_SyncToken( _ref(SyncToken)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(SyncToken_delete)( _ref(SyncToken)* _this ) {
 	free_ref(_this );
 }
-DEFINE_PRIM(_VOID, SwapChain_delete, _IDL);
-static void finalize_Renderer( _ref(Renderer)* _this ) { destroyRenderer(_this->value ); }
-HL_PRIM void HL_NAME(Renderer_delete)( _ref(Renderer)* _this ) {
-	destroyRenderer(_this->value );
+DEFINE_PRIM(_VOID, SyncToken_delete, _IDL);
+static void finalize_BufferLoadDesc( _ref(BufferLoadDesc)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(BufferLoadDesc_delete)( _ref(BufferLoadDesc)* _this ) {
+	free_ref(_this );
 }
-DEFINE_PRIM(_VOID, Renderer_delete, _IDL);
+DEFINE_PRIM(_VOID, BufferLoadDesc_delete, _IDL);
 HL_PRIM bool HL_NAME(Globals_initialize1)(vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	auto ___retvalue = (hlForgeInitialize(name__cstr));
@@ -318,26 +314,61 @@ HL_PRIM void HL_NAME(Queue_waitIdle0)(_ref(Queue)* _this) {
 }
 DEFINE_PRIM(_VOID, Queue_waitIdle0, _IDL);
 
-HL_PRIM _ref(Renderer)* HL_NAME(Renderer_new1)(vstring * name) {
+HL_PRIM HL_CONST _ref(Renderer)* HL_NAME(Renderer_create1)(vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
-	auto ___retvalue = alloc_ref((createRenderer(name__cstr)),Renderer);
+	auto ___retvalue = alloc_ref_const((createRenderer(name__cstr)),Renderer);
 	return ___retvalue;
 }
-DEFINE_PRIM(_IDL, Renderer_new1, _STRING);
+DEFINE_PRIM(_IDL, Renderer_create1, _STRING);
 
-HL_PRIM _ref(Queue)* HL_NAME(Renderer_createQueue0)(_ref(Renderer)* _this) {
-	return alloc_ref((createQueue( _unref(_this) )),Queue);
+HL_PRIM HL_CONST _ref(Queue)* HL_NAME(Renderer_createQueue0)(_ref(Renderer)* _this) {
+	return alloc_ref_const((createQueue( _unref(_this) )),Queue);
 }
 DEFINE_PRIM(_IDL, Renderer_createQueue0, _IDL);
 
 HL_PRIM void HL_NAME(Renderer_removeQueue1)(_ref(Renderer)* _this, _ref(Queue)* pGraphicsQueue) {
-	(removeQueue( _unref(_this) , _unref(pGraphicsQueue)));
+	(removeQueue( _unref(_this) , _unref_ptr_safe(pGraphicsQueue)));
 }
 DEFINE_PRIM(_VOID, Renderer_removeQueue1, _IDL _IDL);
 
-HL_PRIM _ref(SwapChain)* HL_NAME(Window_createSwapChain6)(_ref(SDL_Window)* _this, _ref(Renderer)* renderer, _ref(Queue)* queue, int width, int height, int count, bool hdr10) {
-	return alloc_ref((createSwapChain( _unref(_this) , _unref(renderer), _unref(queue), width, height, count, hdr10)),SwapChain);
+HL_PRIM HL_CONST _ref(SwapChain)* HL_NAME(Window_createSwapChain6)(_ref(SDL_Window)* _this, _ref(Renderer)* renderer, _ref(Queue)* queue, int width, int height, int count, bool hdr10) {
+	return alloc_ref_const((createSwapChain( _unref(_this) , _unref_ptr_safe(renderer), _unref_ptr_safe(queue), width, height, count, hdr10)),SwapChain);
 }
 DEFINE_PRIM(_IDL, Window_createSwapChain6, _IDL _IDL _IDL _I32 _I32 _I32 _BOOL);
+
+HL_PRIM void HL_NAME(Buffer_updateRegion4)(_ref(Buffer)* _this, vbyte* data, int toffset, int size, int soffset) {
+	(forge_sdl_buffer_update_region( _unref(_this) , data, toffset, size, soffset));
+}
+DEFINE_PRIM(_VOID, Buffer_updateRegion4, _IDL _BYTES _I32 _I32 _I32);
+
+HL_PRIM void HL_NAME(Buffer_update1)(_ref(Buffer)* _this, vbyte* data) {
+	(forge_sdl_buffer_update( _unref(_this) , data));
+}
+DEFINE_PRIM(_VOID, Buffer_update1, _IDL _BYTES);
+
+HL_PRIM _ref(BufferLoadDesc)* HL_NAME(BufferLoadDesc_new0)() {
+	return alloc_ref((new BufferLoadDesc()),BufferLoadDesc);
+}
+DEFINE_PRIM(_IDL, BufferLoadDesc_new0,);
+
+HL_PRIM bool HL_NAME(BufferLoadDesc_get_forceReset)( _ref(BufferLoadDesc)* _this ) {
+	return _unref(_this)->mForceReset;
+}
+DEFINE_PRIM(_BOOL,BufferLoadDesc_get_forceReset,_IDL);
+HL_PRIM bool HL_NAME(BufferLoadDesc_set_forceReset)( _ref(BufferLoadDesc)* _this, bool value ) {
+	_unref(_this)->mForceReset = (value);
+	return value;
+}
+DEFINE_PRIM(_BOOL,BufferLoadDesc_set_forceReset,_IDL _BOOL);
+
+HL_PRIM HL_CONST _ref(Buffer)* HL_NAME(BufferLoadDesc_load1)(_ref(BufferLoadDesc)* _this, _ref(SyncToken)* syncToken) {
+	return alloc_ref_const((forge_sdl_buffer_load( _unref(_this) , _unref_ptr_safe(syncToken))),Buffer);
+}
+DEFINE_PRIM(_IDL, BufferLoadDesc_load1, _IDL _IDL);
+
+HL_PRIM void HL_NAME(BufferLoadDesc_setIndexbuffer3)(_ref(BufferLoadDesc)* _this, int size, vbyte* data, bool shared) {
+	(forge_sdl_buffer_load_desc_set_index_buffer( _unref(_this) , size, data, shared));
+}
+DEFINE_PRIM(_VOID, BufferLoadDesc_setIndexbuffer3, _IDL _I32 _BYTES _BOOL);
 
 }
