@@ -1,3 +1,317 @@
+enum SampleCount
+{
+	"SAMPLE_COUNT_1",
+	"SAMPLE_COUNT_2",
+	"SAMPLE_COUNT_4",
+	"SAMPLE_COUNT_8",
+	"SAMPLE_COUNT_16"
+};
+
+
+enum ResourceState
+{
+	"RESOURCE_STATE_UNDEFINED",
+	"RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER",
+	"RESOURCE_STATE_INDEX_BUFFER",
+	"RESOURCE_STATE_RENDER_TARGET",
+	"RESOURCE_STATE_UNORDERED_ACCESS",
+	"RESOURCE_STATE_DEPTH_WRITE",
+	"RESOURCE_STATE_DEPTH_READ",
+	"RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE",
+	"RESOURCE_STATE_PIXEL_SHADER_RESOURCE",
+	"RESOURCE_STATE_SHADER_RESOURCE",
+	"RESOURCE_STATE_STREAM_OUT",
+	"RESOURCE_STATE_INDIRECT_ARGUMENT",
+	"RESOURCE_STATE_COPY_DEST",
+	"RESOURCE_STATE_COPY_SOURCE",
+	"RESOURCE_STATE_GENERIC_READ",
+	"RESOURCE_STATE_PRESENT",
+	"RESOURCE_STATE_COMMON",
+	"RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE",
+	"RESOURCE_STATE_SHADING_RATE_SOURCE"
+};
+
+enum TinyImageFormat {
+	"TinyImageFormat_UNDEFINED" ,
+	"TinyImageFormat_R1_UNORM" ,
+	"TinyImageFormat_R2_UNORM" ,
+	"TinyImageFormat_R4_UNORM" ,
+	"TinyImageFormat_R4G4_UNORM" ,
+	"TinyImageFormat_G4R4_UNORM" ,
+	"TinyImageFormat_A8_UNORM" ,
+	"TinyImageFormat_R8_UNORM" ,
+	"TinyImageFormat_R8_SNORM" ,
+	"TinyImageFormat_R8_UINT" ,
+	"TinyImageFormat_R8_SINT" ,
+	"TinyImageFormat_R8_SRGB" ,
+	"TinyImageFormat_B2G3R3_UNORM" ,
+	"TinyImageFormat_R4G4B4A4_UNORM" ,
+	"TinyImageFormat_R4G4B4X4_UNORM" ,
+	"TinyImageFormat_B4G4R4A4_UNORM" ,
+	"TinyImageFormat_B4G4R4X4_UNORM" ,
+	"TinyImageFormat_A4R4G4B4_UNORM" ,
+	"TinyImageFormat_X4R4G4B4_UNORM" ,
+	"TinyImageFormat_A4B4G4R4_UNORM" ,
+	"TinyImageFormat_X4B4G4R4_UNORM" ,
+	"TinyImageFormat_R5G6B5_UNORM" ,
+	"TinyImageFormat_B5G6R5_UNORM" ,
+	"TinyImageFormat_R5G5B5A1_UNORM" ,
+	"TinyImageFormat_B5G5R5A1_UNORM" ,
+	"TinyImageFormat_A1B5G5R5_UNORM" ,
+	"TinyImageFormat_A1R5G5B5_UNORM" ,
+	"TinyImageFormat_R5G5B5X1_UNORM" ,
+	"TinyImageFormat_B5G5R5X1_UNORM" ,
+	"TinyImageFormat_X1R5G5B5_UNORM" ,
+	"TinyImageFormat_X1B5G5R5_UNORM" ,
+	"TinyImageFormat_B2G3R3A8_UNORM" ,
+	"TinyImageFormat_R8G8_UNORM" ,
+	"TinyImageFormat_R8G8_SNORM" ,
+	"TinyImageFormat_G8R8_UNORM" ,
+	"TinyImageFormat_G8R8_SNORM" ,
+	"TinyImageFormat_R8G8_UINT" ,
+	"TinyImageFormat_R8G8_SINT" ,
+	"TinyImageFormat_R8G8_SRGB" ,
+	"TinyImageFormat_R16_UNORM" ,
+	"TinyImageFormat_R16_SNORM" ,
+	"TinyImageFormat_R16_UINT" ,
+	"TinyImageFormat_R16_SINT" ,
+	"TinyImageFormat_R16_SFLOAT" ,
+	"TinyImageFormat_R16_SBFLOAT" ,
+	"TinyImageFormat_R8G8B8_UNORM" ,
+	"TinyImageFormat_R8G8B8_SNORM" ,
+	"TinyImageFormat_R8G8B8_UINT" ,
+	"TinyImageFormat_R8G8B8_SINT" ,
+	"TinyImageFormat_R8G8B8_SRGB" ,
+	"TinyImageFormat_B8G8R8_UNORM" ,
+	"TinyImageFormat_B8G8R8_SNORM" ,
+	"TinyImageFormat_B8G8R8_UINT" ,
+	"TinyImageFormat_B8G8R8_SINT" ,
+	"TinyImageFormat_B8G8R8_SRGB" ,
+	"TinyImageFormat_R8G8B8A8_UNORM" ,
+	"TinyImageFormat_R8G8B8A8_SNORM" ,
+	"TinyImageFormat_R8G8B8A8_UINT" ,
+	"TinyImageFormat_R8G8B8A8_SINT" ,
+	"TinyImageFormat_R8G8B8A8_SRGB" ,
+	"TinyImageFormat_B8G8R8A8_UNORM" ,
+	"TinyImageFormat_B8G8R8A8_SNORM" ,
+	"TinyImageFormat_B8G8R8A8_UINT" ,
+	"TinyImageFormat_B8G8R8A8_SINT" ,
+	"TinyImageFormat_B8G8R8A8_SRGB" ,
+	"TinyImageFormat_R8G8B8X8_UNORM" ,
+	"TinyImageFormat_B8G8R8X8_UNORM" ,
+	"TinyImageFormat_R16G16_UNORM" ,
+	"TinyImageFormat_G16R16_UNORM" ,
+	"TinyImageFormat_R16G16_SNORM" ,
+	"TinyImageFormat_G16R16_SNORM" ,
+	"TinyImageFormat_R16G16_UINT" ,
+	"TinyImageFormat_R16G16_SINT" ,
+	"TinyImageFormat_R16G16_SFLOAT" ,
+	"TinyImageFormat_R16G16_SBFLOAT" ,
+	"TinyImageFormat_R32_UINT" ,
+	"TinyImageFormat_R32_SINT" ,
+	"TinyImageFormat_R32_SFLOAT" ,
+	"TinyImageFormat_A2R10G10B10_UNORM" ,
+	"TinyImageFormat_A2R10G10B10_UINT" ,
+	"TinyImageFormat_A2R10G10B10_SNORM" ,
+	"TinyImageFormat_A2R10G10B10_SINT" ,
+	"TinyImageFormat_A2B10G10R10_UNORM" ,
+	"TinyImageFormat_A2B10G10R10_UINT" ,
+	"TinyImageFormat_A2B10G10R10_SNORM" ,
+	"TinyImageFormat_A2B10G10R10_SINT" ,
+	"TinyImageFormat_R10G10B10A2_UNORM" ,
+	"TinyImageFormat_R10G10B10A2_UINT" ,
+	"TinyImageFormat_R10G10B10A2_SNORM" ,
+	"TinyImageFormat_R10G10B10A2_SINT" ,
+	"TinyImageFormat_B10G10R10A2_UNORM" ,
+	"TinyImageFormat_B10G10R10A2_UINT" ,
+	"TinyImageFormat_B10G10R10A2_SNORM" ,
+	"TinyImageFormat_B10G10R10A2_SINT" ,
+	"TinyImageFormat_B10G11R11_UFLOAT" ,
+	"TinyImageFormat_E5B9G9R9_UFLOAT" ,
+	"TinyImageFormat_R16G16B16_UNORM" ,
+	"TinyImageFormat_R16G16B16_SNORM" ,
+	"TinyImageFormat_R16G16B16_UINT" ,
+	"TinyImageFormat_R16G16B16_SINT" ,
+	"TinyImageFormat_R16G16B16_SFLOAT" ,
+	"TinyImageFormat_R16G16B16_SBFLOAT" ,
+	"TinyImageFormat_R16G16B16A16_UNORM" ,
+	"TinyImageFormat_R16G16B16A16_SNORM" ,
+	"TinyImageFormat_R16G16B16A16_UINT" ,
+	"TinyImageFormat_R16G16B16A16_SINT" ,
+	"TinyImageFormat_R16G16B16A16_SFLOAT" ,
+	"TinyImageFormat_R16G16B16A16_SBFLOAT" ,
+	"TinyImageFormat_R32G32_UINT" ,
+	"TinyImageFormat_R32G32_SINT" ,
+	"TinyImageFormat_R32G32_SFLOAT" ,
+	"TinyImageFormat_R32G32B32_UINT" ,
+	"TinyImageFormat_R32G32B32_SINT" ,
+	"TinyImageFormat_R32G32B32_SFLOAT" ,
+	"TinyImageFormat_R32G32B32A32_UINT" ,
+	"TinyImageFormat_R32G32B32A32_SINT" ,
+	"TinyImageFormat_R32G32B32A32_SFLOAT" ,
+	"TinyImageFormat_R64_UINT" ,
+	"TinyImageFormat_R64_SINT" ,
+	"TinyImageFormat_R64_SFLOAT" ,
+	"TinyImageFormat_R64G64_UINT" ,
+	"TinyImageFormat_R64G64_SINT" ,
+	"TinyImageFormat_R64G64_SFLOAT" ,
+	"TinyImageFormat_R64G64B64_UINT" ,
+	"TinyImageFormat_R64G64B64_SINT" ,
+	"TinyImageFormat_R64G64B64_SFLOAT" ,
+	"TinyImageFormat_R64G64B64A64_UINT" ,
+	"TinyImageFormat_R64G64B64A64_SINT" ,
+	"TinyImageFormat_R64G64B64A64_SFLOAT" ,
+	"TinyImageFormat_D16_UNORM" ,
+	"TinyImageFormat_X8_D24_UNORM" ,
+	"TinyImageFormat_D32_SFLOAT" ,
+	"TinyImageFormat_S8_UINT" ,
+	"TinyImageFormat_D16_UNORM_S8_UINT" ,
+	"TinyImageFormat_D24_UNORM_S8_UINT" ,
+	"TinyImageFormat_D32_SFLOAT_S8_UINT" ,
+	"TinyImageFormat_DXBC1_RGB_UNORM" ,
+	"TinyImageFormat_DXBC1_RGB_SRGB" ,
+	"TinyImageFormat_DXBC1_RGBA_UNORM" ,
+	"TinyImageFormat_DXBC1_RGBA_SRGB" ,
+	"TinyImageFormat_DXBC2_UNORM" ,
+	"TinyImageFormat_DXBC2_SRGB" ,
+	"TinyImageFormat_DXBC3_UNORM" ,
+	"TinyImageFormat_DXBC3_SRGB" ,
+	"TinyImageFormat_DXBC4_UNORM" ,
+	"TinyImageFormat_DXBC4_SNORM" ,
+	"TinyImageFormat_DXBC5_UNORM" ,
+	"TinyImageFormat_DXBC5_SNORM" ,
+	"TinyImageFormat_DXBC6H_UFLOAT" ,
+	"TinyImageFormat_DXBC6H_SFLOAT" ,
+	"TinyImageFormat_DXBC7_UNORM" ,
+	"TinyImageFormat_DXBC7_SRGB" ,
+	"TinyImageFormat_PVRTC1_2BPP_UNORM" ,
+	"TinyImageFormat_PVRTC1_4BPP_UNORM" ,
+	"TinyImageFormat_PVRTC2_2BPP_UNORM" ,
+	"TinyImageFormat_PVRTC2_4BPP_UNORM" ,
+	"TinyImageFormat_PVRTC1_2BPP_SRGB" ,
+	"TinyImageFormat_PVRTC1_4BPP_SRGB" ,
+	"TinyImageFormat_PVRTC2_2BPP_SRGB" ,
+	"TinyImageFormat_PVRTC2_4BPP_SRGB" ,
+	"TinyImageFormat_ETC2_R8G8B8_UNORM" ,
+	"TinyImageFormat_ETC2_R8G8B8_SRGB" ,
+	"TinyImageFormat_ETC2_R8G8B8A1_UNORM" ,
+	"TinyImageFormat_ETC2_R8G8B8A1_SRGB" ,
+	"TinyImageFormat_ETC2_R8G8B8A8_UNORM" ,
+	"TinyImageFormat_ETC2_R8G8B8A8_SRGB" ,
+	"TinyImageFormat_ETC2_EAC_R11_UNORM" ,
+	"TinyImageFormat_ETC2_EAC_R11_SNORM" ,
+	"TinyImageFormat_ETC2_EAC_R11G11_UNORM" ,
+	"TinyImageFormat_ETC2_EAC_R11G11_SNORM" ,
+	"TinyImageFormat_ASTC_4x4_UNORM" ,
+	"TinyImageFormat_ASTC_4x4_SRGB" ,
+	"TinyImageFormat_ASTC_5x4_UNORM" ,
+	"TinyImageFormat_ASTC_5x4_SRGB" ,
+	"TinyImageFormat_ASTC_5x5_UNORM" ,
+	"TinyImageFormat_ASTC_5x5_SRGB" ,
+	"TinyImageFormat_ASTC_6x5_UNORM" ,
+	"TinyImageFormat_ASTC_6x5_SRGB" ,
+	"TinyImageFormat_ASTC_6x6_UNORM" ,
+	"TinyImageFormat_ASTC_6x6_SRGB" ,
+	"TinyImageFormat_ASTC_8x5_UNORM" ,
+	"TinyImageFormat_ASTC_8x5_SRGB" ,
+	"TinyImageFormat_ASTC_8x6_UNORM" ,
+	"TinyImageFormat_ASTC_8x6_SRGB" ,
+	"TinyImageFormat_ASTC_8x8_UNORM" ,
+	"TinyImageFormat_ASTC_8x8_SRGB" ,
+	"TinyImageFormat_ASTC_10x5_UNORM" ,
+	"TinyImageFormat_ASTC_10x5_SRGB" ,
+	"TinyImageFormat_ASTC_10x6_UNORM" ,
+	"TinyImageFormat_ASTC_10x6_SRGB" ,
+	"TinyImageFormat_ASTC_10x8_UNORM" ,
+	"TinyImageFormat_ASTC_10x8_SRGB" ,
+	"TinyImageFormat_ASTC_10x10_UNORM" ,
+	"TinyImageFormat_ASTC_10x10_SRGB" ,
+	"TinyImageFormat_ASTC_12x10_UNORM" ,
+	"TinyImageFormat_ASTC_12x10_SRGB" ,
+	"TinyImageFormat_ASTC_12x12_UNORM" ,
+	"TinyImageFormat_ASTC_12x12_SRGB" ,
+	"TinyImageFormat_CLUT_P4" ,
+	"TinyImageFormat_CLUT_P4A4" ,
+	"TinyImageFormat_CLUT_P8" ,
+	"TinyImageFormat_CLUT_P8A8" ,
+	"TinyImageFormat_R4G4B4A4_UNORM_PACK16" ,
+	"TinyImageFormat_B4G4R4A4_UNORM_PACK16" ,
+	"TinyImageFormat_R5G6B5_UNORM_PACK16" ,
+	"TinyImageFormat_B5G6R5_UNORM_PACK16" ,
+	"TinyImageFormat_R5G5B5A1_UNORM_PACK16" ,
+	"TinyImageFormat_B5G5R5A1_UNORM_PACK16" ,
+	"TinyImageFormat_A1R5G5B5_UNORM_PACK16" ,
+	"TinyImageFormat_G16B16G16R16_422_UNORM" ,
+	"TinyImageFormat_B16G16R16G16_422_UNORM" ,
+	"TinyImageFormat_R12X4G12X4B12X4A12X4_UNORM_4PACK16" ,
+	"TinyImageFormat_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16" ,
+	"TinyImageFormat_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16" ,
+	"TinyImageFormat_R10X6G10X6B10X6A10X6_UNORM_4PACK16" ,
+	"TinyImageFormat_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16" ,
+	"TinyImageFormat_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16" ,
+	"TinyImageFormat_G8B8G8R8_422_UNORM" ,
+	"TinyImageFormat_B8G8R8G8_422_UNORM" ,
+	"TinyImageFormat_G8_B8_R8_3PLANE_420_UNORM" ,
+	"TinyImageFormat_G8_B8R8_2PLANE_420_UNORM" ,
+	"TinyImageFormat_G8_B8_R8_3PLANE_422_UNORM" ,
+	"TinyImageFormat_G8_B8R8_2PLANE_422_UNORM" ,
+	"TinyImageFormat_G8_B8_R8_3PLANE_444_UNORM" ,
+	"TinyImageFormat_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16" ,
+	"TinyImageFormat_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16" ,
+	"TinyImageFormat_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16" ,
+	"TinyImageFormat_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16" ,
+	"TinyImageFormat_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16" ,
+	"TinyImageFormat_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16" ,
+	"TinyImageFormat_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16" ,
+	"TinyImageFormat_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16" ,
+	"TinyImageFormat_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16" ,
+	"TinyImageFormat_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16" ,
+	"TinyImageFormat_G16_B16_R16_3PLANE_420_UNORM" ,
+	"TinyImageFormat_G16_B16_R16_3PLANE_422_UNORM" ,
+	"TinyImageFormat_G16_B16_R16_3PLANE_444_UNORM" ,
+	"TinyImageFormat_G16_B16R16_2PLANE_420_UNORM" ,
+	"TinyImageFormat_G16_B16R16_2PLANE_422_UNORM" 
+};
+
+
+enum TextureCreationFlags
+{
+	/// Default flag (Texture will use default allocation strategy decided by the api specific allocator)
+	"TEXTURE_CREATION_FLAG_NONE",
+	/// Texture will allocate its own memory (COMMITTED resource)
+	"TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT",
+	/// Texture will be allocated in memory which can be shared among multiple processes
+	"TEXTURE_CREATION_FLAG_EXPORT_BIT",
+	/// Texture will be allocated in memory which can be shared among multiple gpus
+	"TEXTURE_CREATION_FLAG_EXPORT_ADAPTER_BIT",
+	/// Texture will be imported from a handle created in another process
+	"TEXTURE_CREATION_FLAG_IMPORT_BIT",
+	/// Use ESRAM to store this texture
+	"TEXTURE_CREATION_FLAG_ESRAM",
+	/// Use on-tile memory to store this texture
+	"TEXTURE_CREATION_FLAG_ON_TILE",
+	/// Prevent compression meta data from generating (XBox)
+	"TEXTURE_CREATION_FLAG_NO_COMPRESSION",
+	/// Force 2D instead of automatically determining dimension based on width, height, depth
+	"TEXTURE_CREATION_FLAG_FORCE_2D",
+	/// Force 3D instead of automatically determining dimension based on width, height, depth
+	"TEXTURE_CREATION_FLAG_FORCE_3D",
+	/// Display target
+	"TEXTURE_CREATION_FLAG_ALLOW_DISPLAY_TARGET",
+	/// Create an sRGB texture.
+	"TEXTURE_CREATION_FLAG_SRGB",
+	/// Create a normal map texture
+	"TEXTURE_CREATION_FLAG_NORMAL_MAP",
+	/// Fast clear
+	"TEXTURE_CREATION_FLAG_FAST_CLEAR",
+	/// Fragment mask
+	"TEXTURE_CREATION_FLAG_FRAG_MASK",
+	/// Doubles the amount of array layers of the texture when rendering VR. Also forces the texture to be a 2D Array texture.
+    "TEXTURE_CREATION_FLAG_VR_MULTIVIEW",
+    /// Binds the FFR fragment density if this texture is used as a render target.
+    "TEXTURE_CREATION_FLAG_VR_FOVEATED_RENDERING"
+} ;
+
 [NoDelete]
 interface Globals {
 	[Internal="hlForgeInitialize", Static]
@@ -16,6 +330,59 @@ interface SwapChain {
 };
 
 
+interface RenderTargetDesc {
+	[Initialize] void RenderTargetDesc();
+
+	/// Texture creation flags (decides memory allocation strategy, sharing access,...)
+	[Internal="mFlags", Cast="TextureCreationFlags"] attribute uint flags;
+	/// Width
+	[Internal="mWidth"] attribute uint  width;
+	/// Height
+	[Internal="mHeight"] attribute uint  height;
+	/// Depth (Should be 1 if not a mType is not TEXTURE_TYPE_3D)
+	[Internal="mDepth"] attribute uint  depth;
+	/// Texture array size (Should be 1 if texture is not a texture array or cubemap)
+	[Internal="mArraySize"] attribute uint  arraySize;
+	/// Number of mip levels
+	[Internal="mMipLevels"] attribute uint  mipLevels;
+	/// MSAA
+	[Internal="mSampleCount"] attribute SampleCount sampleCount;
+
+	/// What state will the texture get created in
+	[Internal="mStartState"] attribute ResourceState startState;
+
+	/// Internal image format
+	[Internal="mFormat"] attribute TinyImageFormat format;
+
+	/*
+	
+	
+	/// Optimized clear value (recommended to use this same value when clearing the rendertarget)
+	ClearValue mClearValue;
+		*/
+	/// The image quality level. The higher the quality, the lower the performance. The valid range is between zero and the value appropriate for mSampleCount
+	[Internal="mSampleQuality"] attribute uint sampleQuality;
+	/// Descriptor creation
+//	DescriptorType mDescriptors;
+//	const void*    pNativeHandle;
+	/// Debug name used in gpu profile
+	//const char* pName;
+	/// GPU indices to share this texture
+	//uint32_t* pSharedNodeIndices;
+	/// Number of GPUs to share this texture
+	[Internal="mSharedNodeIndexCount"] attribute uint mSharedNodeIndexCount;
+
+	/// GPU which will own this texture
+	[Internal="mNodeIndex"] attribute uint  nodeIndex;
+
+};
+
+
+[NoDelete]
+interface RenderTarget {
+
+};
+
 [NoDelete]
 interface Renderer {
 	[Const,Static, Internal="createRenderer"] Renderer create(String name);
@@ -24,6 +391,7 @@ interface Renderer {
 	[CObject, Const] Queue createQueue();
 
 	[CObject] void removeQueue(Queue pGraphicsQueue);
+	[CObject, Internal="forge_sdl_create_render_target",Const] RenderTarget createRenderTarget(RenderTargetDesc desc);
 };
 
 
@@ -53,7 +421,7 @@ interface BufferLoadDesc {
 	/// Force Reset buffer to NULL
 //	bool mForceReset;
 
-	void BufferLoadDesc();
+	[Initialize] void BufferLoadDesc();
 
 	[Internal="mForceReset"] attribute bool forceReset;
 	//[Internal="pData"] attribute VoidPtr data;
@@ -61,6 +429,6 @@ interface BufferLoadDesc {
 	[CObject, Internal="forge_sdl_buffer_load",Const]Buffer load(SyncToken syncToken);
 
 	[CObject, Internal="forge_sdl_buffer_load_desc_set_index_buffer"] void setIndexbuffer( int size, bytes data, bool shared );
+	[CObject, Internal="forge_sdl_buffer_load_desc_set_vertex_buffer"] void setVertexbuffer( int size, bytes data, bool shared );
 
 };
-

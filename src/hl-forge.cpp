@@ -178,7 +178,21 @@ void forge_sdl_buffer_load_desc_set_index_buffer( BufferLoadDesc *bld, int size,
 
 }
 
-#undef new
+void forge_sdl_buffer_load_desc_set_vertex_buffer( BufferLoadDesc *bld, int size, void *data, bool shared) {
+		bld->mDesc.mDescriptors = DESCRIPTOR_TYPE_VERTEX_BUFFER;
+		if (shared) {
+			bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+		} else {
+			bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+		}
+		bld->mDesc.mSize = size;
+		bld->pData = data;
+//		
+
+}
+
+
+
 
 void forge_sdl_buffer_update(Buffer *buffer, void *data) {
 	BufferUpdateDesc desc = {buffer};
@@ -194,6 +208,12 @@ void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int
 	beginUpdateResource(&desc);
 	memcpy(desc.pMappedData, &((char *)data)[soffset], size);
 	endUpdateResource(&desc, NULL);
+}
+
+RenderTarget *forge_sdl_create_render_target(Renderer *renderer, RenderTargetDesc *desc) {
+	RenderTarget *pDepthBuffer;
+	addRenderTarget(renderer, desc, &pDepthBuffer);
+	return pDepthBuffer;
 }
 
 SDL_MetalView forge_create_metal_view(SDL_Window *win) {

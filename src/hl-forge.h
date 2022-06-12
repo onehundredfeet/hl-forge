@@ -24,10 +24,12 @@ Queue* createQueue(Renderer *renderer);
 SwapChain* createSwapChain( SDL_Window *window, Renderer *renderer, Queue *queue, int width, int height, int chainCount, bool hdr10);
 SDL_Window *forge_sdl_get_window(void *ptr);
 void forge_sdl_buffer_load_desc_set_index_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
+void forge_sdl_buffer_load_desc_set_vertex_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
 Buffer*forge_sdl_buffer_load( BufferLoadDesc *bld, SyncToken *token);
 
 void forge_sdl_buffer_update(Buffer *buffer, void *data);
 void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int size, int soffset);
+RenderTarget *forge_sdl_create_render_target(Renderer *, RenderTargetDesc *);
 
 SDL_MetalView forge_create_metal_view(SDL_Window *);
 #endif

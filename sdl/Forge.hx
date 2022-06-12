@@ -18,8 +18,8 @@ abstract Buffer(forge.Native.Buffer) from forge.Native.Buffer to forge.Native.Bu
 
 abstract Framebuffer(Null<Int>) {
 }
-
-abstract Renderbuffer(Null<Int>) {
+@:forward
+abstract Renderbuffer( forge.Native.RenderTarget ) from forge.Native.RenderTarget to forge.Native.RenderTarget {
 }
 
 abstract Query(Null<Int>) {
