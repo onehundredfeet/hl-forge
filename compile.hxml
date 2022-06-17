@@ -1,8 +1,9 @@
 -lib hlsdl
 -lib hl-idl
 -lib heaps
---class-path .
+-lib hl-forge
+--class-path example
 --hl bin/main.hl
---main example.Main
+--main Base3D
 -D heaps_forge
 -D heaps_no_gl

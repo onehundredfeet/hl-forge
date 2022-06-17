@@ -121,6 +121,7 @@ ${HL_INCLUDE_DIR}
 )
 
 find_library( METAL_LIB Metal)
+find_library( METALKIT_LIB MetalKit)
 find_library( QUARTZ_LIB QuartzCore)
 find_library( FOUNDATION_LIB Foundation)
 find_library( IOKIT_LIB IOKit)
@@ -128,6 +129,7 @@ find_library( METAL_PERF_SHADER_LIB MetalPerformanceShaders)
 find_library( SHADERC_LIB shaderc_combined)
 find_library( SDL_LIB SDL2)
 find_library( APPKITLIB AppKit)
+find_library( COREGRAPHICSLIB CoreGraphics)
 
 if (UNIX)
     # Some special flags are needed for GNU GCC compiler
@@ -140,8 +142,8 @@ else()
     find_library(LIBHL NAMES libhl HINTS ${HL_LIB_DIR} )
 endif (UNIX)
 
+set_property (TARGET forge.hdll APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc")
 
-
-target_link_libraries(forge.hdll ${LIBHL} ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB} ${SHADERC_LIB} ${SDL_LIB} ${APPKITLIB})
+target_link_libraries(forge.hdll ${LIBHL} ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB} ${SHADERC_LIB} ${SDL_LIB} ${APPKITLIB} ${COREGRAPHICSLIB} ${METALKIT_LIB})
 
 install(TARGETS forge.hdll DESTINATION ${HDLL_DESTINATION})

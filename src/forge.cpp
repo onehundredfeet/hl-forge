@@ -349,6 +349,11 @@ HL_PRIM void HL_NAME(RenderTargetDesc_delete)( _ref(RenderTargetDesc)* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, RenderTargetDesc_delete, _IDL);
+static void finalize_ForgeSDLWindow( _ref(ForgeSDLWindow)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(ForgeSDLWindow_delete)( _ref(ForgeSDLWindow)* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, ForgeSDLWindow_delete, _IDL);
 static void finalize_SyncToken( _ref(SyncToken)* _this ) { free_ref(_this ); }
 HL_PRIM void HL_NAME(SyncToken_delete)( _ref(SyncToken)* _this ) {
 	free_ref(_this );
@@ -359,6 +364,16 @@ HL_PRIM void HL_NAME(BufferLoadDesc_delete)( _ref(BufferLoadDesc)* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, BufferLoadDesc_delete, _IDL);
+static void finalize_TextureDesc( _ref(TextureDesc)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(TextureDesc_delete)( _ref(TextureDesc)* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, TextureDesc_delete, _IDL);
+static void finalize_TextureLoadDesc( _ref(TextureLoadDesc)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(TextureLoadDesc_delete)( _ref(TextureLoadDesc)* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, TextureLoadDesc_delete, _IDL);
 HL_PRIM bool HL_NAME(Globals_initialize1)(vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	auto ___retvalue = (hlForgeInitialize(name__cstr));
@@ -366,10 +381,40 @@ HL_PRIM bool HL_NAME(Globals_initialize1)(vstring * name) {
 }
 DEFINE_PRIM(_BOOL, Globals_initialize1, _STRING);
 
+HL_PRIM void HL_NAME(Globals_waitForAllResourceLoads0)() {
+	(waitForAllResourceLoads());
+}
+DEFINE_PRIM(_VOID, Globals_waitForAllResourceLoads0,);
+
+HL_PRIM void HL_NAME(Cmd_clear2)(_ref(Cmd)* _this, _ref(RenderTarget)* rt, _ref(RenderTarget)* depthstencil) {
+	(forge_render_target_clear( _unref(_this) , _unref_ptr_safe(rt), _unref_ptr_safe(depthstencil)));
+}
+DEFINE_PRIM(_VOID, Cmd_clear2, _IDL _IDL _IDL);
+
+HL_PRIM void HL_NAME(Cmd_begin0)(_ref(Cmd)* _this) {
+	(beginCmd( _unref(_this) ));
+}
+DEFINE_PRIM(_VOID, Cmd_begin0, _IDL);
+
+HL_PRIM void HL_NAME(Cmd_end0)(_ref(Cmd)* _this) {
+	(endCmd( _unref(_this) ));
+}
+DEFINE_PRIM(_VOID, Cmd_end0, _IDL);
+
 HL_PRIM void HL_NAME(Queue_waitIdle0)(_ref(Queue)* _this) {
 	(waitQueueIdle( _unref(_this) ));
 }
 DEFINE_PRIM(_VOID, Queue_waitIdle0, _IDL);
+
+HL_PRIM void HL_NAME(Queue_submit4)(_ref(Queue)* _this, _ref(Cmd)* cmd, _ref(Semaphore)* signalSemphor, _ref(Semaphore)* wait, _ref(Fence)* signalFence) {
+	(forge_queue_submit_cmd( _unref(_this) , _unref_ptr_safe(cmd), _unref_ptr_safe(signalSemphor), _unref_ptr_safe(wait), _unref_ptr_safe(signalFence)));
+}
+DEFINE_PRIM(_VOID, Queue_submit4, _IDL _IDL _IDL _IDL _IDL);
+
+HL_PRIM HL_CONST _ref(RenderTarget)* HL_NAME(SwapChain_getRenderTarget1)(_ref(SwapChain)* _this, int rtidx) {
+	return alloc_ref_const((forge_swap_chain_get_render_target( _unref(_this) , rtidx)),RenderTarget);
+}
+DEFINE_PRIM(_IDL, SwapChain_getRenderTarget1, _IDL _I32);
 
 HL_PRIM _ref(RenderTargetDesc)* HL_NAME(RenderTargetDesc_new0)() {
 	auto ___retvalue = alloc_ref((new RenderTargetDesc()),RenderTargetDesc);
@@ -498,13 +543,6 @@ HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_nodeIndex)( _ref(RenderTargetD
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_nodeIndex,_IDL _I32);
 
-HL_PRIM HL_CONST _ref(Renderer)* HL_NAME(Renderer_create1)(vstring * name) {
-	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
-	auto ___retvalue = alloc_ref_const((createRenderer(name__cstr)),Renderer);
-	return ___retvalue;
-}
-DEFINE_PRIM(_IDL, Renderer_create1, _STRING);
-
 HL_PRIM HL_CONST _ref(Queue)* HL_NAME(Renderer_createQueue0)(_ref(Renderer)* _this) {
 	return alloc_ref_const((createQueue( _unref(_this) )),Queue);
 }
@@ -520,10 +558,67 @@ HL_PRIM HL_CONST _ref(RenderTarget)* HL_NAME(Renderer_createRenderTarget1)(_ref(
 }
 DEFINE_PRIM(_IDL, Renderer_createRenderTarget1, _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(SwapChain)* HL_NAME(Window_createSwapChain6)(_ref(SDL_Window)* _this, _ref(Renderer)* renderer, _ref(Queue)* queue, int width, int height, int count, bool hdr10) {
-	return alloc_ref_const((createSwapChain( _unref(_this) , _unref_ptr_safe(renderer), _unref_ptr_safe(queue), width, height, count, hdr10)),SwapChain);
+HL_PRIM void HL_NAME(Renderer_initResourceLoaderInterface0)(_ref(Renderer)* _this) {
+	(forge_init_loader( _unref(_this) ));
 }
-DEFINE_PRIM(_IDL, Window_createSwapChain6, _IDL _IDL _IDL _I32 _I32 _I32 _BOOL);
+DEFINE_PRIM(_VOID, Renderer_initResourceLoaderInterface0, _IDL);
+
+HL_PRIM HL_CONST _ref(CmdPool)* HL_NAME(Renderer_createCommandPool1)(_ref(Renderer)* _this, _ref(Queue)* queue) {
+	return alloc_ref_const((forge_sdl_renderer_create_cmd_pool( _unref(_this) , _unref_ptr_safe(queue))),CmdPool);
+}
+DEFINE_PRIM(_IDL, Renderer_createCommandPool1, _IDL _IDL);
+
+HL_PRIM HL_CONST _ref(Cmd)* HL_NAME(Renderer_createCommand1)(_ref(Renderer)* _this, _ref(CmdPool)* pool) {
+	return alloc_ref_const((forge_sdl_renderer_create_cmd( _unref(_this) , _unref_ptr_safe(pool))),Cmd);
+}
+DEFINE_PRIM(_IDL, Renderer_createCommand1, _IDL _IDL);
+
+HL_PRIM HL_CONST _ref(Fence)* HL_NAME(Renderer_createFence0)(_ref(Renderer)* _this) {
+	return alloc_ref_const((forge_sdl_renderer_create_fence( _unref(_this) )),Fence);
+}
+DEFINE_PRIM(_IDL, Renderer_createFence0, _IDL);
+
+HL_PRIM HL_CONST _ref(Semaphore)* HL_NAME(Renderer_createSemaphore0)(_ref(Renderer)* _this) {
+	return alloc_ref_const((forge_sdl_renderer_create_semaphore( _unref(_this) )),Semaphore);
+}
+DEFINE_PRIM(_IDL, Renderer_createSemaphore0, _IDL);
+
+HL_PRIM unsigned int HL_NAME(Renderer_acquireNextImage4)(_ref(Renderer)* _this, _ref(SwapChain)* pSwapChain, _ref(Semaphore)* pImageAcquiredSemaphore, _ref(Fence)* fence) {
+	unsigned int __tmpret;
+(acquireNextImage( _unref(_this) , _unref_ptr_safe(pSwapChain), _unref_ptr_safe(pImageAcquiredSemaphore), _unref_ptr_safe(fence), &__tmpret));
+	return __tmpret;
+}
+DEFINE_PRIM(_I32, Renderer_acquireNextImage4, _IDL _IDL _IDL _IDL);
+
+HL_PRIM void HL_NAME(Renderer_waitFence1)(_ref(Renderer)* _this, _ref(Fence)* fence) {
+	(forge_renderer_wait_fence( _unref(_this) , _unref_ptr_safe(fence)));
+}
+DEFINE_PRIM(_VOID, Renderer_waitFence1, _IDL _IDL);
+
+HL_PRIM void HL_NAME(Renderer_resetCmdPool1)(_ref(Renderer)* _this, _ref(CmdPool)* pool) {
+	(resetCmdPool( _unref(_this) , _unref_ptr_safe(pool)));
+}
+DEFINE_PRIM(_VOID, Renderer_resetCmdPool1, _IDL _IDL);
+
+HL_PRIM _ref(ForgeSDLWindow)* HL_NAME(ForgeSDLWindow_new1)(_ref(SDL_Window)* sdlWindow) {
+	return alloc_ref((new ForgeSDLWindow(_unref_ptr_safe(sdlWindow))),ForgeSDLWindow);
+}
+DEFINE_PRIM(_IDL, ForgeSDLWindow_new1, _IDL);
+
+HL_PRIM HL_CONST _ref(SwapChain)* HL_NAME(ForgeSDLWindow_createSwapChain6)(_ref(ForgeSDLWindow)* _this, _ref(Renderer)* renderer, _ref(Queue)* queue, int width, int height, int count, bool hdr10) {
+	return alloc_ref_const((_unref(_this)->createSwapChain(_unref_ptr_safe(renderer), _unref_ptr_safe(queue), width, height, count, hdr10)),SwapChain);
+}
+DEFINE_PRIM(_IDL, ForgeSDLWindow_createSwapChain6, _IDL _IDL _IDL _I32 _I32 _I32 _BOOL);
+
+HL_PRIM HL_CONST _ref(Renderer)* HL_NAME(ForgeSDLWindow_renderer0)(_ref(ForgeSDLWindow)* _this) {
+	return alloc_ref_const((_unref(_this)->renderer()),Renderer);
+}
+DEFINE_PRIM(_IDL, ForgeSDLWindow_renderer0, _IDL);
+
+HL_PRIM void HL_NAME(ForgeSDLWindow_present4)(_ref(ForgeSDLWindow)* _this, _ref(Queue)* pGraphicsQueue, _ref(SwapChain)* pSwapChain, int swapchainImageIndex, _ref(Semaphore)* pRenderCompleteSemaphore) {
+	(_unref(_this)->present(_unref_ptr_safe(pGraphicsQueue), _unref_ptr_safe(pSwapChain), swapchainImageIndex, _unref_ptr_safe(pRenderCompleteSemaphore)));
+}
+DEFINE_PRIM(_VOID, ForgeSDLWindow_present4, _IDL _IDL _IDL _I32 _IDL);
 
 HL_PRIM void HL_NAME(Buffer_updateRegion4)(_ref(Buffer)* _this, vbyte* data, int toffset, int size, int soffset) {
 	(forge_sdl_buffer_update_region( _unref(_this) , data, toffset, size, soffset));
@@ -566,5 +661,166 @@ HL_PRIM void HL_NAME(BufferLoadDesc_setVertexbuffer3)(_ref(BufferLoadDesc)* _thi
 	(forge_sdl_buffer_load_desc_set_vertex_buffer( _unref(_this) , size, data, shared));
 }
 DEFINE_PRIM(_VOID, BufferLoadDesc_setVertexbuffer3, _IDL _I32 _BYTES _BOOL);
+
+HL_PRIM void HL_NAME(Texture_upload2)(_ref(Texture)* _this, vbyte* data, int size) {
+	(forge_sdl_texture_upload( _unref(_this) , data, size));
+}
+DEFINE_PRIM(_VOID, Texture_upload2, _IDL _BYTES _I32);
+
+HL_PRIM _ref(TextureDesc)* HL_NAME(TextureDesc_new0)() {
+	auto ___retvalue = alloc_ref((new TextureDesc()),TextureDesc);
+	*(___retvalue->value) = {};
+	return ___retvalue;
+}
+DEFINE_PRIM(_IDL, TextureDesc_new0,);
+
+HL_PRIM HL_CONST _ref(Texture)* HL_NAME(TextureDesc_load2)(_ref(TextureDesc)* _this, vstring * name, _ref(SyncToken)* syncToken) {
+	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
+	auto ___retvalue = alloc_ref_const((forge_texture_load_from_desc( _unref(_this) , name__cstr, _unref_ptr_safe(syncToken))),Texture);
+	return ___retvalue;
+}
+DEFINE_PRIM(_IDL, TextureDesc_load2, _IDL _STRING _IDL);
+
+HL_PRIM int HL_NAME(TextureDesc_get_flags)( _ref(TextureDesc)* _this ) {
+	return HL_NAME(TextureCreationFlags_valueToIndex0)(_unref(_this)->mFlags);
+}
+DEFINE_PRIM(_I32,TextureDesc_get_flags,_IDL);
+HL_PRIM int HL_NAME(TextureDesc_set_flags)( _ref(TextureDesc)* _this, int value ) {
+	_unref(_this)->mFlags = (TextureCreationFlags)HL_NAME(TextureCreationFlags_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_flags,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_width)( _ref(TextureDesc)* _this ) {
+	return _unref(_this)->mWidth;
+}
+DEFINE_PRIM(_I32,TextureDesc_get_width,_IDL);
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_width)( _ref(TextureDesc)* _this, unsigned int value ) {
+	_unref(_this)->mWidth = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_width,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_height)( _ref(TextureDesc)* _this ) {
+	return _unref(_this)->mHeight;
+}
+DEFINE_PRIM(_I32,TextureDesc_get_height,_IDL);
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_height)( _ref(TextureDesc)* _this, unsigned int value ) {
+	_unref(_this)->mHeight = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_height,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_depth)( _ref(TextureDesc)* _this ) {
+	return _unref(_this)->mDepth;
+}
+DEFINE_PRIM(_I32,TextureDesc_get_depth,_IDL);
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_depth)( _ref(TextureDesc)* _this, unsigned int value ) {
+	_unref(_this)->mDepth = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_depth,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_arraySize)( _ref(TextureDesc)* _this ) {
+	return _unref(_this)->mArraySize;
+}
+DEFINE_PRIM(_I32,TextureDesc_get_arraySize,_IDL);
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_arraySize)( _ref(TextureDesc)* _this, unsigned int value ) {
+	_unref(_this)->mArraySize = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_arraySize,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_mipLevels)( _ref(TextureDesc)* _this ) {
+	return _unref(_this)->mMipLevels;
+}
+DEFINE_PRIM(_I32,TextureDesc_get_mipLevels,_IDL);
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_mipLevels)( _ref(TextureDesc)* _this, unsigned int value ) {
+	_unref(_this)->mMipLevels = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_mipLevels,_IDL _I32);
+
+HL_PRIM int HL_NAME(TextureDesc_get_sampleCount)( _ref(TextureDesc)* _this ) {
+	return HL_NAME(SampleCount_valueToIndex0)(_unref(_this)->mSampleCount);
+}
+DEFINE_PRIM(_I32,TextureDesc_get_sampleCount,_IDL);
+HL_PRIM int HL_NAME(TextureDesc_set_sampleCount)( _ref(TextureDesc)* _this, int value ) {
+	_unref(_this)->mSampleCount = (SampleCount)HL_NAME(SampleCount_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_sampleCount,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_sampleQuality)( _ref(TextureDesc)* _this ) {
+	return _unref(_this)->mSampleQuality;
+}
+DEFINE_PRIM(_I32,TextureDesc_get_sampleQuality,_IDL);
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_sampleQuality)( _ref(TextureDesc)* _this, unsigned int value ) {
+	_unref(_this)->mSampleQuality = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_sampleQuality,_IDL _I32);
+
+HL_PRIM int HL_NAME(TextureDesc_get_format)( _ref(TextureDesc)* _this ) {
+	return HL_NAME(TinyImageFormat_valueToIndex0)(_unref(_this)->mFormat);
+}
+DEFINE_PRIM(_I32,TextureDesc_get_format,_IDL);
+HL_PRIM int HL_NAME(TextureDesc_set_format)( _ref(TextureDesc)* _this, int value ) {
+	_unref(_this)->mFormat = (TinyImageFormat)HL_NAME(TinyImageFormat_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_format,_IDL _I32);
+
+HL_PRIM int HL_NAME(TextureDesc_get_startState)( _ref(TextureDesc)* _this ) {
+	return HL_NAME(ResourceState_valueToIndex0)(_unref(_this)->mStartState);
+}
+DEFINE_PRIM(_I32,TextureDesc_get_startState,_IDL);
+HL_PRIM int HL_NAME(TextureDesc_set_startState)( _ref(TextureDesc)* _this, int value ) {
+	_unref(_this)->mStartState = (ResourceState)HL_NAME(ResourceState_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_startState,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_sharedNodeIndexCount)( _ref(TextureDesc)* _this ) {
+	return _unref(_this)->mSharedNodeIndexCount;
+}
+DEFINE_PRIM(_I32,TextureDesc_get_sharedNodeIndexCount,_IDL);
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_sharedNodeIndexCount)( _ref(TextureDesc)* _this, unsigned int value ) {
+	_unref(_this)->mSharedNodeIndexCount = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_sharedNodeIndexCount,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_nodeIndex)( _ref(TextureDesc)* _this ) {
+	return _unref(_this)->mNodeIndex;
+}
+DEFINE_PRIM(_I32,TextureDesc_get_nodeIndex,_IDL);
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_nodeIndex)( _ref(TextureDesc)* _this, unsigned int value ) {
+	_unref(_this)->mNodeIndex = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_nodeIndex,_IDL _I32);
+
+HL_PRIM _ref(TextureLoadDesc)* HL_NAME(TextureLoadDesc_new0)() {
+	auto ___retvalue = alloc_ref((new TextureLoadDesc()),TextureLoadDesc);
+	*(___retvalue->value) = {};
+	return ___retvalue;
+}
+DEFINE_PRIM(_IDL, TextureLoadDesc_new0,);
+
+HL_PRIM HL_CONST _ref(Texture)* HL_NAME(TextureLoadDesc_load1)(_ref(TextureLoadDesc)* _this, _ref(SyncToken)* syncToken) {
+	return alloc_ref_const((forge_texture_load( _unref(_this) , _unref_ptr_safe(syncToken))),Texture);
+}
+DEFINE_PRIM(_IDL, TextureLoadDesc_load1, _IDL _IDL);
+
+HL_PRIM int HL_NAME(TextureLoadDesc_get_creationFlag)( _ref(TextureLoadDesc)* _this ) {
+	return HL_NAME(TextureCreationFlags_valueToIndex0)(_unref(_this)->mCreationFlag);
+}
+DEFINE_PRIM(_I32,TextureLoadDesc_get_creationFlag,_IDL);
+HL_PRIM int HL_NAME(TextureLoadDesc_set_creationFlag)( _ref(TextureLoadDesc)* _this, int value ) {
+	_unref(_this)->mCreationFlag = (TextureCreationFlags)HL_NAME(TextureCreationFlags_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureLoadDesc_set_creationFlag,_IDL _I32);
 
 }

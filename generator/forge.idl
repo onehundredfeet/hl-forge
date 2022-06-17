@@ -316,16 +316,47 @@ enum TextureCreationFlags
 interface Globals {
 	[Internal="hlForgeInitialize", Static]
 	bool initialize(String name);
+
+	[Static]
+	void waitForAllResourceLoads();
+};
+
+[NoDelete]
+interface Cmd {
+	
+	[CObject, Internal="forge_render_target_clear"] void clear(RenderTarget rt, RenderTarget depthstencil);
+
+	[CObject,  Internal="beginCmd"] void begin();
+	[CObject,  Internal="endCmd"] void end();
+};
+
+[NoDelete]
+interface CmdPool {
+	
+
+};
+
+[NoDelete]
+interface Fence {
+	
+
+};
+
+[NoDelete]
+interface Semaphore {
+	
+
 };
 
 [NoDelete]
 interface Queue {
 	[CObject, Internal="waitQueueIdle"] void waitIdle();
-
+	[CObject, Internal="forge_queue_submit_cmd"] void submit(Cmd cmd, Semaphore signalSemphor, Semaphore wait, Fence signalFence);
 };
 
 [NoDelete]
 interface SwapChain {
+	[CObject, Const, Internal="forge_swap_chain_get_render_target"] RenderTarget getRenderTarget(int rtidx);
 
 };
 
@@ -380,29 +411,47 @@ interface RenderTargetDesc {
 
 [NoDelete]
 interface RenderTarget {
-
+	
 };
 
 [NoDelete]
 interface Renderer {
-	[Const,Static, Internal="createRenderer"] Renderer create(String name);
 
 	//Const is a hack to get it to not generate a finalizer
 	[CObject, Const] Queue createQueue();
 
 	[CObject] void removeQueue(Queue pGraphicsQueue);
 	[CObject, Internal="forge_sdl_create_render_target",Const] RenderTarget createRenderTarget(RenderTargetDesc desc);
+	
+	[CObject, Internal="forge_init_loader"]
+	void initResourceLoaderInterface();
+	[CObject, Internal="forge_sdl_renderer_create_cmd_pool", Const] CmdPool createCommandPool(Queue queue);
+	[CObject, Internal="forge_sdl_renderer_create_cmd", Const] Cmd createCommand(CmdPool pool);
+
+	[CObject, Internal="forge_sdl_renderer_create_fence", Const] Fence createFence();
+	[CObject, Internal="forge_sdl_renderer_create_semaphore", Const] Semaphore createSemaphore();
+	[CObject] uint acquireNextImage(SwapChain pSwapChain, Semaphore pImageAcquiredSemaphore, Fence fence, [Return] uint swapIndex);
+
+	[CObject, Internal="forge_renderer_wait_fence"] void waitFence( Fence fence );
+
+	[CObject] void resetCmdPool( CmdPool pool );
 };
+
 
 
 
 [Internal="SDL_Window", NoDelete]
-interface Window {
-//	[Static,Const,Internal="forge_sdl_get_window"] Window getWindow( Window ptr );
-	[CObject,Const] SwapChain createSwapChain( Renderer renderer, Queue queue, int width, int height, int count, bool hdr10);	
-	//[CObject,Const, Internal="forge_create_metal_view"] VoidPtr createView();
+interface SDLWindow {
 };
 
+interface ForgeSDLWindow {
+	void ForgeSDLWindow ( SDLWindow sdlWindow );
+	[Const] SwapChain createSwapChain( Renderer renderer, Queue queue, int width, int height, int count, bool hdr10);	
+	[Const] Renderer renderer();
+	void present(Queue pGraphicsQueue, SwapChain pSwapChain, int swapchainImageIndex, Semaphore pRenderCompleteSemaphore);
+
+
+};
 
 interface SyncToken {
 
@@ -432,3 +481,58 @@ interface BufferLoadDesc {
 	[CObject, Internal="forge_sdl_buffer_load_desc_set_vertex_buffer"] void setVertexbuffer( int size, bytes data, bool shared );
 
 };
+
+[NoDelete]
+interface Texture {
+	[CObject, Internal="forge_sdl_texture_upload"] void upload(bytes data, int size);
+};
+
+interface TextureDesc {
+	[Initialize] void TextureDesc();
+	[CObject, Internal="forge_texture_load_from_desc", Const] Texture load(String name, SyncToken syncToken);
+
+	//ClearValue mClearValue;
+	/// Pointer to native texture handle if the texture does not own underlying resource
+	//const void* pNativeHandle;
+	/// Debug name used in gpu profile
+	//const char* pName;
+	/// GPU indices to share this texture
+	//uint32_t* pSharedNodeIndices;
+	/// Texture creation flags (decides memory allocation strategy, sharing access,...)
+	[Internal="mFlags"] attribute TextureCreationFlags flags;
+	/// Width
+	[Internal="mWidth"] attribute uint width;
+	/// Height
+	[Internal="mHeight"] attribute uint height;
+	/// Depth (Should be 1 if not a mType is not TEXTURE_TYPE_3D)
+	[Internal="mDepth"] attribute uint depth;
+	/// Texture array size (Should be 1 if texture is not a texture array or cubemap)
+	[Internal="mArraySize"] attribute uint arraySize;
+	/// Number of mip levels
+	[Internal="mMipLevels"] attribute uint mipLevels;
+	/// Number of multisamples per pixel (currently Textures created with mUsage TEXTURE_USAGE_SAMPLED_IMAGE only support SAMPLE_COUNT_1)
+	[Internal="mSampleCount"] attribute SampleCount sampleCount;
+	/// The image quality level. The higher the quality, the lower the performance. The valid range is between zero and the value appropriate for mSampleCount
+	[Internal="mSampleQuality"] attribute uint sampleQuality;
+	///  image format
+	[Internal="mFormat"] attribute TinyImageFormat format;
+	/// What state will the texture get created in
+	[Internal="mStartState"] attribute ResourceState startState;
+	/// Descriptor creation
+	//[Internal="mDescriptors"] attribute DescriptorType mDescriptors;
+	/// Number of GPUs to share this texture
+	[Internal="mSharedNodeIndexCount"] attribute uint sharedNodeIndexCount;
+	/// GPU which will own this texture
+	[Internal="mNodeIndex"] attribute uint nodeIndex;
+
+};
+
+interface TextureLoadDesc {
+
+	[Initialize] void TextureLoadDesc();
+	[CObject, Internal="forge_texture_load",Const]  Texture load(SyncToken syncToken);
+
+
+	[Internal="mCreationFlag"] attribute TextureCreationFlags creationFlag;
+};
+

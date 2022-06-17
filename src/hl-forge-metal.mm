@@ -1,7 +1,6 @@
 #include <Foundation/Foundation.h>
 #include <AppKit/AppKit.h>
-void *getNSViewFromNSWindow(void*ptr) {
-    NSWindow *nswin = (NSWindow *)ptr;
+void *getNSViewFromNSWindow(NSWindow*nswin) {
     NSView *view = [nswin contentView];
-    return view;
+    return (void *)CFBridgingRetain(view);
 }

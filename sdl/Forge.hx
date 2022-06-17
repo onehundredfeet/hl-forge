@@ -9,8 +9,12 @@ abstract Program(Null<Int>) {
 abstract Shader(Null<Int>) {
 }
 
-abstract Texture(Null<Int>) {
+typedef Texture = forge.Native.Texture;
+/*
+@:forward
+abstract Texture(forge.Native.Texture) from forge.Native.Buffer to forge.Native.Buffer {
 }
+*/
 
 @:forward
 abstract Buffer(forge.Native.Buffer) from forge.Native.Buffer to forge.Native.Buffer {

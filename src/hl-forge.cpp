@@ -11,9 +11,56 @@
 #include <OS/Interfaces/IInput.h>
 #include <OS/Interfaces/IMemory.h>
 
+static CpuInfo gCpu;
+
+// From SDL
+static int IsMetalAvailable(const SDL_SysWMinfo *syswm)
+{
+    if (syswm->subsystem != SDL_SYSWM_COCOA && syswm->subsystem != SDL_SYSWM_UIKIT) {
+        return SDL_SetError("Metal render target only supports Cocoa and UIKit video targets at the moment.");
+    }
+
+    // this checks a weak symbol.
+#if (defined(__MACOSX__) && (MAC_OS_X_VERSION_MIN_REQUIRED < 101100))
+    if (MTLCreateSystemDefaultDevice == NULL) {  // probably on 10.10 or lower.
+        return SDL_SetError("Metal framework not available on this system");
+    }
+#endif
+
+    return 0;
+}
+
+static SDL_MetalView GetWindowView(SDL_Window *window)
+{
+    SDL_SysWMinfo info;
+
+    SDL_VERSION(&info.version);
+    if (SDL_GetWindowWMInfo(window, &info)) {
+#ifdef __MACOSX__
+        if (info.subsystem == SDL_SYSWM_COCOA) {
+            NSView *view = info.info.cocoa.window.contentView;
+            if (view.subviews.count > 0) {
+                view = view.subviews[0];
+                if (view.tag == SDL_METALVIEW_TAG) {
+                    return (SDL_MetalView)CFBridgingRetain(view);
+                }
+            }
+        }
+#else
+        if (info.subsystem == SDL_SYSWM_UIKIT) {
+            UIView *view = info.info.uikit.window.rootViewController.view;
+            if (view.tag == SDL_METALVIEW_TAG) {
+                return (SDL_MetalView)CFBridgingRetain(view);
+            }
+        }
+#endif
+    }
+    return nil;
+}
 
 bool hlForgeInitialize(const char *name) {
     //init memory allocator
+	printf("Intializing memory\n");
 	if (!initMemAlloc(name))
 	{
 		printf("Failed to init memory allocator\n");
@@ -22,6 +69,7 @@ bool hlForgeInitialize(const char *name) {
 
    FileSystemInitDesc fsDesc = {};
    fsDesc.pAppName = name;
+	printf("Intializing file system\n");
 
 	//init file system
    if (!initFileSystem(&fsDesc))
@@ -90,17 +138,11 @@ bool hlForgeInitialize(const char *name) {
 	return true;
 }
 
-Renderer *createRenderer(const char *name) {
-	RendererDesc rendererDesc = {};
-	Renderer *renderer = nullptr;
-	initRenderer(name, &rendererDesc, &renderer);
 
-	if (renderer != nullptr) {
-		//init resource loader interface
-		initResourceLoaderInterface(renderer);
-	}
 
-	return renderer;
+void forge_init_loader( Renderer *renderer ) {
+	ResourceLoaderDesc desc = { 8ull << 20, 2, true};
+	initResourceLoaderInterface(renderer, & desc );
 }
 
 Queue* createQueue(Renderer *renderer) {
@@ -116,24 +158,70 @@ void destroyRenderer( Renderer *) {
 
 }
 
-SwapChain *createSwapChain(SDL_Window *window, Renderer *renderer, Queue *queue, int width, int height, int chainCount, bool hdr10) {
-
-	SDL_SysWMinfo wmInfo;
+ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
+    this->window = window;
 	SDL_VERSION(&wmInfo.version);
 	SDL_GetWindowWMInfo(window, &wmInfo);
-
-//	SDL_WindowData* data = (__bridge SDL_WindowData *)window->driverdata;
- //   NSView *view = data.nswindow.contentView;
-
 	printf("SDL_Window %p\n", window);
 	printf("NSWindow %p\n", wmInfo.info.cocoa.window);
 	void *view = getNSViewFromNSWindow(wmInfo.info.cocoa.window);
 	printf("NSVIew %p\n", view);
 
+
+	if (IsMetalAvailable(&wmInfo) != 0) {
+		printf("Metal is not avaialble!!!\n");
+	}
+
+    auto window_flags = SDL_GetWindowFlags(window);
+    if (!(window_flags & SDL_WINDOW_METAL)) {
+        assert(false && "WTF - Metal isn't supported by the window");
+		
+    }
+
+	_view = GetWindowView(window);
+	if (_view == nil) {
+        _view = SDL_Metal_CreateView(window);
+    }
+
+	#ifdef __MACOSX__
+    _layer = (CAMetalLayer *)[(__bridge NSView *)_view layer];
+	#else
+    _layer = (CAMetalLayer *)[(__bridge UIView *)_view layer];
+	#endif
+
+    RendererDesc rendererDesc = {};
+    rendererDesc.mEnableGPUBasedValidation = true;
+    _renderer = nullptr;
+    initRenderer("haxe_forge", &rendererDesc, &_renderer);
+    
+	_layer.device = _renderer->pDevice;
+
+ ///    _layer.framebufferOnly = NO;
+	_layer.framebufferOnly = YES;    //todo: optimized way
+	_layer.pixelFormat = false ? MTLPixelFormatRGBA16Float : MTLPixelFormatBGRA8Unorm;
+	_layer.wantsExtendedDynamicRangeContent = false ? true : false;
+	_layer.drawableSize = CGSizeMake(wmInfo.info.cocoa.window.frame.size.width, wmInfo.info.cocoa.window.frame.size.height);
+
+
+
+}
+
+
+SwapChain *ForgeSDLWindow::createSwapChain( Renderer *renderer, Queue *queue, int width, int height, int chainCount, bool hdr10) {
+
+	
+
+//	SDL_WindowData* data = (__bridge SDL_WindowData *)window->driverdata;
+ //   NSView *view = data.nswindow.contentView;
+	
+	
+	
+	
+
 //	NSView *view = [nswin contentView];
 
 	SwapChainDesc swapChainDesc = {};
-	swapChainDesc.mWindowHandle.window = view;
+	swapChainDesc.mWindowHandle.window = _view;
 	swapChainDesc.mPresentQueueCount = 1;
 	swapChainDesc.ppPresentQueues = &queue;
 	swapChainDesc.mWidth = width;
@@ -152,6 +240,16 @@ SwapChain *createSwapChain(SDL_Window *window, Renderer *renderer, Queue *queue,
 	return pSwapChain;
 }
 
+void ForgeSDLWindow::present(Queue *pGraphicsQueue, SwapChain *pSwapChain, int swapchainImageIndex, Semaphore * pRenderCompleteSemaphore) {
+	QueuePresentDesc presentDesc = {};
+	presentDesc.mIndex = swapchainImageIndex;
+	presentDesc.mWaitSemaphoreCount = 1;
+	presentDesc.pSwapChain = pSwapChain;
+	presentDesc.ppWaitSemaphores = &pRenderCompleteSemaphore;
+	presentDesc.mSubmitDone = true;
+	
+	queuePresent(pGraphicsQueue, &presentDesc);
+}
 SDL_Window *forge_sdl_get_window(void *ptr) {
 	return static_cast<SDL_Window *>(ptr);
 }
@@ -163,6 +261,35 @@ Buffer*forge_sdl_buffer_load( BufferLoadDesc *bld, SyncToken *token) {
 	printf("adding resource %p %p\n", bld, token);
 	addResource( bld, token);
 	return tmp;
+}
+
+Texture*forge_texture_load(TextureLoadDesc *desc, SyncToken *token) {
+	printf("Loading texture \n");
+	Texture *tmp = nullptr;
+	desc->ppTexture = &tmp;
+	printf("adding texture resource %p %p\n", desc, token);
+	addResource( desc, token);
+	return tmp;
+}
+
+Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, SyncToken *token ) {
+	printf("Creating texture %s from description %d %d\n", name, tdesc->mWidth, tdesc->mHeight);
+	const char *oldName = tdesc->pName;
+	tdesc->pName = name;
+	tdesc->mDescriptors = DESCRIPTOR_TYPE_TEXTURE | DESCRIPTOR_TYPE_RW_TEXTURE;
+
+	TextureLoadDesc defaultLoadDesc = {};
+	defaultLoadDesc.pDesc = tdesc;
+	Texture *tmp = nullptr;
+	defaultLoadDesc.ppTexture = &tmp;
+	addResource(&defaultLoadDesc, token);
+
+	tdesc->pName = oldName;
+	return tmp;
+}
+
+void forge_texture_set_file_name(TextureLoadDesc *desc, const char *path) {
+
 }
 
 void forge_sdl_buffer_load_desc_set_index_buffer( BufferLoadDesc *bld, int size, void *data, bool shared) {
@@ -178,6 +305,28 @@ void forge_sdl_buffer_load_desc_set_index_buffer( BufferLoadDesc *bld, int size,
 
 }
 
+void forge_render_target_clear(  Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT ) {
+	// simply record the screen cleaning command
+	LoadActionsDesc loadActions = {};
+	loadActions.mLoadActionsColor[0] = LOAD_ACTION_CLEAR;
+	loadActions.mLoadActionDepth = LOAD_ACTION_CLEAR;
+	loadActions.mClearDepth.depth = 0.0f;
+	loadActions.mClearDepth.stencil = 0;
+	cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
+	cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
+	cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
+}
+
+void forge_renderer_wait_fence( Renderer *pRenderer, Fence *pFence) {
+	FenceStatus fenceStatus;
+	getFenceStatus(pRenderer, pFence, &fenceStatus);
+	if (fenceStatus == FENCE_STATUS_INCOMPLETE)
+		waitForFences(pRenderer, 1, &pFence);
+}
+
+RenderTarget *forge_swap_chain_get_render_target(SwapChain *pSwapChain, int swapchainImageIndex ) {
+    return pSwapChain->ppRenderTargets[swapchainImageIndex];
+}
 void forge_sdl_buffer_load_desc_set_vertex_buffer( BufferLoadDesc *bld, int size, void *data, bool shared) {
 		bld->mDesc.mDescriptors = DESCRIPTOR_TYPE_VERTEX_BUFFER;
 		if (shared) {
@@ -211,13 +360,59 @@ void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int
 }
 
 RenderTarget *forge_sdl_create_render_target(Renderer *renderer, RenderTargetDesc *desc) {
-	RenderTarget *pDepthBuffer;
-	addRenderTarget(renderer, desc, &pDepthBuffer);
-	return pDepthBuffer;
+	RenderTarget *pRT;
+	addRenderTarget(renderer, desc, &pRT);
+	return pRT;
 }
 
 SDL_MetalView forge_create_metal_view(SDL_Window *win) {
 	return SDL_Metal_CreateView(win);
+}
+
+void forge_sdl_texture_upload(Texture *tex, void *data, int dataSize) {
+	TextureUpdateDesc updateDesc = { tex };
+	beginUpdateResource(&updateDesc);
+	memcpy(updateDesc.pMappedData, data, dataSize);
+	endUpdateResource(&updateDesc, NULL);
+
+}
+
+CmdPool * forge_sdl_renderer_create_cmd_pool( Renderer *pRenderer, Queue *pGraphicsQueue ) {
+	CmdPool *tmp;
+	CmdPoolDesc cmdPoolDesc = {};
+	cmdPoolDesc.pQueue = pGraphicsQueue;
+	addCmdPool(pRenderer, &cmdPoolDesc, &tmp);
+
+	return tmp;
+}
+Cmd * forge_sdl_renderer_create_cmd( Renderer *pRenderer, CmdPool *pPool ) {
+	Cmd *pCmd;
+	CmdDesc cmdDesc = {};
+	cmdDesc.pPool = pPool;
+	addCmd(pRenderer, &cmdDesc, &pCmd);
+	return pCmd;
+}
+Fence * forge_sdl_renderer_create_fence( Renderer *pRenderer ) {
+	Fence *tmp;
+	addFence(pRenderer, &tmp);
+	return tmp;
+}
+Semaphore * forge_sdl_renderer_create_semaphore( Renderer *pRenderer ) {
+	Semaphore *tmp;
+	addSemaphore(pRenderer, &tmp);
+	return tmp;
+}
+
+void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence) {
+	QueueSubmitDesc submitDesc = {};
+	submitDesc.mCmdCount = 1;
+	submitDesc.mSignalSemaphoreCount = 1;
+	submitDesc.mWaitSemaphoreCount = 1;
+	submitDesc.ppCmds = &cmd;
+	submitDesc.ppSignalSemaphores = &signalSemphor;
+	submitDesc.ppWaitSemaphores = &wait;
+	submitDesc.pSignalFence = signalFence;
+	queueSubmit(queue, &submitDesc);
 }
 
 template <typename T> struct pref {
@@ -233,7 +428,7 @@ template<typename T> pref<T> *_alloc_const( const T *value ) {
 }
 #define _ref(t) pref<t>
 
-HL_PRIM  _ref(SDL_Window)*HL_NAME(forge_get_sdl_window)(void *ptr) {
+HL_PRIM  _ref(SDL_Window)*HL_NAME(unpackSDLWindow)(void *ptr) {
 	printf("Forge SDL Pointer is %p\n", ptr);
 	return _alloc_const((SDL_Window *)ptr);
 }
@@ -245,5 +440,5 @@ HL_PRIM HL_CONST _ref(SDL_Window)* HL_NAME(Window_getWindow1)(void* ptr) {
 DEFINE_PRIM(_IDL, Window_getWindow1, _BYTES);
 */
 
-DEFINE_PRIM(_BYTES, forge_get_sdl_window, TWIN);
+DEFINE_PRIM(_BYTES, unpackSDLWindow, TWIN);
 

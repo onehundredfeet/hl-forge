@@ -3,3 +3,4 @@ bin
 build
 forge.hdll
 .vscode
+build.xcode

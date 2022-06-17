@@ -8,6 +8,11 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	var _renderer:forge.Native.Renderer;
 	var _queue:forge.Native.Queue;
+	var _swapCmdPools = new Array<forge.Native.CmdPool>();
+	var _swapCmds = new Array<forge.Native.Cmd>();
+	var _swapCompleteFences = new Array<forge.Native.Fence>();
+	var _swapCompleteSemaphores = new Array<forge.Native.Semaphore>();
+	var _ImageAcquiredSemaphore:forge.Native.Semaphore;
 
 	var _width:Int;
 	var _height:Int;
@@ -15,29 +20,20 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _hdr = false;
 	var _maxCompressedTexturesSupport = 3; // arbitrary atm
 
-	static var _initialized = false;
-
-	static function init_once() {
-		if (!_initialized) {
-			trace('Initializing...');
-			_initialized = forge.Native.Globals.initialize("Haxe Forge");
-			if (!_initialized) {
-				throw "Could not initialize forge";
-			}
-		}
-	}
-
 	public function new() {
 		//		window = @:privateAccess dx.Window.windows[0];
 		//		Driver.setErrorHandler(onDXError);
 
-		init_once();
-
 		reset();
 	}
 
+	var _forgeSDLWin:forge.Native.ForgeSDLWindow;
+
 	// This is the first function called after the constructor
 	public override function init(onCreate:Bool->Void, forceSoftware = false) {
+		var win = cast(@:privateAccess hxd.Window.getInstance().window, sdl.WindowForge);
+		_forgeSDLWin = win.getForgeSDLWindow();
+
 		// copied from DX driver
 		onContextLost = onCreate.bind(true);
 		haxe.Timer.delay(onCreate.bind(false), 1); // seems arbitrary
@@ -49,9 +45,23 @@ class ForgeDriver extends h3d.impl.Driver {
 		_width = win.width;
 		_height = win.height;
 
-		_renderer = forge.Native.Renderer.create("haxe_metal");
+		_renderer = _forgeSDLWin.renderer();
 		_queue = _renderer.createQueue();
 
+		for (i in 0..._swap_count) {
+			var cmdPool = _renderer.createCommandPool(_queue);
+			_swapCmdPools.push(cmdPool);
+
+			var cmd = _renderer.createCommand(cmdPool);
+			_swapCmds.push(cmd);
+
+			_swapCompleteFences.push(_renderer.createFence());
+			_swapCompleteSemaphores.push(_renderer.createSemaphore());
+		}
+
+		_ImageAcquiredSemaphore = _renderer.createSemaphore();
+
+		_renderer.initResourceLoaderInterface();
 		attach();
 	}
 
@@ -63,16 +73,17 @@ class ForgeDriver extends h3d.impl.Driver {
 		return true;
 	}
 
+	var _sc:forge.Native.SwapChain;
+
 	function attach() {
-		var win = cast(@:privateAccess hxd.Window.getInstance().window, sdl.WindowForge);
-		var fw = win.getSDLWindow();
-
-		if (fw == null)
-			return false;
-
-		var sc = fw.createSwapChain(_renderer, _queue, _width, _height, _swap_count, _hdr);
-		if (!addSwapChain())
-			return false;
+		if (_sc == null) {
+			_sc = _forgeSDLWin.createSwapChain(_renderer, _queue, _width, _height, _swap_count, _hdr);
+			if (_sc == null) {
+				throw "Swapchain is null";
+			}
+		} else {
+			trace('Duplicate attach');
+		}
 
 		if (!addDepthBuffer())
 			return false;
@@ -134,6 +145,8 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	public override function resize(width:Int, height:Int) {
 		trace('Resizing ${width} ${height}');
+		trace('----> SC IS ${_sc}');
+
 		_width = width;
 		_height = height;
 		detach();
@@ -168,7 +181,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		depthRT.startState = RESOURCE_STATE_DEPTH_WRITE;
 
 		if (b.format != null) {
-			trace('b is ${b} format is ${b != null ? b.format : null}');
+			//			trace('b is ${b} format is ${b != null ? b.format : null}');
 			switch (b.format) {
 				case Depth16:
 					depthRT.format = TinyImageFormat_D32_SFLOAT;
@@ -212,20 +225,21 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	public override function allocVertexes(m:ManagedBuffer):VertexBuffer {
 		/*
-		discardError();
-		var b = gl.createBuffer();
-		gl.bindBuffer(GL.ARRAY_BUFFER, b);
-		if( m.size * m.stride == 0 ) throw "assert";
-		gl.bufferDataSize(GL.ARRAY_BUFFER, m.size * m.stride * 4, m.flags.has(Dynamic) ? GL.DYNAMIC_DRAW : GL.STATIC_DRAW);
-		var outOfMem = outOfMemoryCheck && gl.getError() == GL.OUT_OF_MEMORY;
-		gl.bindBuffer(GL.ARRAY_BUFFER, null);
-		if( outOfMem ) {
-			gl.deleteBuffer(b);
-			return null;
-		}
-		return { b : b, stride : m.stride #if multidriver, driver : this #end };
-		*/
-		if( m.size * m.stride == 0 ) throw "zero size managed buffer";
+			discardError();
+			var b = gl.createBuffer();
+			gl.bindBuffer(GL.ARRAY_BUFFER, b);
+			if( m.size * m.stride == 0 ) throw "assert";
+			gl.bufferDataSize(GL.ARRAY_BUFFER, m.size * m.stride * 4, m.flags.has(Dynamic) ? GL.DYNAMIC_DRAW : GL.STATIC_DRAW);
+			var outOfMem = outOfMemoryCheck && gl.getError() == GL.OUT_OF_MEMORY;
+			gl.bindBuffer(GL.ARRAY_BUFFER, null);
+			if( outOfMem ) {
+				gl.deleteBuffer(b);
+				return null;
+			}
+			return { b : b, stride : m.stride #if multidriver, driver : this #end };
+		 */
+		if (m.size * m.stride == 0)
+			throw "zero size managed buffer";
 		var placeHolder = new Array<hl.UI8>();
 		var byteCount = m.size * m.stride * 4;
 		placeHolder.resize(byteCount);
@@ -234,53 +248,322 @@ class ForgeDriver extends h3d.impl.Driver {
 		desc.setIndexbuffer(byteCount, hl.Bytes.getArray(placeHolder), true);
 
 		/*
-		var bits = is32 ? 2 : 1;
-		var placeHolder = new Array<hl.UI8>();
-		placeHolder.resize(count << bits);
+			var bits = is32 ? 2 : 1;
+			var placeHolder = new Array<hl.UI8>();
+			placeHolder.resize(count << bits);
 
-		desc.setIndexbuffer(count << bits, hl.Bytes.getArray(placeHolder), true);
-		
+			desc.setIndexbuffer(count << bits, hl.Bytes.getArray(placeHolder), true);
 
-		return {b: buff, is32: is32};
-*/
+
+			return {b: buff, is32: is32};
+		 */
+
 		var buff = desc.load(null);
 
-		return { b : buff, stride : m.stride #if multidriver, driver : this #end };
+		return {b: buff, stride: m.stride #if multidriver, driver: this #end};
+	}
+
+	public override function allocTexture(t:h3d.mat.Texture):Texture {
+		var ftd = new forge.Native.TextureDesc();
+
+		ftd.width = t.width;
+		ftd.height = t.height;
+		ftd.arraySize = 1;
+		ftd.depth = 1;
+		ftd.mipLevels = 1;
+		ftd.sampleCount = SAMPLE_COUNT_1;
+		ftd.startState = RESOURCE_STATE_COMMON;
+		ftd.flags = TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT;
+
+		ftd.format = switch (t.format) {
+			case RGBA: TinyImageFormat_R8G8B8A8_UNORM;
+			case SRGB: TinyImageFormat_R8G8B8A8_SRGB;
+			case RGBA16F: TinyImageFormat_R16G16B16A16_SFLOAT;
+			default: throw "Unsupported texture format " + t.format;
+		}
+		//		trace ('Format is ${ftd.format}');
+		var flt = ftd.load(t.name, null);
+
+		if (flt == null)
+			throw "invalid texture";
+		forge.Native.Globals.waitForAllResourceLoads();
+
+		var tt:Texture = {
+			t: flt,
+			width: t.width,
+			height: t.height,
+			internalFmt: ftd.format.toValue(),
+			bits: -1,
+			bind: 0,
+			bias: 0
+			#if multidriver
+			, driver: this
+			#end
+		};
+
+		/*
+			var tt = gl.createTexture();
+			var bind = getBindType(t);
+			var tt : Texture = { t : tt, width : t.width, height : t.height, internalFmt : GL.RGBA, pixelFmt : GL.UNSIGNED_BYTE, bits : -1, bind : bind, bias : 0 #if multidriver, driver : this #end };
+			switch( t.format ) {
+			case RGBA:
+				// default
+			case RGBA32F if( hasFeature(FloatTextures) ):
+				tt.internalFmt = GL.RGBA32F;
+				tt.pixelFmt = GL.FLOAT;
+			case RGBA16F if( hasFeature(FloatTextures) ):
+				tt.pixelFmt = GL.HALF_FLOAT;
+				tt.internalFmt = GL.RGBA16F;
+			case BGRA:
+				tt.internalFmt = GL.RGBA8;
+			case SRGB:
+				tt.internalFmt = GL.SRGB8;
+			#if !js
+			case SRGB_ALPHA:
+				tt.internalFmt = GL.SRGB8_ALPHA;
+			#end
+			case RGB8:
+				tt.internalFmt = GL.RGB;
+			case R8:
+				tt.internalFmt = GL.R8;
+			case RG8:
+				tt.internalFmt = GL.RG8;
+			case R16F:
+				tt.internalFmt = GL.R16F;
+				tt.pixelFmt = GL.HALF_FLOAT;
+			case RG16F:
+				tt.internalFmt = GL.RG16F;
+				tt.pixelFmt = GL.HALF_FLOAT;
+			case R32F:
+				tt.internalFmt = GL.R32F;
+				tt.pixelFmt = GL.FLOAT;
+			case RG32F:
+				tt.internalFmt = GL.RG32F;
+				tt.pixelFmt = GL.FLOAT;
+			case RGB16F:
+				tt.internalFmt = GL.RGB16F;
+				tt.pixelFmt = GL.HALF_FLOAT;
+			case RGB32F:
+				tt.internalFmt = GL.RGB32F;
+				tt.pixelFmt = GL.FLOAT;
+			case RGB10A2:
+				tt.internalFmt = GL.RGB10_A2;
+				tt.pixelFmt = GL.UNSIGNED_INT_2_10_10_10_REV;
+			case RG11B10UF:
+				tt.internalFmt = GL.R11F_G11F_B10F;
+				tt.pixelFmt = GL.UNSIGNED_INT_10F_11F_11F_REV;
+			case S3TC(n) if( n <= maxCompressedTexturesSupport ):
+				if( t.width&3 != 0 || t.height&3 != 0 )
+					throw "Compressed texture "+t+" has size "+t.width+"x"+t.height+" - must be a multiple of 4";
+				switch( n ) {
+				case 1: tt.internalFmt = 0x83F1; // COMPRESSED_RGBA_S3TC_DXT1_EXT
+				case 2:	tt.internalFmt = 0x83F2; // COMPRESSED_RGBA_S3TC_DXT3_EXT
+				case 3: tt.internalFmt = 0x83F3; // COMPRESSED_RGBA_S3TC_DXT5_EXT
+				default: throw "Unsupported texture format "+t.format;
+				}
+			default:
+				throw "Unsupported texture format "+t.format;
+			}
+			t.lastFrame = frame;
+			t.flags.unset(WasCleared);
+			gl.bindTexture(bind, tt.t);
+			var outOfMem = false;
+
+			inline function checkError() {
+				if( !outOfMemoryCheck ) return false;
+				var err = gl.getError();
+				if( err == GL.OUT_OF_MEMORY ) {
+					outOfMem = true;
+					return true;
+				}
+				if( err != 0 ) throw "Failed to alloc texture "+t.format+"(error "+err+")";
+				return false;
+			}
+
+			#if (js || (hlsdl >= version("1.12.0")))
+			gl.texParameteri(bind, GL.TEXTURE_BASE_LEVEL, 0);
+			gl.texParameteri(bind, GL.TEXTURE_MAX_LEVEL, t.mipLevels-1);
+			#end
+			for(mip in 0...t.mipLevels) {
+				var w = hxd.Math.imax(1, tt.width >> mip);
+				var h = hxd.Math.imax(1, tt.height >> mip);
+				if( t.flags.has(Cube) ) {
+					for( i in 0...6 ) {
+						gl.texImage2D(CUBE_FACES[i], mip, tt.internalFmt, w, h, 0, getChannels(tt), tt.pixelFmt, null);
+						if( checkError() ) break;
+					}
+				} else if( t.flags.has(IsArray) ) {
+					gl.texImage3D(bind, mip, tt.internalFmt, w, h, t.layerCount, 0, getChannels(tt), tt.pixelFmt, null);
+					checkError();
+				} else {
+					#if js
+					if( !t.format.match(S3TC(_)) )
+					#end
+					gl.texImage2D(bind, mip, tt.internalFmt, w, h, 0, getChannels(tt), tt.pixelFmt, null);
+					checkError();
+				}
+			}
+			restoreBind();
+
+			if( outOfMem ) {
+				gl.deleteTexture(tt.t);
+				return null;
+			}
+
+			return tt;
+		 */
+		/*
+			var desc = new forge.Native.TextureLoadDesc();
+			desc.creationFlag = 
+		 */
+		return tt;
 	}
 
 	public override function uploadVertexBuffer(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:hxd.FloatBuffer, bufPos:Int) {
-		var stride : Int = v.stride;
+		var stride:Int = v.stride;
 		/*
-		gl.bindBuffer(GL.ARRAY_BUFFER, v.b);
-		var data = #if hl hl.Bytes.getArray(buf.getNative()) #else buf.getNative() #end;
-		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * 4, streamData(data,bufPos * 4,vertexCount * stride * 4), bufPos * 4 * STREAM_POS, vertexCount * stride * 4);
-		gl.bindBuffer(GL.ARRAY_BUFFER, null);
-*/
+			gl.bindBuffer(GL.ARRAY_BUFFER, v.b);
+			var data = #if hl hl.Bytes.getArray(buf.getNative()) #else buf.getNative() #end;
+			gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * 4, streamData(data,bufPos * 4,vertexCount * stride * 4), bufPos * 4 * STREAM_POS, vertexCount * stride * 4);
+			gl.bindBuffer(GL.ARRAY_BUFFER, null);
+		 */
 
-//		v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * stride * 4, indiceCount << bits, bufPos << bits);
-
-
-		throw "Not implemented";
+		v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4);
 	}
 
+	public override function uploadTexturePixels(t:h3d.mat.Texture, pixels:hxd.Pixels, mipLevel:Int, side:Int) {
+		trace('Uploading pixels ${pixels.width} x ${pixels.height}');
+		trace('----> SC IS ${_sc}');
 
+		pixels.convert(t.format);
+		pixels.setFlip(false);
+		var dataLen = pixels.dataSize;
+
+		var tt = t.t;
+		var ft = tt.t;
+
+		//		trace('Sending bytes ${pixels.bytes} : ${dataLen}');
+		ft.upload(hl.Bytes.fromBytes(pixels.bytes), dataLen);
+		//		trace('Done uplaoding');
+		t.flags.set(WasCleared);
+	}
+
+	var _frameIndex = 0;
+	var _frameBegun = false;
+
+	public override function present() {
+		if (_frameBegun) {
+			if (_sc != null) {
+				_forgeSDLWin.present(_queue, _sc, _frameIndex, _swapCompleteSemaphores[_frameIndex]);
+				_frameIndex = (_frameIndex + 1) % _swap_count;
+			} else {
+				trace('Swap chain is null???');
+				// throw "Swap Chain is null";
+			}
+		} else {}
+	}
+
+	/*
+		var cubic = t.flags.has(Cube);
+		var face = cubic ? CUBE_FACES[side] : t.flags.has(IsArray) ? GL.TEXTURE_2D_ARRAY : GL.TEXTURE_2D;
+		var bind = getBindType(t);
+		gl.bindTexture(bind, t.t.t);
+		pixels.convert(t.format);
+		pixels.setFlip(false);
+		var dataLen = pixels.dataSize;
+		#if hl
+		var stream = streamData(pixels.bytes.getData(),pixels.offset,dataLen);
+		if( t.format.match(S3TC(_)) ) {
+			if( t.flags.has(IsArray) )
+				#if (hlsdl >= version("1.12.0"))
+				gl.compressedTexSubImage3D(face, mipLevel, 0, 0, side, pixels.width, pixels.height, 1, t.t.internalFmt, dataLen, stream);
+				#else throw "TextureArray support requires hlsdl 1.12+"; #end
+			else
+				gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, pixels.width, pixels.height, 0, dataLen, stream);
+		} else {
+			if( t.flags.has(IsArray) )
+				#if (hlsdl >= version("1.12.0"))
+				gl.texSubImage3D(face, mipLevel, 0, 0, side, pixels.width, pixels.height, 1, getChannels(t.t), t.t.pixelFmt, stream);
+				#else throw "TextureArray support requires hlsdl 1.12+"; #end
+			else
+				gl.texImage2D(face, mipLevel, t.t.internalFmt, pixels.width, pixels.height, 0, getChannels(t.t), t.t.pixelFmt, stream);
+		}
+		#elseif js
+		#if hxnodejs
+		if( (pixels:Dynamic).bytes.b.hxBytes != null ) {
+			// if the pixels are a nodejs buffer, their might be GC'ed while upload !
+			// might be some problem with Node/WebGL relation
+			// let's clone the pixels in order to have a fresh JS bytes buffer
+			pixels = pixels.clone();
+		}
+		#end
+		var buffer : ArrayBufferView = switch( t.format ) {
+		case RGBA32F, R32F, RG32F, RGB32F: new Float32Array(@:privateAccess pixels.bytes.b.buffer, pixels.offset, dataLen>>2);
+		case RGBA16F, R16F, RG16F, RGB16F: new Uint16Array(@:privateAccess pixels.bytes.b.buffer, pixels.offset, dataLen>>1);
+		case RGB10A2, RG11B10UF: new Uint32Array(@:privateAccess pixels.bytes.b.buffer, pixels.offset, dataLen>>2);
+		default: new Uint8Array(@:privateAccess pixels.bytes.b.buffer, pixels.offset, dataLen);
+		}
+		if( t.format.match(S3TC(_)) ) {
+			if( t.flags.has(IsArray) )
+				gl.compressedTexSubImage3D(face, mipLevel, 0, 0, side, pixels.width, pixels.height, 1, t.t.internalFmt, buffer);
+			else
+				gl.compressedTexImage2D(face, mipLevel, t.t.internalFmt, pixels.width, pixels.height, 0, buffer);
+		} else {
+			if( t.flags.has(IsArray) )
+				gl.texSubImage3D(face, mipLevel, 0, 0, side, pixels.width, pixels.height, 1, getChannels(t.t), t.t.pixelFmt, buffer);
+			else
+				gl.texImage2D(face, mipLevel, t.t.internalFmt, pixels.width, pixels.height, 0, getChannels(t.t), t.t.pixelFmt, buffer);
+		}
+		#else
+		throw "Not implemented";
+		#end
+		t.flags.set(WasCleared);
+		restoreBind();
+	 */
 	public override function setRenderFlag(r:RenderFlag, value:Int) {
 		throw "Not implemented";
 	}
 
 	public override function isDisposed() {
-		// throw "Not implemented";
-		//		return gl.isContextLost(); // currently just returns false?
-
-		return _renderer != null;
+		return _renderer == null;
 	}
 
 	public override function dispose() {
 		throw "Not implemented";
 	}
 
+	var _currentRT : forge.Native.RenderTarget;
+	var _currentSem : forge.Native.Semaphore;
+	var _currentFence : forge.Native.Fence;
+	var _currentCmd : forge.Native.Cmd;
+	
 	public override function begin(frame:Int) {
-		throw "Not implemented";
+
+		// Check for VSYNC
+		/*
+		if (pSwapChain->mEnableVsync != mSettings.mVSyncEnabled)
+			{
+				waitQueueIdle(pGraphicsQueue);
+				::toggleVSync(pRenderer, &pSwapChain);
+			}
+
+		*/
+
+		var swapIndex = _renderer.acquireNextImage(_sc, _ImageAcquiredSemaphore, null);
+
+		_currentRT = _sc.getRenderTarget(swapIndex);
+		_currentSem = _swapCompleteSemaphores[_frameIndex];
+		_currentFence = _swapCompleteFences[_frameIndex];
+
+		_renderer.waitFence( _currentFence );
+
+		// Reset cmd pool for this frame
+		_renderer.resetCmdPool( _swapCmdPools[_frameIndex] );
+
+		_currentCmd = _swapCmds[_frameIndex];
+
+		_currentCmd.begin();
+
 	}
 
 	public override function generateMipMaps(texture:h3d.mat.Texture) {
@@ -297,7 +580,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
-		throw "Not implemented";
+		_currentCmd.clear(_currentRT, null);
 	}
 
 	public override function captureRenderBuffer(pixels:hxd.Pixels) {
@@ -313,7 +596,6 @@ class ForgeDriver extends h3d.impl.Driver {
 		throw "Not implemented";
 		return "Not available";
 	}
-
 
 	public override function selectShader(shader:hxsl.RuntimeShader) {
 		throw "Not implemented";
@@ -365,12 +647,13 @@ class ForgeDriver extends h3d.impl.Driver {
 		throw "Not implemented";
 	}
 
-	public override function present() {
-		throw "Not implemented";
-	}
-
 	public override function end() {
+
+		_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
+
 		throw "Not implemented";
+
+
 	}
 
 	var _debug = false;
@@ -379,11 +662,6 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (d)
 			trace('Forge Driver Debug ${d}');
 		_debug = d;
-	}
-
-	public override function allocTexture(t:h3d.mat.Texture):Texture {
-		throw "Not implemented";
-		return null;
 	}
 
 	public override function allocInstanceBuffer(b:h3d.impl.InstanceBuffer, bytes:haxe.io.Bytes) {
@@ -410,16 +688,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		throw "Not implemented";
 	}
 
-
 	public override function uploadVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
 		throw "Not implemented";
 	}
 
 	public override function uploadTextureBitmap(t:h3d.mat.Texture, bmp:hxd.BitmapData, mipLevel:Int, side:Int) {
-		throw "Not implemented";
-	}
-
-	public override function uploadTexturePixels(t:h3d.mat.Texture, pixels:hxd.Pixels, mipLevel:Int, side:Int) {
 		throw "Not implemented";
 	}
 
