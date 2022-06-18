@@ -57,4 +57,6 @@ void forge_init_loader( Renderer * );
 void forge_renderer_wait_fence( Renderer *, Fence *);
 RenderTarget *forge_swap_chain_get_render_target(SwapChain *, int );
 void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence);
+Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile);
+
 #endif

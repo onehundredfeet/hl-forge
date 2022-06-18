@@ -415,26 +415,40 @@ interface RenderTarget {
 };
 
 [NoDelete]
-interface Renderer {
+interface PipelineDesc {
 
+};
+
+[NoDelete]
+interface Pipeline {
+
+};
+
+[NoDelete, Internal="Shader"]
+interface Shader {
+
+};
+
+[NoDelete]
+interface Renderer {
 	//Const is a hack to get it to not generate a finalizer
 	[CObject, Const] Queue createQueue();
 
 	[CObject] void removeQueue(Queue pGraphicsQueue);
 	[CObject, Internal="forge_sdl_create_render_target",Const] RenderTarget createRenderTarget(RenderTargetDesc desc);
-	
 	[CObject, Internal="forge_init_loader"]
 	void initResourceLoaderInterface();
 	[CObject, Internal="forge_sdl_renderer_create_cmd_pool", Const] CmdPool createCommandPool(Queue queue);
 	[CObject, Internal="forge_sdl_renderer_create_cmd", Const] Cmd createCommand(CmdPool pool);
-
 	[CObject, Internal="forge_sdl_renderer_create_fence", Const] Fence createFence();
 	[CObject, Internal="forge_sdl_renderer_create_semaphore", Const] Semaphore createSemaphore();
 	[CObject] uint acquireNextImage(SwapChain pSwapChain, Semaphore pImageAcquiredSemaphore, Fence fence, [Return] uint swapIndex);
 
 	[CObject, Internal="forge_renderer_wait_fence"] void waitFence( Fence fence );
-
+	[CObject, Internal="forge_renderer_shader_create", Const] Shader createShader(String vertShaderPath, String fragShaderPath);
+	
 	[CObject] void resetCmdPool( CmdPool pool );
+	[CObject,Internal="addPipeline", Const] Pipeline createPipeline( PipelineDesc desc, [Return]Pipeline pipeline);
 };
 
 

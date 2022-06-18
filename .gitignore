@@ -4,3 +4,5 @@ build
 forge.hdll
 .vscode
 build.xcode
+shadercache
+log

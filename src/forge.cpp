@@ -585,7 +585,7 @@ DEFINE_PRIM(_IDL, Renderer_createSemaphore0, _IDL);
 
 HL_PRIM unsigned int HL_NAME(Renderer_acquireNextImage4)(_ref(Renderer)* _this, _ref(SwapChain)* pSwapChain, _ref(Semaphore)* pImageAcquiredSemaphore, _ref(Fence)* fence) {
 	unsigned int __tmpret;
-(acquireNextImage( _unref(_this) , _unref_ptr_safe(pSwapChain), _unref_ptr_safe(pImageAcquiredSemaphore), _unref_ptr_safe(fence), &__tmpret));
+acquireNextImage( _unref(_this) , _unref_ptr_safe(pSwapChain), _unref_ptr_safe(pImageAcquiredSemaphore), _unref_ptr_safe(fence), &__tmpret);
 	return __tmpret;
 }
 DEFINE_PRIM(_I32, Renderer_acquireNextImage4, _IDL _IDL _IDL _IDL);
@@ -595,10 +595,25 @@ HL_PRIM void HL_NAME(Renderer_waitFence1)(_ref(Renderer)* _this, _ref(Fence)* fe
 }
 DEFINE_PRIM(_VOID, Renderer_waitFence1, _IDL _IDL);
 
+HL_PRIM HL_CONST _ref(Shader)* HL_NAME(Renderer_createShader2)(_ref(Renderer)* _this, vstring * vertShaderPath, vstring * fragShaderPath) {
+	const char* vertShaderPath__cstr = (vertShaderPath == nullptr) ? "" : hl_to_utf8( vertShaderPath->bytes ); // Should be garbage collected
+	const char* fragShaderPath__cstr = (fragShaderPath == nullptr) ? "" : hl_to_utf8( fragShaderPath->bytes ); // Should be garbage collected
+	auto ___retvalue = alloc_ref_const((forge_renderer_shader_create( _unref(_this) , vertShaderPath__cstr, fragShaderPath__cstr)),Shader);
+	return ___retvalue;
+}
+DEFINE_PRIM(_IDL, Renderer_createShader2, _IDL _STRING _STRING);
+
 HL_PRIM void HL_NAME(Renderer_resetCmdPool1)(_ref(Renderer)* _this, _ref(CmdPool)* pool) {
 	(resetCmdPool( _unref(_this) , _unref_ptr_safe(pool)));
 }
 DEFINE_PRIM(_VOID, Renderer_resetCmdPool1, _IDL _IDL);
+
+HL_PRIM _ref(Pipeline)* HL_NAME(Renderer_createPipeline2)(_ref(Renderer)* _this, _ref(PipelineDesc)* desc) {
+	Pipeline* __tmpret;
+addPipeline( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
+	return alloc_ref_const( __tmpret, Pipeline );
+}
+DEFINE_PRIM(_IDL, Renderer_createPipeline2, _IDL _IDL);
 
 HL_PRIM _ref(ForgeSDLWindow)* HL_NAME(ForgeSDLWindow_new1)(_ref(SDL_Window)* sdlWindow) {
 	return alloc_ref((new ForgeSDLWindow(_unref_ptr_safe(sdlWindow))),ForgeSDLWindow);

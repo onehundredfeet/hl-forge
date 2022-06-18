@@ -1,13 +1,6 @@
 package sdl;
 
-abstract Uniform(Null<Int>) {
-}
 
-abstract Program(Null<Int>) {
-}
-
-abstract Shader(Null<Int>) {
-}
 
 typedef Texture = forge.Native.Texture;
 /*

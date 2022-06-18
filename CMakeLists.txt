@@ -92,6 +92,7 @@ add_library(forge.hdll SHARED
 src/hl-idl-helpers.cpp
 src/forge.cpp
 src/hl-forge.cpp
+src/hl-forge-shaders.cpp
 src/hl-forge-metal.mm
 ${FORGE_OS_SRCS}
 ${FORGE_TP_SRCS}
@@ -130,10 +131,13 @@ find_library( SHADERC_LIB shaderc_combined)
 find_library( SDL_LIB SDL2)
 find_library( APPKITLIB AppKit)
 find_library( COREGRAPHICSLIB CoreGraphics)
+find_library( SPIRVCROSS_CORELIB spirv-cross-core)
+find_library( SPIRVCROSS_METALLIB spirv-cross-msl)
+find_library( SPIRVCROSS_GLSLLIB spirv-cross-glsl)
 
 if (UNIX)
     # Some special flags are needed for GNU GCC compiler
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fPIC  -O3  -fpermissive")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fPIC  -fpermissive")
     #not sure why the ${HL_LIB_DIR} is necessary given the above.
     SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -shared  ")
 
@@ -143,7 +147,7 @@ else()
 endif (UNIX)
 
 set_property (TARGET forge.hdll APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc")
-
-target_link_libraries(forge.hdll ${LIBHL} ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB} ${SHADERC_LIB} ${SDL_LIB} ${APPKITLIB} ${COREGRAPHICSLIB} ${METALKIT_LIB})
+ 
+target_link_libraries(forge.hdll ${LIBHL} ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB} ${SHADERC_LIB} ${SDL_LIB} ${APPKITLIB} ${COREGRAPHICSLIB} ${METALKIT_LIB} ${SPIRVCROSS_CORELIB} ${SPIRVCROSS_METALLIB} ${SPIRVCROSS_GLSLLIB})
 
 install(TARGETS forge.hdll DESTINATION ${HDLL_DESTINATION})

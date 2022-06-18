@@ -1,6 +1,50 @@
 package h3d.impl;
 
+import hxsl.GlslOut;
+import sys.FileSystem;
 import h3d.impl.Driver;
+
+private typedef Uniform = forge.Forge.Uniform;
+private typedef Program = forge.Forge.Program;
+private typedef ForgeShader = forge.Native.Shader;
+
+private class CompiledShader {
+	public var s : ForgeShader;
+	public var vertex : Bool;
+	public var globals : Uniform;
+	public var params : Uniform;
+	public var textures : Array<{ u : Uniform, t : hxsl.Ast.Type, mode : Int }>;
+	public var buffers : Array<Int>;
+	public var shader : hxsl.RuntimeShader.RuntimeShaderData;
+	public function new(s,vertex,shader) {
+		this.s = s;
+		this.vertex = vertex;
+		this.shader = shader;
+	}
+}
+
+private class CompiledAttribute {
+	public var index : Int;
+	public var type : Int;
+	public var size : Int;
+	public var offset : Int;
+	public var divisor : Int;
+	public function new() {
+	}
+}
+
+private class CompiledProgram {
+	public var p : Program;
+	public var vertex : CompiledShader;
+	public var fragment : CompiledShader;
+	public var stride : Int;
+	public var inputs : InputNames;
+	public var attribs : Array<CompiledAttribute>;
+	public var hasAttribIndex : Array<Bool>;
+	public function new() {
+	}
+}
+
 
 @:access(h3d.impl.Shader)
 class ForgeDriver extends h3d.impl.Driver {
@@ -23,6 +67,9 @@ class ForgeDriver extends h3d.impl.Driver {
 	public function new() {
 		//		window = @:privateAccess dx.Window.windows[0];
 		//		Driver.setErrorHandler(onDXError);
+
+		trace('CWD Driver IS ${FileSystem.absolutePath('')}');
+
 
 		reset();
 	}
@@ -111,7 +158,9 @@ class ForgeDriver extends h3d.impl.Driver {
 		return {b: buff, is32: is32};
 	}
 
-	function reset() {}
+	function reset() {
+		_shaders = new Map();
+	}
 
 	public override function uploadIndexBuffer(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:hxd.IndexBuffer, bufPos:Int) {
 		var bits = i.is32 ? 2 : 1;
@@ -463,6 +512,219 @@ class ForgeDriver extends h3d.impl.Driver {
 		} else {}
 	}
 
+	var _currentRT : forge.Native.RenderTarget;
+	var _currentSem : forge.Native.Semaphore;
+	var _currentFence : forge.Native.Fence;
+	var _currentCmd : forge.Native.Cmd;
+	
+	public override function begin(frame:Int) {
+
+		// Check for VSYNC
+		/*
+		if (pSwapChain->mEnableVsync != mSettings.mVSyncEnabled)
+			{
+				waitQueueIdle(pGraphicsQueue);
+				::toggleVSync(pRenderer, &pSwapChain);
+			}
+
+		*/
+
+		var swapIndex = _renderer.acquireNextImage(_sc, _ImageAcquiredSemaphore, null);
+
+		_currentRT = _sc.getRenderTarget(swapIndex);
+		_currentSem = _swapCompleteSemaphores[_frameIndex];
+		_currentFence = _swapCompleteFences[_frameIndex];
+
+		_renderer.waitFence( _currentFence );
+
+		// Reset cmd pool for this frame
+		_renderer.resetCmdPool( _swapCmdPools[_frameIndex] );
+
+		_currentCmd = _swapCmds[_frameIndex];
+
+		_currentCmd.begin();
+
+		_frameBegun = true;
+	}
+
+
+
+	var _shaders : Map<Int, CompiledProgram>;
+
+	function makeCompiler() {
+//		var glout = new ShaderCompiler();
+//		glout.glES = glES;
+//		glout.version = shaderVersion;
+		return null;
+	}
+
+	
+	var _hxsl_to_glsl = new forge.GLSLTranscoder();
+
+	public override function selectShader(shader:hxsl.RuntimeShader) {
+		var p = _shaders.get(shader.id);
+		if( p == null ) {
+			p = new CompiledProgram();
+			
+			var vert_glsl = getGLSL( shader.vertex );
+			var frag_glsl = getGLSL( shader.fragment );
+
+			trace ('vert shader ${vert_glsl}');
+			trace ('frag shader ${frag_glsl}');
+
+			var vert_md5 = haxe.crypto.Md5.encode(vert_glsl);
+			var frag_md5 = haxe.crypto.Md5.encode(frag_glsl);
+			trace ('vert md5 ${vert_md5}');
+			trace ('frag md5 ${frag_md5}');
+
+			trace('shader cache exists ${FileSystem.exists('shadercache')}');
+			trace('cwd ${FileSystem.absolutePath('')}');
+
+			var vertpath = 'shadercache/shader_${vert_md5}.vert';
+			var fragpath = 'shadercache/shader_${frag_md5}.frag';
+			sys.io.File.saveContent(vertpath + ".glsl",vert_glsl );
+			sys.io.File.saveContent(fragpath + ".glsl",frag_glsl );
+			var shader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
+
+
+		}
+
+		return true;
+	}
+
+	function getGLSL(shader : hxsl.RuntimeShader.RuntimeShaderData ) {
+
+		if( shader.code == null ){
+			_hxsl_to_glsl.version = 430;
+			_hxsl_to_glsl.glES = 4.3;
+			shader.code = _hxsl_to_glsl.run(shader.data);
+			trace('generated shader code ${shader.code}');
+			#if !heaps_compact_mem
+			shader.data.funs = null;
+			#end
+		}
+
+		return shader.code;
+	}
+
+	public override function uploadShaderBuffers(buffers:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
+		throw "Not implemented";
+	}
+	
+	/*
+	function compileShader(shader : hxsl.RuntimeShader.RuntimeShaderData ) {
+
+		var type = shader.vertex ? GL.VERTEX_SHADER : GL.FRAGMENT_SHADER;
+		
+		var s = gl.createShader(type);
+		gl.shaderSource(s, shader.code);
+		gl.compileShader(s);
+		var log = gl.getShaderInfoLog(s);
+		if ( gl.getShaderParameter(s, GL.COMPILE_STATUS) != cast 1 ) {
+			var log = gl.getShaderInfoLog(s);
+			var lid = Std.parseInt(log.substr(9));
+			var line = lid == null ? null : shader.code.split("\n")[lid - 1];
+			if( line == null ) line = "" else line = "(" + StringTools.trim(line) + ")";
+			var codeLines = shader.code.split("\n");
+			for( i in 0...codeLines.length )
+				codeLines[i] = (i+1) + "\t" + codeLines[i];
+			throw "An error occurred compiling the shaders: " + log + line+"\n\n"+codeLines.join("\n");
+		}
+		  
+	}
+*/
+
+	/*
+		
+	
+			
+
+			p.p = gl.createProgram();
+			#if ((hlsdl || usegl) && !hlmesa)
+			if( glES == null ) {
+				var outCount = 0;
+				for( v in shader.fragment.data.vars )
+					switch( v.kind ) {
+					case Output:
+						gl.bindFragDataLocation(p.p, outCount++, glout.varNames.exists(v.id) ? glout.varNames.get(v.id) : v.name);
+					default:
+					}
+			}
+			#end
+			gl.attachShader(p.p, p.vertex.s);
+			gl.attachShader(p.p, p.fragment.s);
+			var log = null;
+			try {
+				gl.linkProgram(p.p);
+				if( gl.getProgramParameter(p.p, GL.LINK_STATUS) != cast 1 )
+					log = gl.getProgramInfoLog(p.p);
+			} catch( e : Dynamic ) {
+				throw "Shader linkage error: "+Std.string(e)+" ("+getDriverName(false)+")";
+			}
+			gl.deleteShader(p.vertex.s);
+			gl.deleteShader(p.fragment.s);
+			if( log != null ) {
+				#if js
+				gl.deleteProgram(p.p);
+				#end
+				#if hlsdl
+					//Tentative patch on some driver that report an higher shader version that it's allowed to use.
+				if( log == "" && shaderVersion > 130 && firstShader ) {
+					shaderVersion -= 10;
+					return selectShader(shader);
+				}
+				#end
+				throw "Program linkage failure: "+log+"\nVertex=\n"+shader.vertex.code+"\n\nFragment=\n"+shader.fragment.code;
+			}
+			firstShader = false;
+			initShader(p, p.vertex, shader.vertex, shader);
+			initShader(p, p.fragment, shader.fragment, shader);
+			var attribNames = [];
+			p.attribs = [];
+			p.hasAttribIndex = [];
+			p.stride = 0;
+			for( v in shader.vertex.data.vars )
+				switch( v.kind ) {
+				case Input:
+					var t = GL.FLOAT;
+					var size = switch( v.type ) {
+					case TVec(n, _): n;
+					case TBytes(n): t = GL.BYTE; n;
+					case TFloat: 1;
+					default: throw "assert " + v.type;
+					}
+					var index = gl.getAttribLocation(p.p, glout.varNames.exists(v.id) ? glout.varNames.get(v.id) : v.name);
+					if( index < 0 ) {
+						p.stride += size;
+						continue;
+					}
+					var a = new CompiledAttribute();
+					a.type = t;
+					a.size = size;
+					a.index = index;
+					a.offset = p.stride;
+					a.divisor = 0;
+					if( v.qualifiers != null ) {
+						for( q in v.qualifiers )
+							switch( q ) {
+							case PerInstance(n): a.divisor = n;
+							default:
+							}
+					}
+					p.attribs.push(a);
+					p.hasAttribIndex[a.index] = true;
+					attribNames.push(v.name);
+					p.stride += size;
+				default:
+				}
+			p.inputs = InputNames.get(attribNames);
+			programs.set(shader.id, p);
+		}
+		if( curShader == p ) return false;
+		setProgram(p);
+		return true;
+	*/
+
 	/*
 		var cubic = t.flags.has(Cube);
 		var face = cubic ? CUBE_FACES[side] : t.flags.has(IsArray) ? GL.TEXTURE_2D_ARRAY : GL.TEXTURE_2D;
@@ -532,39 +794,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		throw "Not implemented";
 	}
 
-	var _currentRT : forge.Native.RenderTarget;
-	var _currentSem : forge.Native.Semaphore;
-	var _currentFence : forge.Native.Fence;
-	var _currentCmd : forge.Native.Cmd;
 	
-	public override function begin(frame:Int) {
-
-		// Check for VSYNC
-		/*
-		if (pSwapChain->mEnableVsync != mSettings.mVSyncEnabled)
-			{
-				waitQueueIdle(pGraphicsQueue);
-				::toggleVSync(pRenderer, &pSwapChain);
-			}
-
-		*/
-
-		var swapIndex = _renderer.acquireNextImage(_sc, _ImageAcquiredSemaphore, null);
-
-		_currentRT = _sc.getRenderTarget(swapIndex);
-		_currentSem = _swapCompleteSemaphores[_frameIndex];
-		_currentFence = _swapCompleteFences[_frameIndex];
-
-		_renderer.waitFence( _currentFence );
-
-		// Reset cmd pool for this frame
-		_renderer.resetCmdPool( _swapCmdPools[_frameIndex] );
-
-		_currentCmd = _swapCmds[_frameIndex];
-
-		_currentCmd.begin();
-
-	}
 
 	public override function generateMipMaps(texture:h3d.mat.Texture) {
 		throw "Mipmaps auto generation is not supported on this platform";
@@ -597,18 +827,13 @@ class ForgeDriver extends h3d.impl.Driver {
 		return "Not available";
 	}
 
-	public override function selectShader(shader:hxsl.RuntimeShader) {
-		throw "Not implemented";
-		return false;
-	}
+
 
 	public override function selectMaterial(pass:h3d.mat.Pass) {
 		throw "Not implemented";
 	}
 
-	public override function uploadShaderBuffers(buffers:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
-		throw "Not implemented";
-	}
+
 
 	public override function getShaderInputNames():InputNames {
 		throw "Not implemented";
