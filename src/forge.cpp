@@ -396,6 +396,11 @@ HL_PRIM void HL_NAME(Cmd_clear2)(_ref(Cmd)* _this, _ref(RenderTarget)* rt, _ref(
 }
 DEFINE_PRIM(_VOID, Cmd_clear2, _IDL _IDL _IDL);
 
+HL_PRIM void HL_NAME(Cmd_unbindRenderTarget0)(_ref(Cmd)* _this) {
+	(forge_cmd_unbind( _unref(_this) ));
+}
+DEFINE_PRIM(_VOID, Cmd_unbindRenderTarget0, _IDL);
+
 HL_PRIM void HL_NAME(Cmd_begin0)(_ref(Cmd)* _this) {
 	(beginCmd( _unref(_this) ));
 }

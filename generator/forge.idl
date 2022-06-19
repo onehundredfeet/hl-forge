@@ -325,7 +325,7 @@ interface Globals {
 interface Cmd {
 	
 	[CObject, Internal="forge_render_target_clear"] void clear(RenderTarget rt, RenderTarget depthstencil);
-
+	[CObject, Internal="forge_cmd_unbind"] void unbindRenderTarget();
 	[CObject,  Internal="beginCmd"] void begin();
 	[CObject,  Internal="endCmd"] void end();
 };

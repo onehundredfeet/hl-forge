@@ -502,6 +502,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _frameBegun = false;
 
 	public override function present() {
+		trace('Presenting');
 		if (_frameBegun) {
 			if (_sc != null) {
 				_forgeSDLWin.present(_queue, _sc, _frameIndex, _swapCompleteSemaphores[_frameIndex]);
@@ -662,6 +663,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		var p = _shaders.get(shader.id);
 		if (p == null) {
 			p = compileProgram(shader);
+			_shaders.set( shader.id, p);
 		}
 
 		_curShader = p;
@@ -1116,9 +1118,9 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function end() {
+		_currentCmd.unbindRenderTarget();
+		_currentCmd.end();
 		_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
-
-		throw "Not implemented";
 	}
 
 	var _debug = false;

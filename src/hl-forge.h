@@ -49,6 +49,7 @@ Queue* createQueue(Renderer *renderer);
 SDL_Window *forge_sdl_get_window(void *ptr);
 void forge_sdl_buffer_load_desc_set_index_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
 void forge_sdl_buffer_load_desc_set_vertex_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
+void forge_cmd_unbind(Cmd *);
 
 Buffer*forge_sdl_buffer_load( BufferLoadDesc *bld, SyncToken *token);
 Texture*forge_texture_load(TextureLoadDesc *desc, SyncToken *token);

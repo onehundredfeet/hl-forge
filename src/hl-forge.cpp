@@ -298,6 +298,10 @@ void forge_render_target_clear(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarg
     cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
 }
 
+void forge_cmd_unbind(Cmd *cmd) {
+	cmdBindRenderTargets(cmd, 0, NULL, NULL, NULL, NULL, NULL, -1, -1);
+}
+
 void forge_renderer_wait_fence(Renderer *pRenderer, Fence *pFence) {
     FenceStatus fenceStatus;
     getFenceStatus(pRenderer, pFence, &fenceStatus);
