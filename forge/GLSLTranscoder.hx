@@ -94,7 +94,13 @@ class GLSLTranscoder {
     inline function identLookup( v : TVar ) {
         var n = switch(v.kind) {
             case  VarKind.Global: "_globals." + varName(v);
-            case  VarKind.Param: "_params." + varName(v);
+            case  VarKind.Param: 
+                switch(v.type) {
+                    case TSampler2D: varName(v);
+                    case TArray(t, size):
+                        (t == TSampler2D) ? varName(v) : "_params." + varName(v);
+                    default:"_params." + varName(v);
+                }
             default: varName(v);
         }
 
@@ -656,29 +662,72 @@ class GLSLTranscoder {
 		add(";\n");
 	}
 
+    /*
+	TVoid;
+	TInt;
+	TBool;
+	TFloat;
+	TString;
+	TVec( size : Int, t : VecType );
+	TMat3;
+	TMat4;
+	TMat3x4;
+	TBytes( size : Int );
+	TSampler2D;
+	TSampler2DArray;
+	TSamplerCube;
+	TStruct( vl : Array<TVar> );
+	TFun( variants : Array<FunType> );
+	TArray( t : Type, size : SizeDecl );
+	TBuffer( t : Type, size : SizeDecl );
+	TChannel( size : Int );
+	TMat2;
+    */
 	function initVars( s : ShaderData, isVertex : Bool ){
 		outIndex = 0;
 		uniformBuffer = 0;
 		outIndexes = new Map();
 
-        add("uniform Globals {\n");
-        // uniforms first
-        for( v in s.vars ) {
-            if (v.kind == Global) {
-                add("\t");
-                initVar(v);
-            }
-        }
-        add("} _globals;\n");
+        var globals = s.vars.filter( (x) -> x.kind == Global);
 
-        add("uniform Parameters {\n");
-        for( v in s.vars ) {
-            if (v.kind == Param) {
+        if (globals.length > 0) {
+            add("uniform Globals {\n");
+            // uniforms first
+            for( v in globals ) {
                 add("\t");
                 initVar(v);
             }
+            add("} _globals;\n");
         }
-        add("} _params;\n");
+ 
+        var params = s.vars.filter( (x) -> x.kind == Param);
+        var buffer_params = params.filter( (x) ->  switch(x.type) {
+            case TSampler2D: false;
+            case TArray(t, size): t != TSampler2D;
+            default:true;
+        });
+
+
+        if (buffer_params.length > 0) {
+            add("uniform Parameters {\n");
+            for( v in buffer_params ) {
+                add("\t");
+                initVar(v);
+            }
+            add("} _params;\n");
+        }
+
+        var sampler_params = params.filter( (x) ->  switch(x.type) {
+            case TSampler2D: true;
+            case TArray(t, size): t == TSampler2D;
+            default:false;
+        });
+
+        add("//Samplers\n");
+        for( v in sampler_params ) {
+            add("uniform ");
+            initVar(v);
+        }
 
 
         add("//Input\n");

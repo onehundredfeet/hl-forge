@@ -9,14 +9,15 @@ private typedef Program = forge.Forge.Program;
 private typedef ForgeShader = forge.Native.Shader;
 
 private class CompiledShader {
-	public var s : ForgeShader;
-	public var vertex : Bool;
-	public var globals : Uniform;
-	public var params : Uniform;
-	public var textures : Array<{ u : Uniform, t : hxsl.Ast.Type, mode : Int }>;
-	public var buffers : Array<Int>;
-	public var shader : hxsl.RuntimeShader.RuntimeShaderData;
-	public function new(s,vertex,shader) {
+	public var s:ForgeShader;
+	public var vertex:Bool;
+	public var globals:Uniform;
+	public var params:Uniform;
+	public var textures:Array<{u:Uniform, t:hxsl.Ast.Type, mode:Int}>;
+	public var buffers:Array<Int>;
+	public var shader:hxsl.RuntimeShader.RuntimeShaderData;
+
+	public function new(s, vertex, shader) {
 		this.s = s;
 		this.vertex = vertex;
 		this.shader = shader;
@@ -24,29 +25,28 @@ private class CompiledShader {
 }
 
 private class CompiledAttribute {
-	public var index : Int;
-	public var type : Int;
-	public var size : Int;
-	public var offset : Int;
-	public var divisor : Int;
-	public function new() {
-	}
+	public var index:Int;
+	public var type:Int;
+	public var size:Int;
+	public var offset:Int;
+	public var divisor:Int;
+
+	public function new() {}
 }
 
 private class CompiledProgram {
-	public var p : Program;
-	public var rootSig : forge.Native.RootSignature;
-	public var forgeShader : forge.Native.Shader;
-	public var vertex : CompiledShader;
-	public var fragment : CompiledShader;
-	public var stride : Int;
-	public var inputs : InputNames;
-	public var attribs : Array<CompiledAttribute>;
-	public var hasAttribIndex : Array<Bool>;
-	public function new() {
-	}
-}
+	public var p:Program;
+	public var rootSig:forge.Native.RootSignature;
+	public var forgeShader:forge.Native.Shader;
+	public var vertex:CompiledShader;
+	public var fragment:CompiledShader;
+	public var stride:Int;
+	public var inputs:InputNames;
+	public var attribs:Array<CompiledAttribute>;
+	public var hasAttribIndex:Array<Bool>;
 
+	public function new() {}
+}
 
 @:access(h3d.impl.Shader)
 class ForgeDriver extends h3d.impl.Driver {
@@ -71,7 +71,6 @@ class ForgeDriver extends h3d.impl.Driver {
 		//		Driver.setErrorHandler(onDXError);
 
 		trace('CWD Driver IS ${FileSystem.absolutePath('')}');
-
 
 		reset();
 	}
@@ -514,22 +513,21 @@ class ForgeDriver extends h3d.impl.Driver {
 		} else {}
 	}
 
-	var _currentRT : forge.Native.RenderTarget;
-	var _currentSem : forge.Native.Semaphore;
-	var _currentFence : forge.Native.Fence;
-	var _currentCmd : forge.Native.Cmd;
-	
-	public override function begin(frame:Int) {
+	var _currentRT:forge.Native.RenderTarget;
+	var _currentSem:forge.Native.Semaphore;
+	var _currentFence:forge.Native.Fence;
+	var _currentCmd:forge.Native.Cmd;
 
+	public override function begin(frame:Int) {
 		// Check for VSYNC
 		/*
-		if (pSwapChain->mEnableVsync != mSettings.mVSyncEnabled)
-			{
-				waitQueueIdle(pGraphicsQueue);
-				::toggleVSync(pRenderer, &pSwapChain);
-			}
+			if (pSwapChain->mEnableVsync != mSettings.mVSyncEnabled)
+				{
+					waitQueueIdle(pGraphicsQueue);
+					::toggleVSync(pRenderer, &pSwapChain);
+				}
 
-		*/
+		 */
 
 		var swapIndex = _renderer.acquireNextImage(_sc, _ImageAcquiredSemaphore, null);
 
@@ -537,10 +535,10 @@ class ForgeDriver extends h3d.impl.Driver {
 		_currentSem = _swapCompleteSemaphores[_frameIndex];
 		_currentFence = _swapCompleteFences[_frameIndex];
 
-		_renderer.waitFence( _currentFence );
+		_renderer.waitFence(_currentFence);
 
 		// Reset cmd pool for this frame
-		_renderer.resetCmdPool( _swapCmdPools[_frameIndex] );
+		_renderer.resetCmdPool(_swapCmdPools[_frameIndex]);
 
 		_currentCmd = _swapCmds[_frameIndex];
 
@@ -549,67 +547,23 @@ class ForgeDriver extends h3d.impl.Driver {
 		_frameBegun = true;
 	}
 
-
-
-	var _shaders : Map<Int, CompiledProgram>;
+	var _shaders:Map<Int, CompiledProgram>;
 
 	function makeCompiler() {
-//		var glout = new ShaderCompiler();
-//		glout.glES = glES;
-//		glout.version = shaderVersion;
+		//		var glout = new ShaderCompiler();
+		//		glout.glES = glES;
+		//		glout.version = shaderVersion;
 		return null;
 	}
 
-	
-	var _hxsl_to_glsl = new forge.GLSLTranscoder();
-	var _curShader : CompiledProgram;
+	var _curShader:CompiledProgram;
 
-	public override function selectShader(shader:hxsl.RuntimeShader) {
-		var p = _shaders.get(shader.id);
-		if( p == null ) {
-			p = new CompiledProgram();
-			
-			var vert_glsl = getGLSL( shader.vertex );
-			var frag_glsl = getGLSL( shader.fragment );
-
-			trace ('vert shader ${vert_glsl}');
-			trace ('frag shader ${frag_glsl}');
-
-			var vert_md5 = haxe.crypto.Md5.encode(vert_glsl);
-			var frag_md5 = haxe.crypto.Md5.encode(frag_glsl);
-			trace ('vert md5 ${vert_md5}');
-			trace ('frag md5 ${frag_md5}');
-
-			trace('shader cache exists ${FileSystem.exists('shadercache')}');
-			trace('cwd ${FileSystem.absolutePath('')}');
-
-			var vertpath = 'shadercache/shader_${vert_md5}.vert';
-			var fragpath = 'shadercache/shader_${frag_md5}.frag';
-			sys.io.File.saveContent(vertpath + ".glsl",vert_glsl );
-			sys.io.File.saveContent(fragpath + ".glsl",frag_glsl );
-			var fgShader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
-			p.forgeShader = fgShader;
-
-			var rootDesc = new forge.Native.RootSignatureDesc();
-			rootDesc.addShader(fgShader);
-			var rootSig = _renderer.createRootSig(rootDesc);
-			p.rootSig = rootSig;
-
-
-		}
-
-		_curShader = p;
-
-		return true;
-	}
-
-	function getGLSL(shader : hxsl.RuntimeShader.RuntimeShaderData ) {
-
-		if( shader.code == null ){
-			_hxsl_to_glsl.version = 430;
-			_hxsl_to_glsl.glES = 4.3;
-			shader.code = _hxsl_to_glsl.run(shader.data);
-			trace('generated shader code ${shader.code}');
+	function getGLSL(transcoder:forge.GLSLTranscoder, shader:hxsl.RuntimeShader.RuntimeShaderData) {
+		if (shader.code == null) {
+			transcoder.version = 430;
+			transcoder.glES = 4.3;
+			shader.code = transcoder.run(shader.data);
+			//trace('generated shader code ${shader.code}');
 			#if !heaps_compact_mem
 			shader.data.funs = null;
 			#end
@@ -618,15 +572,112 @@ class ForgeDriver extends h3d.impl.Driver {
 		return shader.code;
 	}
 
-	
-	public override function uploadShaderBuffers(buf:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
-		if (_curShader == null) throw "No current shader to upload buffers to";
-		uploadBuffer(buf, _curShader.vertex, buf.vertex, which);
-		uploadBuffer(buf, _curShader.fragment, buf.fragment, which);				
+	function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
+		var transcoder = new forge.GLSLTranscoder();
+
+		var p = new CompiledProgram();
+
+		var vert_glsl = getGLSL(transcoder, shader.vertex);
+		var frag_glsl = getGLSL(transcoder, shader.fragment);
+
+		//trace('vert shader ${vert_glsl}');
+		//trace('frag shader ${frag_glsl}');
+
+		var vert_md5 = haxe.crypto.Md5.encode(vert_glsl);
+		var frag_md5 = haxe.crypto.Md5.encode(frag_glsl);
+		//trace('vert md5 ${vert_md5}');
+		//trace('frag md5 ${frag_md5}');
+
+		//trace('shader cache exists ${FileSystem.exists('shadercache')}');
+		//trace('cwd ${FileSystem.absolutePath('')}');
+
+		var vertpath = 'shadercache/shader_${vert_md5}.vert';
+		var fragpath = 'shadercache/shader_${frag_md5}.frag';
+		sys.io.File.saveContent(vertpath + ".glsl", vert_glsl);
+		sys.io.File.saveContent(fragpath + ".glsl", frag_glsl);
+		var fgShader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
+		p.forgeShader = fgShader;
+
+		var rootDesc = new forge.Native.RootSignatureDesc();
+		rootDesc.addShader(fgShader);
+		var rootSig = _renderer.createRootSig(rootDesc);
+		p.rootSig = rootSig;
+
+		// get inputs
+
+		var attribNames = [];
+		p.attribs = [];
+		p.hasAttribIndex = [];
+		p.stride = 0;
+		var idxCount = 0;
+		for (v in shader.vertex.data.vars) {
+			switch (v.kind) {
+				case Input:
+					var size = switch (v.type) {
+						case TVec(n, _): n;
+						case TFloat: 1;
+						default: throw "assert " + v.type;
+					}
+
+					/*
+						var t = GL.FLOAT;
+
+						var index = gl.getAttribLocation(p.p, transcoder.varNames.exists(v.id) ? transcoder.varNames.get(v.id) : v.name);
+						if (index < 0) {
+							p.stride += size;
+							continue;
+						}
+					 */
+
+					var a = new CompiledAttribute();
+					a.type = 0;
+					a.size = size;
+					a.index = idxCount++;
+					a.offset = p.stride;
+					a.divisor = 0;
+					if (v.qualifiers != null) {
+						for (q in v.qualifiers)
+							switch (q) {
+								case PerInstance(n): a.divisor = n;
+								default:
+							}
+					}
+					p.attribs.push(a);
+					p.hasAttribIndex[a.index] = true;
+					attribNames.push(v.name);
+					p.stride += size;
+				default:
+			}
+		}
+		p.inputs = InputNames.get(attribNames);
+
+		return p;
 	}
-	
-	function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
-		switch( which ) {
+
+	public override function getShaderInputNames():InputNames {
+		return _curShader.inputs;
+	}
+
+	public override function selectShader(shader:hxsl.RuntimeShader) {
+		var p = _shaders.get(shader.id);
+		if (p == null) {
+			p = compileProgram(shader);
+		}
+
+		_curShader = p;
+
+		return true;
+	}
+
+	public override function uploadShaderBuffers(buf:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
+		if (_curShader == null)
+			throw "No current shader to upload buffers to";
+		uploadBuffer(buf, _curShader.vertex, buf.vertex, which);
+		uploadBuffer(buf, _curShader.fragment, buf.fragment, which);
+	}
+
+	function uploadBuffer(buffer:h3d.shader.Buffers, s:CompiledShader, buf:h3d.shader.Buffers.ShaderBuffers, which:h3d.shader.Buffers.BufferKind) {
+		switch (which) {
 			case Globals:
 			case Params:
 			case Buffers:
@@ -634,138 +685,172 @@ class ForgeDriver extends h3d.impl.Driver {
 		}
 	}
 
+	public override function selectMaterial(pass:h3d.mat.Pass) {
+		// culling
+		// stencil
+		// mode
+		// blending
+	}
+
+	var _curBuffer:h3d.Buffer;
+
+	public override function selectMultiBuffers(buffers:Buffer.BufferOffset) {
+		for (a in _curShader.attribs) {
+			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
+			// gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
+			// updateDivisor(a);
+			buffers = buffers.next;
+		}
+		_curBuffer = null;
+	}
+
+	var _curIndexBuffer:IndexBuffer;
+
+	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
+		if (ibuf != _curIndexBuffer) {
+			_curIndexBuffer = ibuf;
+			//			gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, ibuf.b);
+		}
+
+		/*
+			if( ibuf.is32 )
+				gl.drawElements(drawMode, ntriangles * 3, GL.UNSIGNED_INT, startIndex * 4);
+			else
+				gl.drawElements(drawMode, ntriangles * 3, GL.UNSIGNED_SHORT, startIndex * 2);
+		 */
+	}
+
 	/*
-	function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
-		switch( which ) {
-		case Globals:
-			if( s.globals != null ) {
-				#if hl
-				gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
-				#else
-				var a = buf.globals.subarray(0, s.shader.globalsSize * 4);
-				gl.uniform4fv(s.globals, a);
-				#end
-			}
-		case Params:
-			if( s.params != null ) {
-				#if hl
-				gl.uniform4fv(s.params, streamData(hl.Bytes.getArray(buf.params.toData()), 0, s.shader.paramsSize * 16), 0, s.shader.paramsSize * 4);
-				#else
-				var a = buf.params.subarray(0, s.shader.paramsSize * 4);
-				gl.uniform4fv(s.params, a);
-				#end
-			}
-		case Buffers:
-			if( s.buffers != null ) {
-				var start = 0;
-				if( !s.vertex && curShader.vertex.buffers != null )
-					start = curShader.vertex.buffers.length;
-				for( i in 0...s.buffers.length )
-					gl.bindBufferBase(GL.UNIFORM_BUFFER, i + start, @:privateAccess buf.buffers[i].buffer.vbuf.b);
-			}
-		case Textures:
-			var tcount = s.textures.length;
-			for( i in 0...s.textures.length ) {
-				var t = buf.tex[i];
-				var pt = s.textures[i];
-				if( t == null || t.isDisposed() ) {
-					switch( pt.t ) {
-					case TSampler2D:
-						var color = h3d.mat.Defaults.loadingTextureColor;
-						t = h3d.mat.Texture.fromColor(color, (color >>> 24) / 255);
-					case TSamplerCube:
-						t = h3d.mat.Texture.defaultCubeTexture();
-					default:
-						throw "Missing texture";
-					}
-				}
-				if( t != null && t.t == null && t.realloc != null ) {
-					var s = curShader;
-					t.alloc();
-					t.realloc();
-					if( curShader != s ) {
-						// realloc triggered a shader change !
-						// we need to reset the original shader and reupload everything
-						setProgram(s);
-						uploadShaderBuffers(buffer,Globals);
-						uploadShaderBuffers(buffer,Params);
-						uploadShaderBuffers(buffer,Textures);
-						return;
-					}
-				}
-				t.lastFrame = frame;
-
-				if( pt.u == null ) continue;
-
-				var idx = s.vertex ? i : curShader.vertex.textures.length + i;
-				if( boundTextures[idx] != t.t ) {
-					boundTextures[idx] = t.t;
-
-					#if multidriver
-					if( t.t.driver != this )
-						throw "Invalid texture context";
+		function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
+			switch( which ) {
+			case Globals:
+				if( s.globals != null ) {
+					#if hl
+					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
+					#else
+					var a = buf.globals.subarray(0, s.shader.globalsSize * 4);
+					gl.uniform4fv(s.globals, a);
 					#end
+				}
+			case Params:
+				if( s.params != null ) {
+					#if hl
+					gl.uniform4fv(s.params, streamData(hl.Bytes.getArray(buf.params.toData()), 0, s.shader.paramsSize * 16), 0, s.shader.paramsSize * 4);
+					#else
+					var a = buf.params.subarray(0, s.shader.paramsSize * 4);
+					gl.uniform4fv(s.params, a);
+					#end
+				}
+			case Buffers:
+				if( s.buffers != null ) {
+					var start = 0;
+					if( !s.vertex && curShader.vertex.buffers != null )
+						start = curShader.vertex.buffers.length;
+					for( i in 0...s.buffers.length )
+						gl.bindBufferBase(GL.UNIFORM_BUFFER, i + start, @:privateAccess buf.buffers[i].buffer.vbuf.b);
+				}
+			case Textures:
+				var tcount = s.textures.length;
+				for( i in 0...s.textures.length ) {
+					var t = buf.tex[i];
+					var pt = s.textures[i];
+					if( t == null || t.isDisposed() ) {
+						switch( pt.t ) {
+						case TSampler2D:
+							var color = h3d.mat.Defaults.loadingTextureColor;
+							t = h3d.mat.Texture.fromColor(color, (color >>> 24) / 255);
+						case TSamplerCube:
+							t = h3d.mat.Texture.defaultCubeTexture();
+						default:
+							throw "Missing texture";
+						}
+					}
+					if( t != null && t.t == null && t.realloc != null ) {
+						var s = curShader;
+						t.alloc();
+						t.realloc();
+						if( curShader != s ) {
+							// realloc triggered a shader change !
+							// we need to reset the original shader and reupload everything
+							setProgram(s);
+							uploadShaderBuffers(buffer,Globals);
+							uploadShaderBuffers(buffer,Params);
+							uploadShaderBuffers(buffer,Textures);
+							return;
+						}
+					}
+					t.lastFrame = frame;
 
-					var mode = getBindType(t);
-					if( mode != pt.mode )
-						throw "Texture format mismatch: "+t+" should be "+pt.t;
-					gl.activeTexture(GL.TEXTURE0 + idx);
-					gl.uniform1i(pt.u, idx);
-					gl.bindTexture(mode, t.t.t);
-					lastActiveIndex = idx;
-				}
+					if( pt.u == null ) continue;
 
-				var mip = Type.enumIndex(t.mipMap);
-				var filter = Type.enumIndex(t.filter);
-				var wrap = Type.enumIndex(t.wrap);
-				var bits = mip | (filter << 3) | (wrap << 6);
-				if( bits != t.t.bits ) {
-					t.t.bits = bits;
-					var flags = TFILTERS[mip][filter];
-					var mode = pt.mode;
-					gl.texParameteri(mode, GL.TEXTURE_MAG_FILTER, flags[0]);
-					gl.texParameteri(mode, GL.TEXTURE_MIN_FILTER, flags[1]);
-					var w = TWRAP[wrap];
-					gl.texParameteri(mode, GL.TEXTURE_WRAP_S, w);
-					gl.texParameteri(mode, GL.TEXTURE_WRAP_T, w);
+					var idx = s.vertex ? i : curShader.vertex.textures.length + i;
+					if( boundTextures[idx] != t.t ) {
+						boundTextures[idx] = t.t;
+
+						#if multidriver
+						if( t.t.driver != this )
+							throw "Invalid texture context";
+						#end
+
+						var mode = getBindType(t);
+						if( mode != pt.mode )
+							throw "Texture format mismatch: "+t+" should be "+pt.t;
+						gl.activeTexture(GL.TEXTURE0 + idx);
+						gl.uniform1i(pt.u, idx);
+						gl.bindTexture(mode, t.t.t);
+						lastActiveIndex = idx;
+					}
+
+					var mip = Type.enumIndex(t.mipMap);
+					var filter = Type.enumIndex(t.filter);
+					var wrap = Type.enumIndex(t.wrap);
+					var bits = mip | (filter << 3) | (wrap << 6);
+					if( bits != t.t.bits ) {
+						t.t.bits = bits;
+						var flags = TFILTERS[mip][filter];
+						var mode = pt.mode;
+						gl.texParameteri(mode, GL.TEXTURE_MAG_FILTER, flags[0]);
+						gl.texParameteri(mode, GL.TEXTURE_MIN_FILTER, flags[1]);
+						var w = TWRAP[wrap];
+						gl.texParameteri(mode, GL.TEXTURE_WRAP_S, w);
+						gl.texParameteri(mode, GL.TEXTURE_WRAP_T, w);
+					}
+					#if !js
+					if( t.lodBias != t.t.bias ) {
+						t.t.bias = t.lodBias;
+						gl.texParameterf(pt.mode, GL.TEXTURE_LOD_BIAS, t.lodBias);
+					}
+					#end
 				}
-				#if !js
-				if( t.lodBias != t.t.bias ) {
-					t.t.bias = t.lodBias;
-					gl.texParameterf(pt.mode, GL.TEXTURE_LOD_BIAS, t.lodBias);
-				}
-				#end
 			}
 		}
-	}
 
-	*/
+	 */
 	/*
-	function compileShader(shader : hxsl.RuntimeShader.RuntimeShaderData ) {
+		function compileShader(shader : hxsl.RuntimeShader.RuntimeShaderData ) {
 
-		var type = shader.vertex ? GL.VERTEX_SHADER : GL.FRAGMENT_SHADER;
-		
-		var s = gl.createShader(type);
-		gl.shaderSource(s, shader.code);
-		gl.compileShader(s);
-		var log = gl.getShaderInfoLog(s);
-		if ( gl.getShaderParameter(s, GL.COMPILE_STATUS) != cast 1 ) {
+			var type = shader.vertex ? GL.VERTEX_SHADER : GL.FRAGMENT_SHADER;
+			
+			var s = gl.createShader(type);
+			gl.shaderSource(s, shader.code);
+			gl.compileShader(s);
 			var log = gl.getShaderInfoLog(s);
-			var lid = Std.parseInt(log.substr(9));
-			var line = lid == null ? null : shader.code.split("\n")[lid - 1];
-			if( line == null ) line = "" else line = "(" + StringTools.trim(line) + ")";
-			var codeLines = shader.code.split("\n");
-			for( i in 0...codeLines.length )
-				codeLines[i] = (i+1) + "\t" + codeLines[i];
-			throw "An error occurred compiling the shaders: " + log + line+"\n\n"+codeLines.join("\n");
+			if ( gl.getShaderParameter(s, GL.COMPILE_STATUS) != cast 1 ) {
+				var log = gl.getShaderInfoLog(s);
+				var lid = Std.parseInt(log.substr(9));
+				var line = lid == null ? null : shader.code.split("\n")[lid - 1];
+				if( line == null ) line = "" else line = "(" + StringTools.trim(line) + ")";
+				var codeLines = shader.code.split("\n");
+				for( i in 0...codeLines.length )
+					codeLines[i] = (i+1) + "\t" + codeLines[i];
+				throw "An error occurred compiling the shaders: " + log + line+"\n\n"+codeLines.join("\n");
+			}
+			  
 		}
-		  
-	}
-*/
-
+	 */
 	/*
-		
-	
+
+
 			
 
 			p.p = gl.createProgram();
@@ -852,8 +937,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		if( curShader == p ) return false;
 		setProgram(p);
 		return true;
-	*/
-
+	 */
 	/*
 		var cubic = t.flags.has(Cube);
 		var face = cubic ? CUBE_FACES[side] : t.flags.has(IsArray) ? GL.TEXTURE_2D_ARRAY : GL.TEXTURE_2D;
@@ -923,8 +1007,6 @@ class ForgeDriver extends h3d.impl.Driver {
 		throw "Not implemented";
 	}
 
-	
-
 	public override function generateMipMaps(texture:h3d.mat.Texture) {
 		throw "Mipmaps auto generation is not supported on this platform";
 	}
@@ -956,28 +1038,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		return "Not available";
 	}
 
-
-
-	public override function selectMaterial(pass:h3d.mat.Pass) {
-		throw "Not implemented";
-	}
-
-
-
-	public override function getShaderInputNames():InputNames {
-		throw "Not implemented";
-		return null;
-	}
-
 	public override function selectBuffer(buffer:Buffer) {
-		throw "Not implemented";
-	}
-
-	public override function selectMultiBuffers(buffers:Buffer.BufferOffset) {
-		throw "Not implemented";
-	}
-
-	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
 		throw "Not implemented";
 	}
 
@@ -1002,12 +1063,9 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function end() {
-
 		_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
 
 		throw "Not implemented";
-
-
 	}
 
 	var _debug = false;
