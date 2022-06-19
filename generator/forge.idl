@@ -430,6 +430,25 @@ interface Shader {
 };
 
 [NoDelete]
+interface RootSignature {
+
+};
+
+[NoDelete]
+interface Sampler {
+
+};
+
+[Internal="RootSignatureFactory"]
+interface RootSignatureDesc {
+	void RootSignatureDesc();
+	
+	void addShader(Shader shader);
+	void addSampler( Sampler sampler );
+
+};
+
+[NoDelete]
 interface Renderer {
 	//Const is a hack to get it to not generate a finalizer
 	[CObject, Const] Queue createQueue();
@@ -449,6 +468,10 @@ interface Renderer {
 	
 	[CObject] void resetCmdPool( CmdPool pool );
 	[CObject,Internal="addPipeline", Const] Pipeline createPipeline( PipelineDesc desc, [Return]Pipeline pipeline);
+
+	[CObject,Internal="forge_renderer_createRootSignatureSimple", Const] RootSignature createRootSigSimple(Shader shader);
+	[CObject,Internal="forge_renderer_createRootSignature", Const] RootSignature createRootSig(RootSignatureDesc desc);
+
 };
 
 

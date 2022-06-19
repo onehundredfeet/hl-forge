@@ -92,9 +92,10 @@ class GLSLTranscoder {
 	}
     
     inline function identLookup( v : TVar ) {
-        var n = varName(v);
-        if (v.kind == VarKind.Global || v.kind == VarKind.Param) {
-            n = "_globals." + n;
+        var n = switch(v.kind) {
+            case  VarKind.Global: "_globals." + varName(v);
+            case  VarKind.Param: "_params." + varName(v);
+            default: varName(v);
         }
 
 		add(n);
@@ -655,7 +656,7 @@ class GLSLTranscoder {
 		add(";\n");
 	}
 
-	function initVars( s : ShaderData ){
+	function initVars( s : ShaderData, isVertex : Bool ){
 		outIndex = 0;
 		uniformBuffer = 0;
 		outIndexes = new Map();
@@ -663,24 +664,43 @@ class GLSLTranscoder {
         add("uniform Globals {\n");
         // uniforms first
         for( v in s.vars ) {
-            switch( v.kind ) {
-                case Param, Global:
-                    add("\t");
-                    initVar(v);
-                default:
+            if (v.kind == Global) {
+                add("\t");
+                initVar(v);
             }
         }
         add("} _globals;\n");
 
+        add("uniform Parameters {\n");
+        for( v in s.vars ) {
+            if (v.kind == Param) {
+                add("\t");
+                initVar(v);
+            }
+        }
+        add("} _params;\n");
+
+
+        add("//Input\n");
+        for( v in s.vars ) if (v.kind == VarKind.Input)initVar(v);
+        if (!isVertex) for( v in s.vars ) if (v.kind == VarKind.Var)initVar(v);
+        add("//Output\n");
+        for( v in s.vars ) if (v.kind == VarKind.Output)initVar(v);
+        if (isVertex) for( v in s.vars ) if (v.kind == VarKind.Var)initVar(v);
+        add("//Locals\n");
+        for( v in s.vars ) if (v.kind == VarKind.Local)initVar(v);
+        
+
+        add("// Function Locals ");
+        for( v in s.vars ) if (v.kind == VarKind.Function)initVar(v);
+
 		for( v in s.vars ) {
             switch( v.kind ) {
-                case Param, Global:
+                case Param, Global, Input, Output, Local, Var, Function:
                 default:initVar(v);
             }
 			
         }
-
-      
 
 		add("\n");
 
@@ -705,7 +725,7 @@ class GLSLTranscoder {
 		else
 			decl("precision mediump float;");
 
-		initVars(s);
+		initVars(s, isVertex);
 
 		var tmp = buf;
 		buf = new StringBuf();

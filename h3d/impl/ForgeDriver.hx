@@ -35,6 +35,8 @@ private class CompiledAttribute {
 
 private class CompiledProgram {
 	public var p : Program;
+	public var rootSig : forge.Native.RootSignature;
+	public var forgeShader : forge.Native.Shader;
 	public var vertex : CompiledShader;
 	public var fragment : CompiledShader;
 	public var stride : Int;
@@ -560,6 +562,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	
 	var _hxsl_to_glsl = new forge.GLSLTranscoder();
+	var _curShader : CompiledProgram;
 
 	public override function selectShader(shader:hxsl.RuntimeShader) {
 		var p = _shaders.get(shader.id);
@@ -584,10 +587,18 @@ class ForgeDriver extends h3d.impl.Driver {
 			var fragpath = 'shadercache/shader_${frag_md5}.frag';
 			sys.io.File.saveContent(vertpath + ".glsl",vert_glsl );
 			sys.io.File.saveContent(fragpath + ".glsl",frag_glsl );
-			var shader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
+			var fgShader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
+			p.forgeShader = fgShader;
+
+			var rootDesc = new forge.Native.RootSignatureDesc();
+			rootDesc.addShader(fgShader);
+			var rootSig = _renderer.createRootSig(rootDesc);
+			p.rootSig = rootSig;
 
 
 		}
+
+		_curShader = p;
 
 		return true;
 	}
@@ -607,10 +618,128 @@ class ForgeDriver extends h3d.impl.Driver {
 		return shader.code;
 	}
 
-	public override function uploadShaderBuffers(buffers:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
-		throw "Not implemented";
+	
+	public override function uploadShaderBuffers(buf:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
+		if (_curShader == null) throw "No current shader to upload buffers to";
+		uploadBuffer(buf, _curShader.vertex, buf.vertex, which);
+		uploadBuffer(buf, _curShader.fragment, buf.fragment, which);				
 	}
 	
+	function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
+		switch( which ) {
+			case Globals:
+			case Params:
+			case Buffers:
+			case Textures:
+		}
+	}
+
+	/*
+	function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
+		switch( which ) {
+		case Globals:
+			if( s.globals != null ) {
+				#if hl
+				gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
+				#else
+				var a = buf.globals.subarray(0, s.shader.globalsSize * 4);
+				gl.uniform4fv(s.globals, a);
+				#end
+			}
+		case Params:
+			if( s.params != null ) {
+				#if hl
+				gl.uniform4fv(s.params, streamData(hl.Bytes.getArray(buf.params.toData()), 0, s.shader.paramsSize * 16), 0, s.shader.paramsSize * 4);
+				#else
+				var a = buf.params.subarray(0, s.shader.paramsSize * 4);
+				gl.uniform4fv(s.params, a);
+				#end
+			}
+		case Buffers:
+			if( s.buffers != null ) {
+				var start = 0;
+				if( !s.vertex && curShader.vertex.buffers != null )
+					start = curShader.vertex.buffers.length;
+				for( i in 0...s.buffers.length )
+					gl.bindBufferBase(GL.UNIFORM_BUFFER, i + start, @:privateAccess buf.buffers[i].buffer.vbuf.b);
+			}
+		case Textures:
+			var tcount = s.textures.length;
+			for( i in 0...s.textures.length ) {
+				var t = buf.tex[i];
+				var pt = s.textures[i];
+				if( t == null || t.isDisposed() ) {
+					switch( pt.t ) {
+					case TSampler2D:
+						var color = h3d.mat.Defaults.loadingTextureColor;
+						t = h3d.mat.Texture.fromColor(color, (color >>> 24) / 255);
+					case TSamplerCube:
+						t = h3d.mat.Texture.defaultCubeTexture();
+					default:
+						throw "Missing texture";
+					}
+				}
+				if( t != null && t.t == null && t.realloc != null ) {
+					var s = curShader;
+					t.alloc();
+					t.realloc();
+					if( curShader != s ) {
+						// realloc triggered a shader change !
+						// we need to reset the original shader and reupload everything
+						setProgram(s);
+						uploadShaderBuffers(buffer,Globals);
+						uploadShaderBuffers(buffer,Params);
+						uploadShaderBuffers(buffer,Textures);
+						return;
+					}
+				}
+				t.lastFrame = frame;
+
+				if( pt.u == null ) continue;
+
+				var idx = s.vertex ? i : curShader.vertex.textures.length + i;
+				if( boundTextures[idx] != t.t ) {
+					boundTextures[idx] = t.t;
+
+					#if multidriver
+					if( t.t.driver != this )
+						throw "Invalid texture context";
+					#end
+
+					var mode = getBindType(t);
+					if( mode != pt.mode )
+						throw "Texture format mismatch: "+t+" should be "+pt.t;
+					gl.activeTexture(GL.TEXTURE0 + idx);
+					gl.uniform1i(pt.u, idx);
+					gl.bindTexture(mode, t.t.t);
+					lastActiveIndex = idx;
+				}
+
+				var mip = Type.enumIndex(t.mipMap);
+				var filter = Type.enumIndex(t.filter);
+				var wrap = Type.enumIndex(t.wrap);
+				var bits = mip | (filter << 3) | (wrap << 6);
+				if( bits != t.t.bits ) {
+					t.t.bits = bits;
+					var flags = TFILTERS[mip][filter];
+					var mode = pt.mode;
+					gl.texParameteri(mode, GL.TEXTURE_MAG_FILTER, flags[0]);
+					gl.texParameteri(mode, GL.TEXTURE_MIN_FILTER, flags[1]);
+					var w = TWRAP[wrap];
+					gl.texParameteri(mode, GL.TEXTURE_WRAP_S, w);
+					gl.texParameteri(mode, GL.TEXTURE_WRAP_T, w);
+				}
+				#if !js
+				if( t.lodBias != t.t.bias ) {
+					t.t.bias = t.lodBias;
+					gl.texParameterf(pt.mode, GL.TEXTURE_LOD_BIAS, t.lodBias);
+				}
+				#end
+			}
+		}
+	}
+
+	*/
 	/*
 	function compileShader(shader : hxsl.RuntimeShader.RuntimeShaderData ) {
 

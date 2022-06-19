@@ -15,6 +15,7 @@ void heuristicTest2(float (*fn)(int));
 
 bool hlForgeInitialize(const char *name);
 
+#include <vector>
 #include <Renderer/IRenderer.h>
 #include <Renderer/IResourceLoader.h>
 
@@ -29,6 +30,17 @@ class ForgeSDLWindow {
         SDL_MetalView _view;
         CAMetalLayer *_layer;
         void present(Queue *pGraphicsQueue, SwapChain *pSwapChain, int swapchainImageIndex, Semaphore * pRenderCompleteSemaphore);
+};
+
+class RootSignatureFactory {
+    public:
+        RootSignatureFactory();
+        ~RootSignatureFactory();
+        RootSignature *create(Renderer *pRenderer);
+        void addShader( Shader *);
+        void addSampler( Sampler * sampler );
+        std::vector<Shader *> _shaders;
+        std::vector<Sampler *> _samplers;
 };
 
 Renderer *createRenderer(const char *name);
@@ -58,5 +70,6 @@ void forge_renderer_wait_fence( Renderer *, Fence *);
 RenderTarget *forge_swap_chain_get_render_target(SwapChain *, int );
 void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence);
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile);
-
+RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Shader *shader);
+RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSignatureFactory *);
 #endif

@@ -1,13 +1,15 @@
+
 #include <iostream>
 #include "hl-forge-shaders.h"
 
-
-#include <OS/Interfaces/IInput.h>
 #include <Renderer/IRenderer.h>
-#include <Renderer/IResourceLoader.h>
-#include <Renderer/IShaderReflection.h>
+#include <OS/Interfaces/IInput.h>
 #include <OS/Interfaces/IMemory.h>
 #include <OS/Logging/Log.h>
+#include <Renderer/IResourceLoader.h>
+#include <Renderer/IShaderReflection.h>
+
+
 
 #define HL_NAME(x) forge_##x
 #include <hl.h>
@@ -396,7 +398,7 @@ std::string removeExtension(const std::string &path) {
 
 std::string getFilename(const std::string &path) {
     size_t lastindex = path.find_last_of("/");
-	if (lastindex < 0) return path;
+    if (lastindex < 0) return path;
 
     return path.substr(lastindex + 1);
 }
@@ -447,7 +449,7 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     //
 
     ShaderLoadDesc shaderDesc = {};
-	
+
     shaderDesc.mStages[0] = {vertFN.c_str(), NULL, 0, "main0", SHADER_STAGE_LOAD_FLAG_ENABLE_VR_MULTIVIEW};
     shaderDesc.mStages[1] = {fragFN.c_str(), NULL, 0, "main0"};
     Shader *tmp = nullptr;
@@ -455,6 +457,49 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     return tmp;
 }
 
+RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Shader *shader) {
+    RootSignature *tmp;
+
+    RootSignatureDesc rootDesc = {&shader, 1, 0, nullptr, nullptr, 0};
+    addRootSignature(pRenderer, &rootDesc, &tmp);
+    return tmp;
+}
+
+RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSignatureFactory *desc) {
+    return desc->create(pRenderer );
+}
+
+RootSignatureFactory::RootSignatureFactory() {
+	
+}
+RootSignatureFactory::~RootSignatureFactory() {
+
+}
+
+/*
+Shader**           ppShaders;
+	uint32_t           mShaderCount;
+	uint32_t           mMaxBindlessTextures;
+	const char**       ppStaticSamplerNames;
+	Sampler**          ppStaticSamplers;
+	uint32_t           mStaticSamplerCount;
+	RootSignatureFlags mFlags;
+*/
+RootSignature *RootSignatureFactory::create(Renderer *pRenderer) {
+	RootSignature *tmp;
+
+    RootSignatureDesc rootDesc = {&_shaders[0], (uint32_t)_shaders.size() };
+    
+	
+    addRootSignature(pRenderer, &rootDesc, &tmp);
+	return tmp;
+}
+void RootSignatureFactory::addShader( Shader *pShader ) {
+	_shaders.push_back(pShader);
+}
+void RootSignatureFactory::addSampler( Sampler * sampler ) {
+	_samplers.push_back(sampler);
+}
 ///// boilerplate
 
 template <typename T>

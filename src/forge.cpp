@@ -349,6 +349,11 @@ HL_PRIM void HL_NAME(RenderTargetDesc_delete)( _ref(RenderTargetDesc)* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, RenderTargetDesc_delete, _IDL);
+static void finalize_RootSignatureDesc( _ref(RootSignatureFactory)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(RootSignatureDesc_delete)( _ref(RootSignatureFactory)* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, RootSignatureDesc_delete, _IDL);
 static void finalize_ForgeSDLWindow( _ref(ForgeSDLWindow)* _this ) { free_ref(_this ); }
 HL_PRIM void HL_NAME(ForgeSDLWindow_delete)( _ref(ForgeSDLWindow)* _this ) {
 	free_ref(_this );
@@ -543,6 +548,21 @@ HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_nodeIndex)( _ref(RenderTargetD
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_nodeIndex,_IDL _I32);
 
+HL_PRIM _ref(RootSignatureFactory)* HL_NAME(RootSignatureDesc_new0)() {
+	return alloc_ref((new RootSignatureFactory()),RootSignatureDesc);
+}
+DEFINE_PRIM(_IDL, RootSignatureDesc_new0,);
+
+HL_PRIM void HL_NAME(RootSignatureDesc_addShader1)(_ref(RootSignatureFactory)* _this, _ref(Shader)* shader) {
+	(_unref(_this)->addShader(_unref_ptr_safe(shader)));
+}
+DEFINE_PRIM(_VOID, RootSignatureDesc_addShader1, _IDL _IDL);
+
+HL_PRIM void HL_NAME(RootSignatureDesc_addSampler1)(_ref(RootSignatureFactory)* _this, _ref(Sampler)* sampler) {
+	(_unref(_this)->addSampler(_unref_ptr_safe(sampler)));
+}
+DEFINE_PRIM(_VOID, RootSignatureDesc_addSampler1, _IDL _IDL);
+
 HL_PRIM HL_CONST _ref(Queue)* HL_NAME(Renderer_createQueue0)(_ref(Renderer)* _this) {
 	return alloc_ref_const((createQueue( _unref(_this) )),Queue);
 }
@@ -614,6 +634,16 @@ addPipeline( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
 	return alloc_ref_const( __tmpret, Pipeline );
 }
 DEFINE_PRIM(_IDL, Renderer_createPipeline2, _IDL _IDL);
+
+HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(Renderer_createRootSigSimple1)(_ref(Renderer)* _this, _ref(Shader)* shader) {
+	return alloc_ref_const((forge_renderer_createRootSignatureSimple( _unref(_this) , _unref_ptr_safe(shader))),RootSignature);
+}
+DEFINE_PRIM(_IDL, Renderer_createRootSigSimple1, _IDL _IDL);
+
+HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(Renderer_createRootSig1)(_ref(Renderer)* _this, _ref(RootSignatureFactory)* desc) {
+	return alloc_ref_const((forge_renderer_createRootSignature( _unref(_this) , _unref_ptr_safe(desc))),RootSignature);
+}
+DEFINE_PRIM(_IDL, Renderer_createRootSig1, _IDL _IDL);
 
 HL_PRIM _ref(ForgeSDLWindow)* HL_NAME(ForgeSDLWindow_new1)(_ref(SDL_Window)* sdlWindow) {
 	return alloc_ref((new ForgeSDLWindow(_unref_ptr_safe(sdlWindow))),ForgeSDLWindow);
