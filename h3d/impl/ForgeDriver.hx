@@ -720,6 +720,61 @@ class ForgeDriver extends h3d.impl.Driver {
 		 */
 	}
 
+	public override function selectBuffer(v:Buffer) {
+		trace('selecting buffer');
+		if( v == _curBuffer )
+			return;
+		if( _curBuffer != null && v.buffer == _curBuffer.buffer && v.buffer.flags.has(RawFormat) == _curBuffer.flags.has(RawFormat) ) {
+			_curBuffer = v;
+			return;
+		}
+
+		if( _curShader == null )
+			throw "No shader selected";
+		_curBuffer = v;
+
+		var m = @:privateAccess v.buffer.vbuf;
+		if( m.stride < _curShader.stride )
+			throw "Buffer stride (" + m.stride + ") and shader stride (" + _curShader.stride + ") mismatch";
+
+		#if multidriver
+		if( m.driver != this )
+			throw "Invalid buffer context";
+		#end
+//		gl.bindBuffer(GL.ARRAY_BUFFER, m.b);
+
+		if( v.flags.has(RawFormat) ) {
+			for( a in _curShader.attribs ) {
+				var pos = a.offset;
+				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
+				//updateDivisor(a);
+			}
+		} else {
+			var offset = 8;
+			for( i in 0..._curShader.attribs.length ) {
+				var a = _curShader.attribs[i];
+				var pos;
+				switch( _curShader.inputs.names[i] ) {
+				case "position":
+					pos = 0;
+				case "normal":
+					if( m.stride < 6 ) throw "Buffer is missing NORMAL data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+					pos = 3;
+				case "uv":
+					if( m.stride < 8 ) throw "Buffer is missing UV data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+					pos = 6;
+				case s:
+					pos = offset;
+					offset += a.size;
+					if( offset > m.stride ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+				}
+				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
+				//updateDivisor(a);
+			}
+		}
+	}
+
+	
 	/*
 		function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
 			switch( which ) {
@@ -1038,9 +1093,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		return "Not available";
 	}
 
-	public override function selectBuffer(buffer:Buffer) {
-		throw "Not implemented";
-	}
+	
 
 	public override function drawInstanced(ibuf:IndexBuffer, commands:h3d.impl.InstanceBuffer) {
 		throw "Not implemented";
