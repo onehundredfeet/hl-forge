@@ -599,6 +599,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		var fgShader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
 		p.forgeShader = fgShader;
 
+
 		var rootDesc = new forge.Native.RootSignatureDesc();
 		rootDesc.addShader(fgShader);
 		var rootSig = _renderer.createRootSig(rootDesc);
@@ -674,8 +675,24 @@ class ForgeDriver extends h3d.impl.Driver {
 	public override function uploadShaderBuffers(buf:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
 		if (_curShader == null)
 			throw "No current shader to upload buffers to";
-		uploadBuffer(buf, _curShader.vertex, buf.vertex, which);
-		uploadBuffer(buf, _curShader.fragment, buf.fragment, which);
+
+		switch (which) {
+			case Globals: 
+				if( buf.vertex.globals != null ) {
+//					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
+				}
+				if( buf.fragment.globals != null ) {
+//					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
+				}
+				throw "Not implemented";
+			case Params:  trace ('Upload Params'); throw "Not implemented";
+			case Buffers:  trace ('Upload Buffers'); throw "Not implemented";
+			case Textures:  trace ('Upload Textures'); throw "Not implemented";
+		}
+
+//		uploadBuffer(buf, _curShader.vertex, buf.vertex, which);
+//		uploadBuffer(buf, _curShader.fragment, buf.fragment, which);
+		
 	}
 
 	function uploadBuffer(buffer:h3d.shader.Buffers, s:CompiledShader, buf:h3d.shader.Buffers.ShaderBuffers, which:h3d.shader.Buffers.BufferKind) {
@@ -685,6 +702,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			case Buffers:
 			case Textures:
 		}
+		throw "Not implemented";
 	}
 
 	public override function selectMaterial(pass:h3d.mat.Pass) {
@@ -692,6 +710,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		// stencil
 		// mode
 		// blending
+		throw "Not implemented";
+
 	}
 
 	var _curBuffer:h3d.Buffer;
@@ -704,6 +724,8 @@ class ForgeDriver extends h3d.impl.Driver {
 			buffers = buffers.next;
 		}
 		_curBuffer = null;
+		throw "Not implemented";
+
 	}
 
 	var _curIndexBuffer:IndexBuffer;
@@ -720,6 +742,8 @@ class ForgeDriver extends h3d.impl.Driver {
 			else
 				gl.drawElements(drawMode, ntriangles * 3, GL.UNSIGNED_SHORT, startIndex * 2);
 		 */
+		 throw "Not implemented";
+
 	}
 
 	public override function selectBuffer(v:Buffer) {
@@ -774,29 +798,30 @@ class ForgeDriver extends h3d.impl.Driver {
 				//updateDivisor(a);
 			}
 		}
+		throw "Not implemented";
+
 	}
 
+	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
+		_currentCmd.clear(_currentRT, null);
+	}
+	public override function end() {
+		_currentCmd.unbindRenderTarget();
+		_currentCmd.end();
+		_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
+	}
+	
 	
 	/*
 		function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
 			switch( which ) {
 			case Globals:
 				if( s.globals != null ) {
-					#if hl
 					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
-					#else
-					var a = buf.globals.subarray(0, s.shader.globalsSize * 4);
-					gl.uniform4fv(s.globals, a);
-					#end
 				}
 			case Params:
 				if( s.params != null ) {
-					#if hl
 					gl.uniform4fv(s.params, streamData(hl.Bytes.getArray(buf.params.toData()), 0, s.shader.paramsSize * 16), 0, s.shader.paramsSize * 4);
-					#else
-					var a = buf.params.subarray(0, s.shader.paramsSize * 4);
-					gl.uniform4fv(s.params, a);
-					#end
 				}
 			case Buffers:
 				if( s.buffers != null ) {
@@ -1077,10 +1102,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		throw "Not implemented";
 	}
 
-	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
-		_currentCmd.clear(_currentRT, null);
-	}
-
+	
 	public override function captureRenderBuffer(pixels:hxd.Pixels) {
 		throw "Not implemented";
 	}
@@ -1117,11 +1139,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		throw "Not implemented";
 	}
 
-	public override function end() {
-		_currentCmd.unbindRenderTarget();
-		_currentCmd.end();
-		_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
-	}
+
 
 	var _debug = false;
 

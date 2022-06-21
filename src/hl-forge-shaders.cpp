@@ -84,11 +84,17 @@ std::string getMSLFromSPV( const std::vector<uint32_t> &spirv_binary ) {
 	spirv_cross::CompilerGLSL::Options common_options;
 //    common_options.force_temporary = true;
     common_options.vulkan_semantics = true;
+//    common_options.emit_uniform_buffer_as_plain_uniforms = false;
+  //  common_options.emit_push_constant_as_uniform_buffer = true;
 	mslCompiler.set_common_options(common_options);
 
     // Set some options.
 	spirv_cross::CompilerMSL::Options mtl_options;
-//    mtl_options.argument_buffers = true;
+
+   // mtl_options.argument_buffers = true;
+   // mtl_options.pad_argument_buffer_resources = true;
+  //  mtl_options.force_active_argument_buffer_resources = true;
+//    mtl_options.shader_input_buffer_index
  //   mtl_options.force_native_arrays = true;
     mtl_options.set_msl_version(2,4);
 	mslCompiler.set_msl_options(mtl_options);

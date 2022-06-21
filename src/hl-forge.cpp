@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <sstream>
 #include "hl-forge-shaders.h"
 
 #include <Renderer/IRenderer.h>
@@ -458,6 +459,62 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     shaderDesc.mStages[1] = {fragFN.c_str(), NULL, 0, "main0"};
     Shader *tmp = nullptr;
     addShader(pRenderer, &shaderDesc, &tmp);
+
+	if (tmp->pReflection) {
+		std::stringstream ss;
+
+		ss << "vertex stage index: " << tmp->pReflection->mVertexStageIndex << std::endl;
+		ss << "frag stage index: " << tmp->pReflection->mPixelStageIndex << std::endl;
+		ss << "resource count: " << tmp->pReflection->mShaderResourceCount << std::endl; 
+		for (auto i = 0; i < tmp->pReflection->mShaderResourceCount;++i) {
+			auto &r = tmp->pReflection->pShaderResources[i];
+			ss << "\t" << i << " name:" << r.name << std::endl;
+			ss << "\t" << i << " reg:" << r.reg << std::endl;
+			ss << "\t" << i << " argument buffer field:" << r.mIsArgumentBufferField << std::endl;
+			ss << "\t" << i << " used stages:" << r.used_stages << std::endl;
+			ss << "\t" << i << " set:" << r.set << std::endl;
+			ss << "\t" << i << " size:" << r.size << std::endl;
+			ss << "\t" << i << " dim:" << r.dim << std::endl;
+			ss << "\t" << i << " alignment:" << r.alignment << std::endl;
+			ss << "\t" << i << " argument descriptor index:" << r.mtlArgumentDescriptors.mArgumentIndex << std::endl;
+			ss << "\t" << i << " argument array length:" << r.mtlArgumentDescriptors.mArrayLength << std::endl;
+			ss << "\t" << i << " argument buffer index:" << r.mtlArgumentDescriptors.mBufferIndex << std::endl;
+			
+			ss << "\t" << i << " type:";
+
+			switch(r.type) {
+				case DESCRIPTOR_TYPE_UNIFORM_BUFFER: ss << "Uniform buffer"; break;
+				case DESCRIPTOR_TYPE_SAMPLER:ss << "Sampler"; break;
+				case DESCRIPTOR_TYPE_TEXTURE:ss << "Texture"; break;
+				case DESCRIPTOR_TYPE_RW_TEXTURE:ss << "Rw Texture"; break;
+				case DESCRIPTOR_TYPE_BUFFER: ss << "Buffer"; break;
+				case DESCRIPTOR_TYPE_BUFFER_RAW: ss << "Buffer Raw"; break;
+				case DESCRIPTOR_TYPE_RW_BUFFER:ss << "RW Buffer"; break;
+				case DESCRIPTOR_TYPE_RW_BUFFER_RAW:ss << "RW Buffer Raw"; break;
+				case DESCRIPTOR_TYPE_ROOT_CONSTANT:ss << "Root constant"; break;
+				case DESCRIPTOR_TYPE_ARGUMENT_BUFFER:ss << "Argument buffer"; break;
+				case DESCRIPTOR_TYPE_INDIRECT_COMMAND_BUFFER:ss << "Indirect command buffer"; break;
+				case DESCRIPTOR_TYPE_RENDER_PIPELINE_STATE:ss << "Render pipeline buffer"; break;
+				default: ss << "Unknown: " << r.type; break;
+			}
+
+			ss << std::endl;
+			
+		}		
+		ss << "stage reflection count: " << tmp->pReflection->mStageReflectionCount << std::endl;
+		ss << "var count: " << tmp->pReflection->mVariableCount << std::endl;
+
+		for (auto i = 0; i < tmp->pReflection->mVariableCount;++i) {
+			auto &v = tmp->pReflection->pVariables[i];
+			ss << "\t" << i << " var name:" << v.name << std::endl;
+			ss << "\t" << i << " offset:" << v.offset << std::endl;
+			ss << "\t" << i << " parent:" << v.parent_index << std::endl;
+		}		
+		std::string str = ss.str();
+		writeShaderSource(vertFilePath + ".reflect", str);
+	} else {
+		printf("-->No reflection\n");
+	}
     return tmp;
 }
 

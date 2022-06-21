@@ -93,13 +93,14 @@ class GLSLTranscoder {
     
     inline function identLookup( v : TVar ) {
         var n = switch(v.kind) {
-            case  VarKind.Global: "_globals." + varName(v);
+            case  VarKind.Global:(isVertex ? "_vertGlobals." : "_fragGlobals." ) + varName(v);
             case  VarKind.Param: 
                 switch(v.type) {
                     case TSampler2D: varName(v);
                     case TArray(t, size):
-                        (t == TSampler2D) ? varName(v) : "_params." + varName(v);
-                    default:"_params." + varName(v);
+                        (t == TSampler2D) ? varName(v) :(isVertex ? "_vertParams." : "_fragParams." ) + varName(v);
+                    default:
+                        (isVertex ? "_vertParams." : "_fragParams." ) + varName(v);
                 }
             default: varName(v);
         }
@@ -691,13 +692,16 @@ class GLSLTranscoder {
         var globals = s.vars.filter( (x) -> x.kind == Global);
 
         if (globals.length > 0) {
-            add("uniform Globals {\n");
+            add("uniform ");
+            if (isVertex) add("VertGlobals\n"); else add("FragGlobals\n");
+            add("{\n");
             // uniforms first
             for( v in globals ) {
                 add("\t");
                 initVar(v);
             }
-            add("} _globals;\n");
+            add("}");
+            if (isVertex) add("_vertGlobals;\n"); else add("_fragGlobals;\n");
         }
  
         var params = s.vars.filter( (x) -> x.kind == Param);
@@ -709,12 +713,16 @@ class GLSLTranscoder {
 
 
         if (buffer_params.length > 0) {
-            add("uniform Parameters {\n");
+            add("uniform ");
+            if (isVertex) add("VertParams\n"); else add("FragParams\n");
+            add("{\n");
+
             for( v in buffer_params ) {
                 add("\t");
                 initVar(v);
             }
-            add("} _params;\n");
+            add("}");
+            if (isVertex) add("_vertParams;\n"); else add("_fragParams;\n");
         }
 
         var sampler_params = params.filter( (x) ->  switch(x.type) {

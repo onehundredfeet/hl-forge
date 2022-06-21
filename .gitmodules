@@ -7,3 +7,6 @@
 [submodule "shadercache/ext/glslang"]
 	path = shadercache/ext/glslang
 	url = https://github.com/KhronosGroup/glslang.git
+[submodule "ext/glslang"]
+	path = ext/glslang
+	url = https://github.com/KhronosGroup/glslang.git
