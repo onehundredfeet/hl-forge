@@ -328,6 +328,8 @@ interface Cmd {
 	[CObject, Internal="forge_cmd_unbind"] void unbindRenderTarget();
 	[CObject,  Internal="beginCmd"] void begin();
 	[CObject,  Internal="endCmd"] void end();
+	[CObject,  Internal="cmdBindPushConstants"] void pushConstants(RootSignature rs, int index, bytes data);
+
 };
 
 [NoDelete]
@@ -431,7 +433,7 @@ interface Shader {
 
 [NoDelete]
 interface RootSignature {
-
+	[CObject] int getDescriptorIndexFromName( String name );
 };
 
 [NoDelete]

@@ -93,14 +93,14 @@ class GLSLTranscoder {
     
     inline function identLookup( v : TVar ) {
         var n = switch(v.kind) {
-            case  VarKind.Global:(isVertex ? "_vertGlobals." : "_fragGlobals." ) + varName(v);
+            case  VarKind.Global:(isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
             case  VarKind.Param: 
                 switch(v.type) {
                     case TSampler2D: varName(v);
                     case TArray(t, size):
-                        (t == TSampler2D) ? varName(v) :(isVertex ? "_vertParams." : "_fragParams." ) + varName(v);
+                        (t == TSampler2D) ? varName(v) :(isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
                     default:
-                        (isVertex ? "_vertParams." : "_fragParams." ) + varName(v);
+                        (isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
                 }
             default: varName(v);
         }
@@ -690,40 +690,33 @@ class GLSLTranscoder {
 		outIndexes = new Map();
 
         var globals = s.vars.filter( (x) -> x.kind == Global);
+		var params = s.vars.filter( (x) -> x.kind == Param);
+		var buffer_params = params.filter( (x) ->  switch(x.type) {
+			case TSampler2D: false;
+			case TArray(t, size): t != TSampler2D;
+			default:true;
+		});
 
-        if (globals.length > 0) {
-            add("uniform ");
-            if (isVertex) add("VertGlobals\n"); else add("FragGlobals\n");
-            add("{\n");
-            // uniforms first
-            for( v in globals ) {
-                add("\t");
-                initVar(v);
-            }
-            add("}");
-            if (isVertex) add("_vertGlobals;\n"); else add("_fragGlobals;\n");
-        }
- 
-        var params = s.vars.filter( (x) -> x.kind == Param);
-        var buffer_params = params.filter( (x) ->  switch(x.type) {
-            case TSampler2D: false;
-            case TArray(t, size): t != TSampler2D;
-            default:true;
-        });
+		if (globals.length > 0 || buffer_params.length > 0) {
+			add('layout( push_constant ) uniform ${isVertex ? "Vert" : "Frag"}Constants {\n');
+			if (globals.length > 0) {
+				// uniforms first
+				for( v in globals ) {
+					add("\t");
+					initVar(v);
+				}
+			}
+			
+			if (buffer_params.length > 0) {	
+				for( v in buffer_params ) {
+					add("\t");
+					initVar(v);
+				}
+			}
 
+			add('} _${isVertex ? "vert" : "frag"}rootconstants;');
+		}
 
-        if (buffer_params.length > 0) {
-            add("uniform ");
-            if (isVertex) add("VertParams\n"); else add("FragParams\n");
-            add("{\n");
-
-            for( v in buffer_params ) {
-                add("\t");
-                initVar(v);
-            }
-            add("}");
-            if (isVertex) add("_vertParams;\n"); else add("_fragParams;\n");
-        }
 
         var sampler_params = params.filter( (x) ->  switch(x.type) {
             case TSampler2D: true;

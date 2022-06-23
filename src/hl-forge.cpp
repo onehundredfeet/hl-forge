@@ -530,6 +530,7 @@ RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSigna
     return desc->create(pRenderer );
 }
 
+///////
 RootSignatureFactory::RootSignatureFactory() {
 	
 }

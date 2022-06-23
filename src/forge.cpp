@@ -411,6 +411,11 @@ HL_PRIM void HL_NAME(Cmd_end0)(_ref(Cmd)* _this) {
 }
 DEFINE_PRIM(_VOID, Cmd_end0, _IDL);
 
+HL_PRIM void HL_NAME(Cmd_pushConstants3)(_ref(Cmd)* _this, _ref(RootSignature)* rs, int index, vbyte* data) {
+	(cmdBindPushConstants( _unref(_this) , _unref_ptr_safe(rs), index, data));
+}
+DEFINE_PRIM(_VOID, Cmd_pushConstants3, _IDL _IDL _I32 _BYTES);
+
 HL_PRIM void HL_NAME(Queue_waitIdle0)(_ref(Queue)* _this) {
 	(waitQueueIdle( _unref(_this) ));
 }
@@ -552,6 +557,13 @@ HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_nodeIndex)( _ref(RenderTargetD
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_nodeIndex,_IDL _I32);
+
+HL_PRIM int HL_NAME(RootSignature_getDescriptorIndexFromName1)(_ref(RootSignature)* _this, vstring * name) {
+	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
+	auto ___retvalue = (getDescriptorIndexFromName( _unref(_this) , name__cstr));
+	return ___retvalue;
+}
+DEFINE_PRIM(_I32, RootSignature_getDescriptorIndexFromName1, _IDL _STRING);
 
 HL_PRIM _ref(RootSignatureFactory)* HL_NAME(RootSignatureDesc_new0)() {
 	return alloc_ref((new RootSignatureFactory()),RootSignatureDesc);

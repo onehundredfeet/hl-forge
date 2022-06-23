@@ -4,16 +4,16 @@ import hxsl.GlslOut;
 import sys.FileSystem;
 import h3d.impl.Driver;
 
-private typedef Uniform = forge.Forge.Uniform;
+private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
 private typedef ForgeShader = forge.Native.Shader;
 
 private class CompiledShader {
 	public var s:ForgeShader;
 	public var vertex:Bool;
-	public var globals:Uniform;
-	public var params:Uniform;
-	public var textures:Array<{u:Uniform, t:hxsl.Ast.Type, mode:Int}>;
+	public var globalsIndex:DescriptorIndex;
+	public var params:DescriptorIndex;
+	public var textures:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
 	public var buffers:Array<Int>;
 	public var shader:hxsl.RuntimeShader.RuntimeShaderData;
 
@@ -65,6 +65,8 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _swap_count = 3;
 	var _hdr = false;
 	var _maxCompressedTexturesSupport = 3; // arbitrary atm
+	var _currentFrame = 0;
+	var _boundTextures : Array<Texture> = [];
 
 	public function new() {
 		//		window = @:privateAccess dx.Window.windows[0];
@@ -550,13 +552,6 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	var _shaders:Map<Int, CompiledProgram>;
 
-	function makeCompiler() {
-		//		var glout = new ShaderCompiler();
-		//		glout.glES = glES;
-		//		glout.version = shaderVersion;
-		return null;
-	}
-
 	var _curShader:CompiledProgram;
 
 	function getGLSL(transcoder:forge.GLSLTranscoder, shader:hxsl.RuntimeShader.RuntimeShaderData) {
@@ -578,6 +573,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var p = new CompiledProgram();
 
+
 		var vert_glsl = getGLSL(transcoder, shader.vertex);
 		var frag_glsl = getGLSL(transcoder, shader.fragment);
 
@@ -598,6 +594,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		sys.io.File.saveContent(fragpath + ".glsl", frag_glsl);
 		var fgShader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
 		p.forgeShader = fgShader;
+		p.vertex = new CompiledShader(fgShader, true, shader.vertex);
+		p.fragment = new CompiledShader(fgShader, false, shader.fragment);
 
 
 		var rootDesc = new forge.Native.RootSignatureDesc();
@@ -605,7 +603,13 @@ class ForgeDriver extends h3d.impl.Driver {
 		var rootSig = _renderer.createRootSig(rootDesc);
 		p.rootSig = rootSig;
 
+
 		// get inputs
+		p.vertex.params = rootSig.getDescriptorIndexFromName( "_vertrootconstants");
+		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName( "_vertrootconstants");
+		p.fragment.params = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
+		p.fragment.globalsIndex = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
+		trace('Indices vg ${p.vertex.globalsIndex} vp ${p.vertex.params} fg ${p.fragment.globalsIndex} fp ${p.fragment.params}');
 
 		var attribNames = [];
 		p.attribs = [];
@@ -671,39 +675,156 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		return true;
 	}
+	
+	function setCurrentShader( shader : CompiledProgram ) {
+		_curShader = shader;
+	}
 
+	function configureTextures( s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers) {
+		if (s == null) return;
+		if (buf == null) return;
+		if (s.textures == null) {
+			trace("WARNING: No texture array on compiled shader, may be a missing feature, also could just have no textures");
+			return;
+		}
+		for (i in 0...s.textures.length) {
+			var t = buf.tex[i];
+			var pt = s.textures[i];
+			if( t == null || t.isDisposed() ) {
+				switch( pt.t ) {
+				case TSampler2D:
+					var color = h3d.mat.Defaults.loadingTextureColor;
+					t = h3d.mat.Texture.fromColor(color, (color >>> 24) / 255);
+				case TSamplerCube:
+					t = h3d.mat.Texture.defaultCubeTexture();
+				default:
+					throw "Missing texture";
+				}
+			}
+			if( t != null && t.t == null && t.realloc != null ) {
+				var ts = _curShader;
+				t.alloc();
+				t.realloc();	// why re-alloc after allocing?
+				if( _curShader != ts ) {
+					// realloc triggered a shader change !
+					// we need to reset the original shader and reupload everything
+					throw("Shader reallocation!!! Seems like bad architecture.");
+
+					return;
+				}
+			}
+			t.lastFrame = _currentFrame;
+
+			if( pt.u == null ) continue;
+
+			var idx = s.vertex ? i : _curShader.vertex.textures.length + i;
+
+			if( _boundTextures[idx] != t.t ) {
+				_boundTextures[idx] = t.t;
+
+				#if multidriver
+				if( t.t.driver != this )
+					throw "Invalid texture context";
+				#end
+				throw "Not implemented";
+
+				/*
+				var mode = getBindType(t);
+				if( mode != pt.mode )
+					throw "Texture format mismatch: "+t+" should be "+pt.t;
+				gl.activeTexture(GL.TEXTURE0 + idx);
+				gl.uniform1i(pt.u, idx);
+				gl.bindTexture(mode, t.t.t);
+				lastActiveIndex = idx;
+				*/
+			}
+			var mip = Type.enumIndex(t.mipMap);
+			var filter = Type.enumIndex(t.filter);
+			var wrap = Type.enumIndex(t.wrap);
+			var bits = mip | (filter << 3) | (wrap << 6);
+			if( bits != t.t.bits ) {
+				t.t.bits = bits;
+				throw "Not implemented";
+				/*
+				var flags = TFILTERS[mip][filter];
+				var mode = pt.mode;
+				gl.texParameteri(mode, GL.TEXTURE_MAG_FILTER, flags[0]);
+				gl.texParameteri(mode, GL.TEXTURE_MIN_FILTER, flags[1]);
+				var w = TWRAP[wrap];
+				gl.texParameteri(mode, GL.TEXTURE_WRAP_S, w);
+				gl.texParameteri(mode, GL.TEXTURE_WRAP_T, w);
+				*/
+			}
+		}
+	}
+	var _tmpConstantBuffer = new Array<Float>();
 	public override function uploadShaderBuffers(buf:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
 		if (_curShader == null)
 			throw "No current shader to upload buffers to";
 
 		switch (which) {
-			case Globals: 
-				if( buf.vertex.globals != null ) {
-//					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
+			case Globals: trace ('Ignoring globals'); // do nothing as it was all done by the globals
+			case Params:  trace ('Upload Globals & Params'); 
+			if( buf.vertex.globals != null || buf.vertex.params != null) {
+				var max = (buf.vertex.globals != null ? buf.vertex.globals.length : 0) + (buf.vertex.params != null ? buf.vertex.params.length : 0);
+				if (_tmpConstantBuffer.length < max) _tmpConstantBuffer.resize(max);
+				var total = 0;
+				var tmpBuff = hl.Bytes.getArray(_tmpConstantBuffer);
+
+				if (buf.vertex.globals != null && buf.vertex.globals.length > 0) {
+					var l = buf.vertex.globals.length * 4;
+					tmpBuff.blit(total, hl.Bytes.getArray(buf.vertex.globals.toData()), 0, buf.vertex.globals.length * 4);
+					total += buf.vertex.globals.length * 4;
 				}
-				if( buf.fragment.globals != null ) {
-//					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
+
+				if(buf.vertex.params != null && buf.vertex.params.length > 0) {
+					tmpBuff.blit(total, hl.Bytes.getArray(buf.vertex.params.toData()), 0, buf.vertex.params.length * 4);
+					total +=  buf.vertex.params.length;
 				}
-				throw "Not implemented";
-			case Params:  trace ('Upload Params'); throw "Not implemented";
-			case Buffers:  trace ('Upload Buffers'); throw "Not implemented";
-			case Textures:  trace ('Upload Textures'); throw "Not implemented";
+				trace ('Total is ${total}');
+				if (total > 0) {					
+					_currentCmd.pushConstants( _curShader.rootSig, _curShader.vertex.globalsIndex, tmpBuff  );
+				}
+				// Update buffer
+//					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
+			}
+			if( buf.fragment.globals != null || buf.fragment.params != null ) {
+				//compute total in floats
+				var total = (buf.fragment.globals != null ? buf.fragment.globals.length : 0) + (buf.fragment.params != null ? buf.fragment.params.length : 0);
+				if (_tmpConstantBuffer.length < total) _tmpConstantBuffer.resize(total);
+				trace ('Total is ${total}');
+				// Update buffer
+				_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.globalsIndex, hl.Bytes.getArray(_tmpConstantBuffer) );
+
+//					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
+			}
+			case Textures:  
+				trace ('Upload Textures');
+				configureTextures(_curShader.vertex, buf.vertex);
+				configureTextures(_curShader.fragment, buf.fragment);
+
+			case Buffers:  trace ('Upload Buffers'); 
+
+			if( _curShader.vertex.buffers != null ) {
+				trace('Vertex buffers length ${ _curShader.vertex.buffers}');
+			}
+			if (_curShader.fragment.buffers != null) {
+				trace('Fragment buffers length ${ _curShader.fragment.buffers}');
+			}
+			/*
+				var start = 0;
+				if( !s.vertex && curShader.vertex.buffers != null )
+					start = curShader.vertex.buffers.length;
+				for( i in 0...s.buffers.length )
+					gl.bindBufferBase(GL.UNIFORM_BUFFER, i + start, @:privateAccess buf.buffers[i].buffer.vbuf.b);
+			}
+			*/
+
 		}
 
-//		uploadBuffer(buf, _curShader.vertex, buf.vertex, which);
-//		uploadBuffer(buf, _curShader.fragment, buf.fragment, which);
-		
+
 	}
 
-	function uploadBuffer(buffer:h3d.shader.Buffers, s:CompiledShader, buf:h3d.shader.Buffers.ShaderBuffers, which:h3d.shader.Buffers.BufferKind) {
-		switch (which) {
-			case Globals:
-			case Params:
-			case Buffers:
-			case Textures:
-		}
-		throw "Not implemented";
-	}
 
 	public override function selectMaterial(pass:h3d.mat.Pass) {
 		// culling
@@ -824,87 +945,8 @@ class ForgeDriver extends h3d.impl.Driver {
 					gl.uniform4fv(s.params, streamData(hl.Bytes.getArray(buf.params.toData()), 0, s.shader.paramsSize * 16), 0, s.shader.paramsSize * 4);
 				}
 			case Buffers:
-				if( s.buffers != null ) {
-					var start = 0;
-					if( !s.vertex && curShader.vertex.buffers != null )
-						start = curShader.vertex.buffers.length;
-					for( i in 0...s.buffers.length )
-						gl.bindBufferBase(GL.UNIFORM_BUFFER, i + start, @:privateAccess buf.buffers[i].buffer.vbuf.b);
-				}
-			case Textures:
-				var tcount = s.textures.length;
-				for( i in 0...s.textures.length ) {
-					var t = buf.tex[i];
-					var pt = s.textures[i];
-					if( t == null || t.isDisposed() ) {
-						switch( pt.t ) {
-						case TSampler2D:
-							var color = h3d.mat.Defaults.loadingTextureColor;
-							t = h3d.mat.Texture.fromColor(color, (color >>> 24) / 255);
-						case TSamplerCube:
-							t = h3d.mat.Texture.defaultCubeTexture();
-						default:
-							throw "Missing texture";
-						}
-					}
-					if( t != null && t.t == null && t.realloc != null ) {
-						var s = curShader;
-						t.alloc();
-						t.realloc();
-						if( curShader != s ) {
-							// realloc triggered a shader change !
-							// we need to reset the original shader and reupload everything
-							setProgram(s);
-							uploadShaderBuffers(buffer,Globals);
-							uploadShaderBuffers(buffer,Params);
-							uploadShaderBuffers(buffer,Textures);
-							return;
-						}
-					}
-					t.lastFrame = frame;
-
-					if( pt.u == null ) continue;
-
-					var idx = s.vertex ? i : curShader.vertex.textures.length + i;
-					if( boundTextures[idx] != t.t ) {
-						boundTextures[idx] = t.t;
-
-						#if multidriver
-						if( t.t.driver != this )
-							throw "Invalid texture context";
-						#end
-
-						var mode = getBindType(t);
-						if( mode != pt.mode )
-							throw "Texture format mismatch: "+t+" should be "+pt.t;
-						gl.activeTexture(GL.TEXTURE0 + idx);
-						gl.uniform1i(pt.u, idx);
-						gl.bindTexture(mode, t.t.t);
-						lastActiveIndex = idx;
-					}
-
-					var mip = Type.enumIndex(t.mipMap);
-					var filter = Type.enumIndex(t.filter);
-					var wrap = Type.enumIndex(t.wrap);
-					var bits = mip | (filter << 3) | (wrap << 6);
-					if( bits != t.t.bits ) {
-						t.t.bits = bits;
-						var flags = TFILTERS[mip][filter];
-						var mode = pt.mode;
-						gl.texParameteri(mode, GL.TEXTURE_MAG_FILTER, flags[0]);
-						gl.texParameteri(mode, GL.TEXTURE_MIN_FILTER, flags[1]);
-						var w = TWRAP[wrap];
-						gl.texParameteri(mode, GL.TEXTURE_WRAP_S, w);
-						gl.texParameteri(mode, GL.TEXTURE_WRAP_T, w);
-					}
-					#if !js
-					if( t.lodBias != t.t.bias ) {
-						t.t.bias = t.lodBias;
-						gl.texParameterf(pt.mode, GL.TEXTURE_LOD_BIAS, t.lodBias);
-					}
-					#end
-				}
-			}
+				
+			
 		}
 
 	 */

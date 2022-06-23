@@ -55,6 +55,7 @@ Buffer*forge_sdl_buffer_load( BufferLoadDesc *bld, SyncToken *token);
 Texture*forge_texture_load(TextureLoadDesc *desc, SyncToken *token);
 Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, SyncToken *token );
 void forge_sdl_texture_upload(Texture *, void *data, int dataSize);
+void forge_cmd_push_constant(Cmd *cmd, RootSignature *rs, int index, void *data);
 
 void forge_texture_set_file_name(TextureLoadDesc *desc, const char *path);
 void forge_render_target_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
