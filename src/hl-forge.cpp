@@ -138,6 +138,22 @@ bool hlForgeInitialize(const char *name) {
     return true;
 }
 
+void forge_blend_state_desc_set_rt( BlendStateDesc *bs, BlendStateTargets rt, bool enabled) {
+    if (enabled) {
+        bs->mRenderTargetMask = (BlendStateTargets)(bs->mRenderTargetMask | rt);
+    } else {
+        bs->mRenderTargetMask = (BlendStateTargets)(bs->mRenderTargetMask & ~rt);
+    }
+}
+
+VertexAttrib *forge_vertex_layout_get_attrib( VertexLayout *layout, int idx) {
+    return &layout->mAttribs[idx];
+}
+
+void forge_vertex_attrib_set_semantic( VertexAttrib *attrib, const char *name ) {
+    strncpy(&attrib->mSemanticName[0], name, MAX_SEMANTIC_NAME_LENGTH);
+}
+
 void forge_init_loader(Renderer *renderer) {
     ResourceLoaderDesc desc = {8ull << 20, 2, true};
     initResourceLoaderInterface(renderer, &desc);

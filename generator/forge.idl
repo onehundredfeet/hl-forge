@@ -312,6 +312,283 @@ enum TextureCreationFlags
     "TEXTURE_CREATION_FLAG_VR_FOVEATED_RENDERING"
 } ;
 
+
+// Blend states are always attached to one of the eight or more render targets that
+// are in a MRT
+// Mask constants
+enum BlendStateTargets
+{
+	"BLEND_STATE_TARGET_0",
+	"BLEND_STATE_TARGET_1",
+	"BLEND_STATE_TARGET_2",
+	"BLEND_STATE_TARGET_3",
+	"BLEND_STATE_TARGET_4",
+	"BLEND_STATE_TARGET_5",
+	"BLEND_STATE_TARGET_6",
+	"BLEND_STATE_TARGET_7",
+	"BLEND_STATE_TARGET_ALL"
+};
+
+enum CullMode
+{
+	"CULL_MODE_NONE",
+	"CULL_MODE_BACK",
+	"CULL_MODE_FRONT",
+	"CULL_MODE_BOTH",
+	"MAX_CULL_MODES"
+} ;
+
+enum FrontFace
+{
+	"FRONT_FACE_CCW",
+	"FRONT_FACE_CW"
+} ;
+
+enum FillMode
+{
+	"FILL_MODE_SOLID",
+	"FILL_MODE_WIREFRAME",
+	"MAX_FILL_MODES"
+} ;
+
+enum PipelineType
+{
+	"PIPELINE_TYPE_UNDEFINED",
+	"PIPELINE_TYPE_COMPUTE",
+	"PIPELINE_TYPE_GRAPHICS",
+	"PIPELINE_TYPE_RAYTRACING",
+	"PIPELINE_TYPE_COUNT"
+} ;
+
+enum FilterType
+{
+	"FILTER_NEAREST",
+	"FILTER_LINEAR"
+} ;
+
+enum AddressMode
+{
+	"ADDRESS_MODE_MIRROR",
+	"ADDRESS_MODE_REPEAT",
+	"ADDRESS_MODE_CLAMP_TO_EDGE",
+	"ADDRESS_MODE_CLAMP_TO_BORDER"
+};
+
+enum MipMapMode
+{
+	"MIPMAP_MODE_NEAREST",
+	"MIPMAP_MODE_LINEAR"
+} ;
+
+
+enum PrimitiveTopology
+{
+	"PRIMITIVE_TOPO_POINT_LIST",
+	"PRIMITIVE_TOPO_LINE_LIST",
+	"PRIMITIVE_TOPO_LINE_STRIP",
+	"PRIMITIVE_TOPO_TRI_LIST",
+	"PRIMITIVE_TOPO_TRI_STRIP",
+	"PRIMITIVE_TOPO_PATCH_LIST",
+	"PRIMITIVE_TOPO_COUNT"
+};
+
+enum IndexType
+{
+	"INDEX_TYPE_UINT32",
+	"INDEX_TYPE_UINT16"
+};
+
+enum ShaderSemantic
+{
+	"SEMANTIC_UNDEFINED",
+	"SEMANTIC_POSITION",
+	"SEMANTIC_NORMAL",
+	"SEMANTIC_COLOR",
+	"SEMANTIC_TANGENT",
+	"SEMANTIC_BITANGENT",
+	"SEMANTIC_JOINTS",
+	"SEMANTIC_WEIGHTS",
+	"SEMANTIC_SHADING_RATE",
+	"SEMANTIC_TEXCOORD0",
+	"SEMANTIC_TEXCOORD1",
+	"SEMANTIC_TEXCOORD2",
+	"SEMANTIC_TEXCOORD3",
+	"SEMANTIC_TEXCOORD4",
+	"SEMANTIC_TEXCOORD5",
+	"SEMANTIC_TEXCOORD6",
+	"SEMANTIC_TEXCOORD7",
+	"SEMANTIC_TEXCOORD8",
+	"SEMANTIC_TEXCOORD9"
+};
+
+enum BlendConstant
+{
+	"BC_ZERO",
+	"BC_ONE",
+	"BC_SRC_COLOR",
+	"BC_ONE_MINUS_SRC_COLOR",
+	"BC_DST_COLOR",
+	"BC_ONE_MINUS_DST_COLOR",
+	"BC_SRC_ALPHA",
+	"BC_ONE_MINUS_SRC_ALPHA",
+	"BC_DST_ALPHA",
+	"BC_ONE_MINUS_DST_ALPHA",
+	"BC_SRC_ALPHA_SATURATE",
+	"BC_BLEND_FACTOR",
+	"BC_ONE_MINUS_BLEND_FACTOR",
+	"MAX_BLEND_CONSTANTS"
+};
+
+enum BlendMode
+{
+	"BM_ADD",
+	"BM_SUBTRACT",
+	"BM_REVERSE_SUBTRACT",
+	"BM_MIN",
+	"BM_MAX",
+	"MAX_BLEND_MODES"
+};
+
+ enum CompareMode
+{
+	"CMP_NEVER",
+	"CMP_LESS",
+	"CMP_EQUAL",
+	"CMP_LEQUAL",
+	"CMP_GREATER",
+	"CMP_NOTEQUAL",
+	"CMP_GEQUAL",
+	"CMP_ALWAYS",
+	"MAX_COMPARE_MODES"
+} ;
+
+ enum StencilOp
+{
+	"STENCIL_OP_KEEP",
+	"STENCIL_OP_SET_ZERO",
+	"STENCIL_OP_REPLACE",
+	"STENCIL_OP_INVERT",
+	"STENCIL_OP_INCR",
+	"STENCIL_OP_DECR",
+	"STENCIL_OP_INCR_SAT",
+	"STENCIL_OP_DECR_SAT",
+	"MAX_STENCIL_OPS"
+} ;
+
+[NoDelete]
+interface ColorsMask {
+	const int RED = 0x01;
+};
+//static const int RED = 0x1;
+//static const int GREEN = 0x2;
+//static const int BLUE = 0x4;
+//static const int ALPHA = 0x8;
+//static const int ALL = (RED | GREEN | BLUE | ALPHA);
+//static const int NONE = 0;
+
+//static const int BS_NONE = -1;
+//static const int DS_NONE = -1;
+//static const int RS_NONE = -1;
+
+
+[NoDelete]
+interface BlendStateDesc {
+	/// Source blend factor per render target.
+	[Internal="mSrcFactors"] attribute 	BlendConstant [] SrcFactors;
+	/// Destination blend factor per render target.
+	[Internal="mDstFactors"] attribute 	BlendConstant [] DstFactors;
+	/// Source alpha blend factor per render target.
+	[Internal="mSrcAlphaFactors"] attribute BlendConstant [] SrcAlphaFactors;
+	/// Destination alpha blend factor per render target.
+	[Internal="mDstAlphaFactors"] attribute BlendConstant [] DstAlphaFactors;
+	/// Blend mode per render target.
+	[Internal="mBlendModes"] attribute 	BlendMode [] BlendModes;
+	/// Alpha blend mode per render target.
+	[Internal="mBlendAlphaModes"] attribute BlendMode [] BlendAlphaModes;
+	/// Write mask per render target.
+	[Internal="mMasks"] attribute int [] Masks; //MAX_RENDER_TARGET_ATTACHMENTS
+	/// Mask that identifies the render targets affected by the blend state.
+	[Internal="mRenderTargetMask", Cast="BlendStateTargets"] attribute int renderTargetMask; //BlendStateTargets
+	
+	[CObject, Internal="forge_blend_state_desc_set_rt"] void setRenderTarget( BlendStateTargets target, bool mask );
+
+	/// Set whether alpha to coverage should be enabled.
+	[Internal="mAlphaToCoverage"] attribute bool alphaToCoverage;
+	/// Set whether each render target has an unique blend function. When false the blend function in slot 0 will be used for all render targets.
+	[Internal="mIndependentBlend"] attribute bool independentBlend;
+};
+
+[NoDelete]
+interface DepthStateDesc {
+	[Internal="mDepthTest"] attribute bool        depthTest;
+	[Internal="mDepthWrite"] attribute bool        depthWrite;
+	[Internal="mDepthFunc"] attribute CompareMode depthFunc;
+	[Internal="mStencilTest"] attribute bool        stencilTest;
+	[Internal="mStencilReadMask"] attribute int     stencilReadMask;
+	[Internal="mStencilWriteMask"] attribute int     stencilWriteMask;
+	[Internal="mStencilFrontFunc"] attribute CompareMode stencilFrontFunc;
+	[Internal="mStencilFrontFail"] attribute StencilOp   stencilFrontFail;
+	[Internal="mDepthFrontFail"] attribute StencilOp   depthFrontFail;
+	[Internal="mStencilFrontPass"] attribute StencilOp   stencilFrontPass;
+	[Internal="mStencilBackFunc"] attribute CompareMode stencilBackFunc;
+	[Internal="mStencilBackFail"] attribute StencilOp   stencilBackFail;
+	[Internal="mDepthBackFail"] attribute StencilOp   depthBackFail;
+	[Internal="mStencilBackPass"] attribute StencilOp   stencilBackPass;
+};
+
+[NoDelete]
+interface RasterizerStateDesc {
+	[Internal="mCullMode"] attribute CullMode  cullMode;
+	[Internal="mDepthBias"] attribute int   depthBias;
+	[Internal="mSlopeScaledDepthBias"] attribute float     slopeScaledDepthBias;
+	[Internal="mFillMode"] attribute FillMode  fillMode;
+	[Internal="mFrontFace"] attribute FrontFace frontFace;
+	[Internal="mMultiSample"] attribute bool      multiSample;
+	[Internal="mScissor"] attribute bool      scissor;
+	[Internal="mDepthClampEnable"] attribute bool      depthClampEnable;
+};
+
+interface StateBuilder {
+	void StateBuilder();
+	void reset();
+
+	[Const] BlendStateDesc blend();
+	[Const] DepthStateDesc depth();
+	[Const] RasterizerStateDesc raster();
+};
+
+enum VertexAttribRate
+{
+	"VERTEX_ATTRIB_RATE_VERTEX",
+	"VERTEX_ATTRIB_RATE_INSTANCE",
+	"VERTEX_ATTRIB_RATE_COUNT"
+};
+
+[NoDelete]
+interface VertexAttrib
+{
+	attribute ShaderSemantic   mSemantic;
+	attribute uint         mSemanticNameLength;
+	[CObject, Internal="forge_vertex_attrib_set_semantic"] void setSemanticName( String name );
+	//char             mSemanticName[MAX_SEMANTIC_NAME_LENGTH];
+	attribute TinyImageFormat  mFormat;
+	attribute uint         mBinding;
+	attribute uint         mLocation;
+	attribute uint         mOffset;
+	attribute VertexAttribRate mRate;
+} ;
+
+interface VertexLayout
+{
+	void VertexLayout();
+
+	[Internal="mAttribCount"] attribute  uint     attribCount;
+	//VertexAttrib mAttribs[MAX_VERTEX_ATTRIBS];
+	[CObject, Const, Internal="forge_vertex_layout_get_attrib"] VertexAttrib attrib(int idx);
+	[Internal="mStrides"] attribute  uint [] strides;
+};
+
+
 [NoDelete]
 interface Globals {
 	[Internal="hlForgeInitialize", Static]
@@ -331,6 +608,7 @@ interface Cmd {
 	[CObject,  Internal="cmdBindPushConstants"] void pushConstants(RootSignature rs, int index, bytes data);
 
 };
+
 
 [NoDelete]
 interface CmdPool {

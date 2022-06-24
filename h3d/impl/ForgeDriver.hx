@@ -3,7 +3,8 @@ package h3d.impl;
 import hxsl.GlslOut;
 import sys.FileSystem;
 import h3d.impl.Driver;
-
+import h3d.mat.Pass as Pass;
+import forge.Native.BlendStateTargets as BlendStateTargets;
 private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
 private typedef ForgeShader = forge.Native.Shader;
@@ -825,12 +826,206 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	}
 
+	var _curTarget : h3d.mat.Texture;
+	var _rightHanded = false;
+
+	function selectMaterialBits( bits : Int ) {
+		/*
+		var diff = bits ^ curMatBits;
+		if( curMatBits < 0 ) diff = -1;
+		if( diff == 0 )
+			return;
+
+		var wireframe = bits & Pass.wireframe_mask != 0;
+		#if hlsdl
+		if ( wireframe ) {
+			gl.polygonMode(GL.FRONT_AND_BACK, GL.LINE);
+			// Force set to cull = None
+			bits = (bits & ~Pass.culling_mask);
+			diff |= Pass.culling_mask;
+		} else {
+			gl.polygonMode(GL.FRONT_AND_BACK, GL.FILL);
+		}
+		#else
+		// Not entirely accurate wireframe, but the best possible on WebGL.
+		drawMode = wireframe ? GL.LINE_STRIP : GL.TRIANGLES;
+		#end
+
+		if( diff & Pass.culling_mask != 0 ) {
+			var cull = Pass.getCulling(bits);
+			if( cull == 0 )
+				gl.disable(GL.CULL_FACE);
+			else {
+				if( curMatBits < 0 || Pass.getCulling(curMatBits) == 0 )
+					gl.enable(GL.CULL_FACE);
+				gl.cullFace(FACES[cull]);
+			}
+		}
+		if( diff & (Pass.blendSrc_mask | Pass.blendDst_mask | Pass.blendAlphaSrc_mask | Pass.blendAlphaDst_mask) != 0 ) {
+			var csrc = Pass.getBlendSrc(bits);
+			var cdst = Pass.getBlendDst(bits);
+			var asrc = Pass.getBlendAlphaSrc(bits);
+			var adst = Pass.getBlendAlphaDst(bits);
+			if( csrc == asrc && cdst == adst ) {
+				if( csrc == 0 && cdst == 1 )
+					gl.disable(GL.BLEND);
+				else {
+					if( curMatBits < 0 || (Pass.getBlendSrc(curMatBits) == 0 && Pass.getBlendDst(curMatBits) == 1) ) gl.enable(GL.BLEND);
+					gl.blendFunc(BLEND[csrc], BLEND[cdst]);
+				}
+			} else {
+				if( curMatBits < 0 || (Pass.getBlendSrc(curMatBits) == 0 && Pass.getBlendDst(curMatBits) == 1) ) gl.enable(GL.BLEND);
+				gl.blendFuncSeparate(BLEND[csrc], BLEND[cdst], BLEND[asrc], BLEND[adst]);
+			}
+		}
+		if( diff & (Pass.blendOp_mask | Pass.blendAlphaOp_mask) != 0 ) {
+			var cop = Pass.getBlendOp(bits);
+			var aop = Pass.getBlendAlphaOp(bits);
+			if( cop == aop ) {
+				gl.blendEquation(OP[cop]);
+			}
+			else
+				gl.blendEquationSeparate(OP[cop], OP[aop]);
+		}
+		if( diff & Pass.depthWrite_mask != 0 )
+			gl.depthMask(Pass.getDepthWrite(bits) != 0);
+		if( diff & Pass.depthTest_mask != 0 ) {
+			var cmp = Pass.getDepthTest(bits);
+			if( cmp == 0 )
+				gl.disable(GL.DEPTH_TEST);
+			else {
+				if( curMatBits < 0 || Pass.getDepthTest(curMatBits) == 0 ) gl.enable(GL.DEPTH_TEST);
+				gl.depthFunc(COMPARE[cmp]);
+			}
+		}
+		curMatBits = bits;
+		*/
+	}
+	
+	function selectStencilBits( opBits : Int, maskBits : Int ) {
+		/*
+		var diffOp = opBits ^ curStOpBits;
+		var diffMask = maskBits ^ curStMaskBits;
+
+		if ( (diffOp | diffMask) == 0 ) return;
+
+		if( diffOp & (Stencil.frontSTfail_mask | Stencil.frontDPfail_mask | Stencil.frontPass_mask) != 0 ) {
+			gl.stencilOpSeparate(
+				FACES[Type.enumIndex(Front)],
+				STENCIL_OP[Stencil.getFrontSTfail(opBits)],
+				STENCIL_OP[Stencil.getFrontDPfail(opBits)],
+				STENCIL_OP[Stencil.getFrontPass(opBits)]);
+		}
+
+		if( diffOp & (Stencil.backSTfail_mask | Stencil.backDPfail_mask | Stencil.backPass_mask) != 0 ) {
+			gl.stencilOpSeparate(
+				FACES[Type.enumIndex(Back)],
+				STENCIL_OP[Stencil.getBackSTfail(opBits)],
+				STENCIL_OP[Stencil.getBackDPfail(opBits)],
+				STENCIL_OP[Stencil.getBackPass(opBits)]);
+		}
+
+		if( (diffOp & Stencil.frontTest_mask) | (diffMask & (Stencil.reference_mask | Stencil.readMask_mask)) != 0 ) {
+			gl.stencilFuncSeparate(
+				FACES[Type.enumIndex(Front)],
+				COMPARE[Stencil.getFrontTest(opBits)],
+				Stencil.getReference(maskBits),
+				Stencil.getReadMask(maskBits));
+		}
+
+		if( (diffOp & Stencil.backTest_mask) | (diffMask & (Stencil.reference_mask | Stencil.readMask_mask)) != 0 ) {
+			gl.stencilFuncSeparate(
+				FACES[Type.enumIndex(Back)],
+				COMPARE[Stencil.getBackTest(opBits)],
+				Stencil.getReference(maskBits),
+				Stencil.getReadMask(maskBits));
+		}
+
+		if( diffMask & Stencil.writeMask_mask != 0 ) {
+			var w = Stencil.getWriteMask(maskBits);
+			gl.stencilMaskSeparate(FACES[Type.enumIndex(Front)], w);
+			gl.stencilMaskSeparate(FACES[Type.enumIndex(Back)], w);
+		}
+
+		curStOpBits = opBits;
+		curStMaskBits = maskBits;
+		*/
+	}
 
 	public override function selectMaterial(pass:h3d.mat.Pass) {
 		// culling
 		// stencil
 		// mode
 		// blending
+
+		var stateBuilder = new forge.Native.StateBuilder();
+
+		var d = stateBuilder.depth();
+		d.depthTest = false;
+		d.depthWrite = false;
+		d.depthFunc = CMP_NEVER;
+		d.stencilTest = pass.stencil != null;
+		d.stencilReadMask = 0;
+		d.stencilWriteMask = 0;
+		d.stencilFrontFunc = CMP_NEVER;
+		d.stencilFrontFail = STENCIL_OP_KEEP;
+		d.depthFrontFail = STENCIL_OP_KEEP;
+		d.stencilFrontPass = STENCIL_OP_KEEP;
+		d.stencilBackFunc = CMP_NEVER;
+		d.stencilBackFail = STENCIL_OP_KEEP;
+		d.depthBackFail = STENCIL_OP_KEEP;
+		d.stencilBackPass = STENCIL_OP_KEEP;
+
+		//@:privateAccess selectStencilBits(s.opBits, s.maskBits);
+
+		var r = stateBuilder.raster();
+		r.cullMode = CULL_MODE_NONE;
+		r.depthBias = 0;
+		r.slopeScaledDepthBias = 0.;
+		r.fillMode = FILL_MODE_SOLID;
+		r.frontFace = FRONT_FACE_CCW;
+		r.multiSample = false;
+		r.scissor = false;
+		r.depthClampEnable = false;
+
+		var bits = @:privateAccess pass.bits;
+		/*
+			When rendering to a render target, our output will be flipped in Y to match
+			output texture coordinates. We also need to flip our culling.
+			The result is inverted if we are using a right handed camera.
+		*/
+		if( (_curTarget == null) == _rightHanded ) {
+			switch( pass.culling ) {
+			case Back: bits = (bits & ~Pass.culling_mask) | (2 << Pass.culling_offset);
+			case Front: bits = (bits & ~Pass.culling_mask) | (1 << Pass.culling_offset);
+			default:
+			}
+		}
+		selectMaterialBits(bits);
+
+		/*
+		if( curColorMask != pass.colorMask ) {
+			var m = pass.colorMask;
+			gl.colorMask(m & 1 != 0, m & 2 != 0, m & 4 != 0, m & 8 != 0);
+			curColorMask = m;
+		}
+		*/
+
+		var b = stateBuilder.blend();
+
+		b.setSrcFactors(0,  BC_ZERO);
+		b.setDstFactors(0, BC_ZERO);
+		b.setSrcAlphaFactors(0, BC_ZERO);
+		b.setDstAlphaFactors(0, BC_ZERO);
+		b.setBlendModes(0, BM_ADD);
+		b.setBlendAlphaModes(0, BM_ADD);
+		b.setMasks(0, 0xffffffff); // probably want a convienience function for this
+//		b.renderTargetMask = BlendStateTargets.BLEND_STATE_TARGET_0.toValue();
+		b.setRenderTarget( BLEND_STATE_TARGET_0, true );
+		b.alphaToCoverage = false;
+		b.independentBlend = false;
+		
+
 		throw "Not implemented";
 
 	}

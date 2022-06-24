@@ -43,6 +43,28 @@ class RootSignatureFactory {
         std::vector<Sampler *> _samplers;
 };
 
+class StateBuilder {
+    public:
+        StateBuilder() {}
+        ~StateBuilder() {}
+        void reset() {
+            DepthStateDesc d = {};
+            _depth = d;
+            RasterizerStateDesc r = {};
+            _raster = r;
+            BlendStateDesc b = {};
+            _blend = b;
+        }
+        
+        DepthStateDesc _depth;
+        RasterizerStateDesc _raster;
+        BlendStateDesc _blend;
+
+        inline DepthStateDesc *depth() {return &_depth;}
+        inline RasterizerStateDesc *raster() {return &_raster;}
+        inline BlendStateDesc *blend() {return &_blend;}
+
+};
 Renderer *createRenderer(const char *name);
 void destroyRenderer( Renderer * );
 Queue* createQueue(Renderer *renderer);
@@ -56,7 +78,9 @@ Texture*forge_texture_load(TextureLoadDesc *desc, SyncToken *token);
 Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, SyncToken *token );
 void forge_sdl_texture_upload(Texture *, void *data, int dataSize);
 void forge_cmd_push_constant(Cmd *cmd, RootSignature *rs, int index, void *data);
-
+void forge_blend_state_desc_set_rt( BlendStateDesc *, BlendStateTargets rt, bool enabled);
+VertexAttrib *forge_vertex_layout_get_attrib( VertexLayout *, int idx);
+void forge_vertex_attrib_set_semantic( VertexAttrib *, const char *name );
 void forge_texture_set_file_name(TextureLoadDesc *desc, const char *path);
 void forge_render_target_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
 void forge_sdl_buffer_update(Buffer *buffer, void *data);
