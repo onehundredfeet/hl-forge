@@ -1,15 +1,15 @@
 
 #include <iostream>
 #include <sstream>
+#include <clhash.h>
+
 #include "hl-forge-shaders.h"
 
 #include <Renderer/IRenderer.h>
 #include <OS/Interfaces/IInput.h>
-#include <OS/Interfaces/IMemory.h>
 #include <OS/Logging/Log.h>
 #include <Renderer/IResourceLoader.h>
 #include <Renderer/IShaderReflection.h>
-
 
 
 #define HL_NAME(x) forge_##x
@@ -17,6 +17,8 @@
 
 #include "hl-forge-meta.h"
 #include "hl-forge.h"
+
+
 
 static CpuInfo gCpu;
 
@@ -544,6 +546,13 @@ RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Sha
 
 RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSignatureFactory *desc) {
     return desc->create(pRenderer );
+}
+////
+
+static clhasher _hasher(UINT64_C(0x23a23cf5033c3c81),UINT64_C(0xb3816f6a2c68e530));
+
+int64_t StateBuilder::getSignature() {
+    return _hasher(this, sizeof(StateBuilder));
 }
 
 ///////

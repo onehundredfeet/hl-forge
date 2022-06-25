@@ -1,7 +1,8 @@
 #ifndef __HL_FORGE_H_
 #define __HL_FORGE_H_
 #pragma once
-
+#include <map>
+#include <vector>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
 #ifndef SDL_MAJOR_VERSION
@@ -56,6 +57,8 @@ class StateBuilder {
             _blend = b;
         }
         
+        int64_t getSignature();
+
         DepthStateDesc _depth;
         RasterizerStateDesc _raster;
         BlendStateDesc _blend;
@@ -65,6 +68,74 @@ class StateBuilder {
         inline BlendStateDesc *blend() {return &_blend;}
 
 };
+
+class BufferBinder {
+        std::vector<Buffer *> _buffers;
+        std::vector<int> _strides;
+    public:
+        BufferBinder() {}
+        ~BufferBinder() {}
+
+        void reset() {
+            _buffers.clear();
+        }
+
+        int add(Buffer *b, int stride) {
+            _buffers.push_back(b);
+            _strides.push_back(stride);
+            return _buffers.size() - 1;
+        }
+
+        void bind(Cmd *cmd) {
+
+        }
+
+};
+
+class Map64Int {
+    public:
+    Map64Int() {}
+    ~Map64Int() {}
+
+    std::map<int64_t, int> _map;
+
+    inline bool exists( int64_t key ) {
+        return _map.find(key) != _map.end();
+    }
+	inline void set(int64_t key, int value) {
+        _map[key] = value;
+    }
+	inline int get(int64_t key) {
+        auto x = _map.find(key);
+        if (x != _map.end()) {
+            return x->second;
+        }
+        return -1;
+    }
+	inline int size() {
+        return _map.size();
+    }
+
+};
+
+class HlForgePipelineDesc : public PipelineDesc {
+    public:
+    HlForgePipelineDesc() {
+        *this = {};
+    }
+    inline GraphicsPipelineDesc *graphicsPipeline(  ) {
+        this->mType = PIPELINE_TYPE_GRAPHICS;
+        return &this->mGraphicsDesc;
+    }
+    void setName( const char *name) {
+        _name = name;
+        this->pName = _name.c_str();
+    }
+    std::string _name;
+};
+
+
+
 Renderer *createRenderer(const char *name);
 void destroyRenderer( Renderer * );
 Queue* createQueue(Renderer *renderer);

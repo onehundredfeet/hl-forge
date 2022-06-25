@@ -1,10 +1,15 @@
 package h3d.impl;
 
+import hl.I64;
+import h3d.mat.Data.Compare;
 import hxsl.GlslOut;
 import sys.FileSystem;
 import h3d.impl.Driver;
 import h3d.mat.Pass as Pass;
 import forge.Native.BlendStateTargets as BlendStateTargets;
+import forge.Native.ColorsMask as ColorsMask;
+import forge.Native.StateBuilder as StateBuilder;
+
 private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
 private typedef ForgeShader = forge.Native.Shader;
@@ -36,6 +41,7 @@ private class CompiledAttribute {
 }
 
 private class CompiledProgram {
+	public var id: Int;
 	public var p:Program;
 	public var rootSig:forge.Native.RootSignature;
 	public var forgeShader:forge.Native.Shader;
@@ -47,6 +53,15 @@ private class CompiledProgram {
 	public var hasAttribIndex:Array<Bool>;
 
 	public function new() {}
+}
+
+private class CompiledMaterial {
+	public function new() {}
+	public var _shader : CompiledProgram;
+	public var _hash : I64;
+	public var _id : Int;
+	public var _rawState : StateBuilder;
+	public var _pipeline : forge.Native.Pipeline;
 }
 
 @:access(h3d.impl.Shader)
@@ -277,6 +292,9 @@ class ForgeDriver extends h3d.impl.Driver {
 	//
 
 	public override function allocVertexes(m:ManagedBuffer):VertexBuffer {
+		
+		//		desc.setVertexbuffer
+
 		/*
 			discardError();
 			var b = gl.createBuffer();
@@ -298,8 +316,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		placeHolder.resize(byteCount);
 
 		var desc = new forge.Native.BufferLoadDesc();
-		desc.setIndexbuffer(byteCount, hl.Bytes.getArray(placeHolder), true);
-
+		desc.setVertexbuffer(byteCount, hl.Bytes.getArray(placeHolder), true);
 		/*
 			var bits = is32 ? 2 : 1;
 			var placeHolder = new Array<hl.UI8>();
@@ -569,11 +586,12 @@ class ForgeDriver extends h3d.impl.Driver {
 		return shader.code;
 	}
 
+	var _programIds = 0;
 	function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
 		var transcoder = new forge.GLSLTranscoder();
 
 		var p = new CompiledProgram();
-
+		p.id = _programIds++;
 
 		var vert_glsl = getGLSL(transcoder, shader.vertex);
 		var frag_glsl = getGLSL(transcoder, shader.fragment);
@@ -952,21 +970,25 @@ class ForgeDriver extends h3d.impl.Driver {
 		*/
 	}
 
-	public override function selectMaterial(pass:h3d.mat.Pass) {
-		// culling
-		// stencil
-		// mode
-		// blending
-
-		var stateBuilder = new forge.Native.StateBuilder();
-
-		var d = stateBuilder.depth();
-		d.depthTest = false;
-		d.depthWrite = false;
-		d.depthFunc = CMP_NEVER;
+	function convertDepthFunc(c: Compare) : forge.Native.CompareMode {
+		return switch(c) {
+				case Always: CMP_ALWAYS;
+				case Never: CMP_NEVER;
+				case Equal: CMP_EQUAL;
+				case NotEqual: CMP_NOTEQUAL;
+				case Greater: CMP_GREATER;
+				case GreaterEqual: CMP_GREATER;
+				case Less: CMP_LESS;
+				case LessEqual: CMP_LEQUAL;
+		}
+	}
+	function buildDepthState(  d : forge.Native.DepthStateDesc, pass:h3d.mat.Pass ) {		
+		d.depthTest = pass.depthTest != Always || pass.depthWrite;
+		d.depthWrite = pass.depthWrite;
+		d.depthFunc = convertDepthFunc(pass.depthTest);
 		d.stencilTest = pass.stencil != null;
-		d.stencilReadMask = 0;
-		d.stencilWriteMask = 0;
+		d.stencilReadMask = pass.colorMask;
+		d.stencilWriteMask = 0; // TODO
 		d.stencilFrontFunc = CMP_NEVER;
 		d.stencilFrontFail = STENCIL_OP_KEEP;
 		d.depthFrontFail = STENCIL_OP_KEEP;
@@ -975,10 +997,24 @@ class ForgeDriver extends h3d.impl.Driver {
 		d.stencilBackFail = STENCIL_OP_KEEP;
 		d.depthBackFail = STENCIL_OP_KEEP;
 		d.stencilBackPass = STENCIL_OP_KEEP;
+	}
 
-		//@:privateAccess selectStencilBits(s.opBits, s.maskBits);
+	function buildRasterState( r : forge.Native.RasterizerStateDesc, pass:h3d.mat.Pass) {
+		var bits = @:privateAccess pass.bits;
+		/*
+			When rendering to a render target, our output will be flipped in Y to match
+			output texture coordinates. We also need to flip our culling.
+			The result is inverted if we are using a right handed camera.
+		*/
+		
+		if( (_curTarget == null) == _rightHanded ) {
+			switch( pass.culling ) {
+			case Back: bits = (bits & ~Pass.culling_mask) | (2 << Pass.culling_offset);
+			case Front: bits = (bits & ~Pass.culling_mask) | (1 << Pass.culling_offset);
+			default:
+			}
+		}
 
-		var r = stateBuilder.raster();
 		r.cullMode = CULL_MODE_NONE;
 		r.depthBias = 0;
 		r.slopeScaledDepthBias = 0.;
@@ -987,70 +1023,143 @@ class ForgeDriver extends h3d.impl.Driver {
 		r.multiSample = false;
 		r.scissor = false;
 		r.depthClampEnable = false;
+	}
 
-		var bits = @:privateAccess pass.bits;
-		/*
-			When rendering to a render target, our output will be flipped in Y to match
-			output texture coordinates. We also need to flip our culling.
-			The result is inverted if we are using a right handed camera.
-		*/
-		if( (_curTarget == null) == _rightHanded ) {
-			switch( pass.culling ) {
-			case Back: bits = (bits & ~Pass.culling_mask) | (2 << Pass.culling_offset);
-			case Front: bits = (bits & ~Pass.culling_mask) | (1 << Pass.culling_offset);
-			default:
-			}
+	function convertBlendConstant(blendSrc : h3d.mat.Data.Blend) : forge.Native.BlendConstant{
+		return switch(blendSrc) {
+			case One: BC_ONE;
+			case Zero: BC_ZERO;
+			case SrcAlpha: BC_SRC_ALPHA;
+			case DstAlpha: BC_DST_ALPHA;
+			case SrcColor: BC_SRC_COLOR;
+			case DstColor: BC_DST_COLOR;
+			case OneMinusSrcAlpha:BC_ONE_MINUS_SRC_ALPHA;
+			case OneMinusSrcColor:BC_ONE_MINUS_SRC_COLOR;
+			case OneMinusDstAlpha:BC_ONE_MINUS_DST_ALPHA;
+			case OneMinusDstColor:BC_ONE_MINUS_DST_COLOR;
+			case ConstantColor:BC_BLEND_FACTOR;
+			case OneMinusConstantColor:BC_ONE_MINUS_BLEND_FACTOR;
+			default : BC_ZERO;
 		}
-		selectMaterialBits(bits);
+	}
 
-		/*
-		if( curColorMask != pass.colorMask ) {
-			var m = pass.colorMask;
-			gl.colorMask(m & 1 != 0, m & 2 != 0, m & 4 != 0, m & 8 != 0);
-			curColorMask = m;
-		}
-		*/
-
-		var b = stateBuilder.blend();
-
-		b.setSrcFactors(0,  BC_ZERO);
-		b.setDstFactors(0, BC_ZERO);
-		b.setSrcAlphaFactors(0, BC_ZERO);
-		b.setDstAlphaFactors(0, BC_ZERO);
-		b.setBlendModes(0, BM_ADD);
-		b.setBlendAlphaModes(0, BM_ADD);
-		b.setMasks(0, 0xffffffff); // probably want a convienience function for this
-//		b.renderTargetMask = BlendStateTargets.BLEND_STATE_TARGET_0.toValue();
+	function convertBlendMode(blend : h3d.mat.Data.Operation ) : forge.Native.BlendMode {
+		return switch(blend) {
+			case Add: return BM_ADD;
+			case Sub: return BM_SUBTRACT;
+			case ReverseSub: return BM_REVERSE_SUBTRACT;
+			case Min: return BM_MIN;
+			case Max: return BM_MAX;
+		};
+	}
+	function buildBlendState(b : forge.Native.BlendStateDesc, pass:h3d.mat.Pass) {
+		b.setMasks(0, pass.colorMask); // probably want a convienience function for this
 		b.setRenderTarget( BLEND_STATE_TARGET_0, true );
+		b.setSrcFactors(0, convertBlendConstant(pass.blendSrc) );
+		b.setDstFactors(0, convertBlendConstant(pass.blendDst) );
+		b.setSrcAlphaFactors(0, convertBlendConstant(pass.blendAlphaSrc));
+		b.setDstAlphaFactors(0, convertBlendConstant(pass.blendAlphaDst));
+		b.setBlendModes(0, convertBlendMode(pass.blendOp));
+		b.setBlendAlphaModes(0, convertBlendMode(pass.blendAlphaOp));
+
 		b.alphaToCoverage = false;
 		b.independentBlend = false;
-		
+	}
 
-		throw "Not implemented";
 
+	var _materialMap = new forge.Native.Map64Int();
+	var _materialInternalMap = new haxe.ds.IntMap<CompiledMaterial>();
+	var _matID = 0;
+	var _currentMaterial : CompiledMaterial;
+
+	public override function selectMaterial(pass:h3d.mat.Pass) {
+		// culling
+		// stencil
+		// mode
+		// blending
+
+		var stateBuilder = new StateBuilder();
+
+		//@:privateAccess selectStencilBits(s.opBits, s.maskBits);
+		buildBlendState(stateBuilder.blend(), pass);
+		buildRasterState(stateBuilder.raster(), pass);
+		buildDepthState(stateBuilder.depth(), pass );
+
+		var x = stateBuilder.getSignature();
+		var cmatidx = _materialMap.get(x);
+		var cmat = _materialInternalMap.get(cmatidx);
+
+		if (cmat == null) {
+			cmat = new CompiledMaterial();
+			cmat._id = _matID++;
+			cmat._hash = x;
+			cmat._shader = _curShader;
+			trace('Adding material for pass ${pass.name} with id ${cmat._id} and hash ${cmat._hash}');
+			_materialMap.set( x,cmat._id );
+			_materialInternalMap.set(cmat._id, cmat);
+
+			var pdesc = new forge.Native.PipelineDesc();
+
+			var gdesc = pdesc.graphicsPipeline();
+			gdesc.mPrimitiveTopo = PRIMITIVE_TOPO_TRI_LIST;
+			gdesc.mRenderTargetCount = 1;
+			gdesc.pDepthState = stateBuilder.depth();
+			//gdesc.pColorFormats = &pSwapChain->ppRenderTargets[0]->mFormat;
+			//gdesc.mSampleCount = pSwapChain->ppRenderTargets[0]->mSampleCount;
+			//gdesc.mSampleQuality = pSwapChain->ppRenderTargets[0]->mSampleQuality;
+			//gdesc.mDepthStencilFormat = pDepthBuffer->mFormat;
+			gdesc.pRootSignature = _curShader.rootSig;
+			gdesc.pShaderProgram = _curShader.forgeShader;
+			//gdesc.pVertexLayout = &vertexLayout;
+			gdesc.pRasterizerState = stateBuilder.raster();
+			gdesc.mVRFoveatedRendering = false;
+			var p = _renderer.createPipeline( pdesc );
+
+			cmat._pipeline = p;
+
+		}
+
+		_currentMaterial = cmat;
 	}
 
 	var _curBuffer:h3d.Buffer;
+	var _bufferBinder = new forge.Native.BufferBinder();
 
 	public override function selectMultiBuffers(buffers:Buffer.BufferOffset) {
+		_bufferBinder.reset();
 		for (a in _curShader.attribs) {
+			var b = @:privateAccess buffers.buffer.buffer.vbuf.b;
+
+			trace('Binding n ${_curShader.inputs.names[a.index]} b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} s ${a.size} str ${buffers.buffer.buffer.stride * 4}');
+			
+			_bufferBinder.add( b, buffers.buffer.buffer.stride * 4 );
 			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
 			// gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
 			// updateDivisor(a);
 			buffers = buffers.next;
 		}
 		_curBuffer = null;
-		throw "Not implemented";
 
 	}
 
 	var _curIndexBuffer:IndexBuffer;
+	var _currentPipeline: forge.Native.Pipeline;
 
 	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
 		if (ibuf != _curIndexBuffer) {
 			_curIndexBuffer = ibuf;
-			//			gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, ibuf.b);
 		}
+
+		_currentCmd.bindPipeline( _currentPipeline);
+		//cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
+		//cmdBindDescriptorSet(cmd, gFrameIndex * 2 + 0, pDescriptorSetUniforms);
+		//cmdBindVertexBuffer(cmd, 1, &pSkyBoxVertexBuffer, &skyboxVbStride, NULL);
+		//cmdDraw(cmd, 36, 0);
+//		cmdBindIndexBuffer(cmd, gMeshes[MESH_CUBE]->pIndexBuffer, gMeshes[MESH_CUBE]->mIndexType, 0);
+
+//		cmdBindDescriptorSet(cmd, 0, pDescriptorSetShadow[1]);
+		_currentCmd.bindIndexBuffer(ibuf.b, ibuf.is32 ? INDEX_TYPE_UINT32 : INDEX_TYPE_UINT16 , 0);
+		_currentCmd.drawIndexed( ntriangles * 3, 0, 0);
 
 		/*
 			if( ibuf.is32 )
@@ -1058,12 +1167,13 @@ class ForgeDriver extends h3d.impl.Driver {
 			else
 				gl.drawElements(drawMode, ntriangles * 3, GL.UNSIGNED_SHORT, startIndex * 2);
 		 */
-		 throw "Not implemented";
 
 	}
 
 	public override function selectBuffer(v:Buffer) {
 		trace('selecting buffer');
+
+		throw ("Bang");
 		if( v == _curBuffer )
 			return;
 		if( _curBuffer != null && v.buffer == _curBuffer.buffer && v.buffer.flags.has(RawFormat) == _curBuffer.flags.has(RawFormat) ) {

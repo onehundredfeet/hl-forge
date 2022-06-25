@@ -21,6 +21,10 @@ if (NOT HL_INCLUDE_DIR)
     set(HL_INCLUDE_DIR "/usr/local/include")
 endif()
 
+if (NOT CLHASH_ROOT_DIR) 
+    set(CLHASH_ROOT_DIR "ext/clhash")
+endif()
+
 if (NOT HL_LIB_DIR) 
     set(HL_LIB_DIR "/usr/local/lib")
 endif()
@@ -99,6 +103,7 @@ ${FORGE_TP_SRCS}
 ${FORGE_RENDERER_SRCS}
 ${FORGE_MW_SRCS}
 ${FORGE_EASTL_SRCS}
+${CLHASH_ROOT_DIR}/src/clhash.c
 )
 
 set_source_files_properties(${FORGE_RENDERER_SRCS} ${FORGE_MW_SRCS} src/forge.cpp src/hl-forge.cpp PROPERTIES COMPILE_FLAGS "-x objective-c++")
@@ -119,6 +124,7 @@ PRIVATE
 ${FORGE_INC_DIR}
 ${FORGE_LIB_INC}
 ${HL_INCLUDE_DIR}
+"${CLHASH_ROOT_DIR}/include"
 )
 
 find_library( METAL_LIB Metal)
@@ -137,7 +143,7 @@ find_library( SPIRVCROSS_GLSLLIB spirv-cross-glsl)
 
 if (UNIX)
     # Some special flags are needed for GNU GCC compiler
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fPIC  -fpermissive")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fPIC -fpermissive")
     #not sure why the ${HL_LIB_DIR} is necessary given the above.
     SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -shared  ")
 
@@ -146,7 +152,7 @@ else()
     find_library(LIBHL NAMES libhl HINTS ${HL_LIB_DIR} )
 endif (UNIX)
 
-set_property (TARGET forge.hdll APPEND_STRING PROPERTY COMPILE_FLAGS "-fobjc-arc")
+set_property (TARGET forge.hdll APPEND_STRING PROPERTY COMPILE_FLAGS " -mpclmul -fobjc-arc")
  
 target_link_libraries(forge.hdll ${LIBHL} ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB} ${SHADERC_LIB} ${SDL_LIB} ${APPKITLIB} ${COREGRAPHICSLIB} ${METALKIT_LIB} ${SPIRVCROSS_CORELIB} ${SPIRVCROSS_METALLIB} ${SPIRVCROSS_GLSLLIB})
 

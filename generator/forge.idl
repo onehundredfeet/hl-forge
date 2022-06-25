@@ -475,9 +475,16 @@ enum BlendMode
 	"MAX_STENCIL_OPS"
 } ;
 
+
+
 [NoDelete]
 interface ColorsMask {
+	const int NONE = 0;
 	const int RED = 0x01;
+	const int GREEN = 0x02;
+	const int BLUE = 0x04;
+	const int ALPHA = 0x08;
+	const int ALL = 0xff;
 };
 //static const int RED = 0x1;
 //static const int GREEN = 0x2;
@@ -555,6 +562,8 @@ interface StateBuilder {
 	[Const] BlendStateDesc blend();
 	[Const] DepthStateDesc depth();
 	[Const] RasterizerStateDesc raster();
+
+	int64 getSignature();
 };
 
 enum VertexAttribRate
@@ -599,6 +608,42 @@ interface Globals {
 };
 
 [NoDelete]
+interface GraphicsPipelineDesc {
+	attribute Shader              pShaderProgram;
+	attribute RootSignature       pRootSignature;
+	attribute VertexLayout        pVertexLayout;
+	attribute BlendStateDesc      pBlendState;
+	attribute DepthStateDesc      pDepthState;
+	attribute RasterizerStateDesc pRasterizerState;
+	//TinyImageFormat*     pColorFormats;
+	attribute uint             mRenderTargetCount;
+	attribute SampleCount          mSampleCount;
+	attribute uint             mSampleQuality;
+	attribute TinyImageFormat      mDepthStencilFormat;
+	attribute PrimitiveTopology    mPrimitiveTopo;
+	attribute bool                 mSupportIndirectCommandBuffer;
+    attribute bool                 mVRFoveatedRendering;
+};
+
+
+interface PipelineCache {
+
+};
+
+[Internal="HlForgePipelineDesc"]
+interface PipelineDesc {
+	void PipelineDesc();
+
+	[Const] GraphicsPipelineDesc graphicsPipeline();
+	attribute PipelineCache pCache;
+//	void*          pPipelineExtensions;
+	attribute uint       mExtensionCount;
+
+	void setName( String name );
+
+};
+
+[NoDelete]
 interface Cmd {
 	
 	[CObject, Internal="forge_render_target_clear"] void clear(RenderTarget rt, RenderTarget depthstencil);
@@ -606,9 +651,29 @@ interface Cmd {
 	[CObject,  Internal="beginCmd"] void begin();
 	[CObject,  Internal="endCmd"] void end();
 	[CObject,  Internal="cmdBindPushConstants"] void pushConstants(RootSignature rs, int index, bytes data);
+	[CObject,  Internal="cmdBindIndexBuffer"] void bindIndexBuffer(Buffer b, IndexType format , int offset);
+	[CObject,  Internal="cmdDrawIndexed"] void drawIndexed( int vertCount, uint first_index, uint first_vertex);
+	[CObject, Internal="cmdBindPipeline"] void bindPipeline( Pipeline pipeline );
+
+
 
 };
 
+interface BufferBinder {
+	void BufferBinder();
+
+	void reset();
+	int add(Buffer buf, int stride);
+	void bind(Cmd cmd);
+};
+
+interface Map64Int {
+	void Map64Int();
+	bool exists( int64 key );
+	void set(int64 key, int value);
+	int get(int64 key);
+	int size();
+};
 
 [NoDelete]
 interface CmdPool {
@@ -694,10 +759,6 @@ interface RenderTarget {
 	
 };
 
-[NoDelete]
-interface PipelineDesc {
-
-};
 
 [NoDelete]
 interface Pipeline {
@@ -751,7 +812,6 @@ interface Renderer {
 
 	[CObject,Internal="forge_renderer_createRootSignatureSimple", Const] RootSignature createRootSigSimple(Shader shader);
 	[CObject,Internal="forge_renderer_createRootSignature", Const] RootSignature createRootSig(RootSignatureDesc desc);
-
 };
 
 
