@@ -608,21 +608,30 @@ interface Globals {
 };
 
 [NoDelete]
+interface RenderTarget {
+	[Internal="mSampleCount"] attribute SampleCount sampleCount;
+	[Internal="mSampleQuality"] attribute uint sampleQuality;
+	/// Internal image format
+	[Internal="mFormat"] attribute TinyImageFormat format;
+};
+
+[NoDelete]
 interface GraphicsPipelineDesc {
-	attribute Shader              pShaderProgram;
-	attribute RootSignature       pRootSignature;
-	attribute VertexLayout        pVertexLayout;
-	attribute BlendStateDesc      pBlendState;
-	attribute DepthStateDesc      pDepthState;
-	attribute RasterizerStateDesc pRasterizerState;
+	[Const] attribute Shader              pShaderProgram;
+	[Const] attribute RootSignature       pRootSignature;
+	[Const] attribute VertexLayout        pVertexLayout;
+	[Const] attribute BlendStateDesc      pBlendState;
+	[Const] attribute DepthStateDesc      pDepthState;
+	[Const] attribute RasterizerStateDesc pRasterizerState;
 	//TinyImageFormat*     pColorFormats;
 	attribute uint             mRenderTargetCount;
-	attribute SampleCount          mSampleCount;
-	attribute uint             mSampleQuality;
+	[Internal="mSampleCount"] attribute SampleCount          sampleCount;
+	[Internal="mSampleQuality"] attribute uint             sampleQuality;
 	attribute TinyImageFormat      mDepthStencilFormat;
 	attribute PrimitiveTopology    mPrimitiveTopo;
 	attribute bool                 mSupportIndirectCommandBuffer;
     attribute bool                 mVRFoveatedRendering;
+
 };
 
 
@@ -640,7 +649,15 @@ interface PipelineDesc {
 	attribute uint       mExtensionCount;
 
 	void setName( String name );
+	int addGraphicsRenderTarget( RenderTarget rt );
 
+};
+
+interface BufferBinder {
+	void BufferBinder();
+
+	void reset();
+	int add(Buffer buf, int stride, int offset);
 };
 
 [NoDelete]
@@ -652,6 +669,7 @@ interface Cmd {
 	[CObject,  Internal="endCmd"] void end();
 	[CObject,  Internal="cmdBindPushConstants"] void pushConstants(RootSignature rs, int index, bytes data);
 	[CObject,  Internal="cmdBindIndexBuffer"] void bindIndexBuffer(Buffer b, IndexType format , int offset);
+	[CObject, Internal="BufferBinder::bind"] void bindVertexBuffer( BufferBinder binder );
 	[CObject,  Internal="cmdDrawIndexed"] void drawIndexed( int vertCount, uint first_index, uint first_vertex);
 	[CObject, Internal="cmdBindPipeline"] void bindPipeline( Pipeline pipeline );
 
@@ -659,13 +677,7 @@ interface Cmd {
 
 };
 
-interface BufferBinder {
-	void BufferBinder();
 
-	void reset();
-	int add(Buffer buf, int stride);
-	void bind(Cmd cmd);
-};
 
 interface Map64Int {
 	void Map64Int();
@@ -754,10 +766,6 @@ interface RenderTargetDesc {
 };
 
 
-[NoDelete]
-interface RenderTarget {
-	
-};
 
 
 [NoDelete]

@@ -376,6 +376,7 @@ void forge_sdl_texture_upload(Texture *tex, void *data, int dataSize) {
     endUpdateResource(&updateDesc, NULL);
 }
 
+
 CmdPool *forge_sdl_renderer_create_cmd_pool(Renderer *pRenderer, Queue *pGraphicsQueue) {
     CmdPool *tmp;
     CmdPoolDesc cmdPoolDesc = {};

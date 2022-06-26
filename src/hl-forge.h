@@ -3,6 +3,7 @@
 #pragma once
 #include <map>
 #include <vector>
+#include <string>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
 #ifndef SDL_MAJOR_VERSION
@@ -16,7 +17,7 @@ void heuristicTest2(float (*fn)(int));
 
 bool hlForgeInitialize(const char *name);
 
-#include <vector>
+
 #include <Renderer/IRenderer.h>
 #include <Renderer/IResourceLoader.h>
 
@@ -71,7 +72,8 @@ class StateBuilder {
 
 class BufferBinder {
         std::vector<Buffer *> _buffers;
-        std::vector<int> _strides;
+        std::vector<uint32_t> _strides;
+        std::vector<uint64_t> _offsets;
     public:
         BufferBinder() {}
         ~BufferBinder() {}
@@ -80,16 +82,16 @@ class BufferBinder {
             _buffers.clear();
         }
 
-        int add(Buffer *b, int stride) {
+        int add(Buffer *b, int stride, int offset) {
             _buffers.push_back(b);
             _strides.push_back(stride);
+            _offsets.push_back(offset);
             return _buffers.size() - 1;
         }
 
-        void bind(Cmd *cmd) {
-
-        }
-
+    static void bind(Cmd *cmd, BufferBinder *binder ) {
+        cmdBindVertexBuffer(cmd, binder->_buffers.size(), &binder->_buffers[0], &binder->_strides[0], &binder->_offsets[0]);
+    }
 };
 
 class Map64Int {
@@ -121,7 +123,7 @@ class Map64Int {
 class HlForgePipelineDesc : public PipelineDesc {
     public:
     HlForgePipelineDesc() {
-        *this = {};
+        mGraphicsDesc = {};
     }
     inline GraphicsPipelineDesc *graphicsPipeline(  ) {
         this->mType = PIPELINE_TYPE_GRAPHICS;
@@ -131,6 +133,19 @@ class HlForgePipelineDesc : public PipelineDesc {
         _name = name;
         this->pName = _name.c_str();
     }
+
+    int addGraphicsRenderTarget(  RenderTarget *rt ) {
+        auto idx = mGraphicsDesc.mRenderTargetCount;
+
+        _formats.push_back(rt->mFormat);
+        mGraphicsDesc.pColorFormats = &_formats[0];
+        mGraphicsDesc.mSampleCount = rt->mSampleCount;
+        mGraphicsDesc.mSampleQuality = rt->mSampleQuality;
+        mGraphicsDesc.mRenderTargetCount++;
+        return idx;
+    }
+
+    std::vector<TinyImageFormat> _formats;
     std::string _name;
 };
 

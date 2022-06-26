@@ -51,6 +51,7 @@ private class CompiledProgram {
 	public var inputs:InputNames;
 	public var attribs:Array<CompiledAttribute>;
 	public var hasAttribIndex:Array<Bool>;
+	public var layout: forge.Native.VertexLayout;
 
 	public function new() {}
 }
@@ -635,6 +636,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		p.hasAttribIndex = [];
 		p.stride = 0;
 		var idxCount = 0;
+		var vl = new forge.Native.VertexLayout();
+		vl.attribCount = 0;
+
+		p.layout = vl;
+
 		for (v in shader.vertex.data.vars) {
 			switch (v.kind) {
 				case Input:
@@ -644,6 +650,41 @@ class ForgeDriver extends h3d.impl.Driver {
 						default: throw "assert " + v.type;
 					}
 
+					
+					var location = vl.attribCount++;
+					var layout_attr = vl.attrib(location);
+					trace ('getting name for ${v.id}');
+					var name =  transcoder.varNames.get(v.id);
+					if (name == null) name = v.name;
+					trace ('Laying out ${v.name}');
+
+					switch(name) {
+						case "position":layout_attr.mSemantic = SEMANTIC_POSITION;
+						case "normal": layout_attr.mSemantic = SEMANTIC_NORMAL;
+						case "uv": layout_attr.mSemantic = SEMANTIC_TEXCOORD0;
+						case "color": layout_attr.mSemantic = SEMANTIC_COLOR;
+						default: throw ('unknown vertex attribute ${name}');
+					}
+					
+					layout_attr.mFormat = TinyImageFormat_R32G32B32_SFLOAT;
+					layout_attr.mBinding = 0;
+					layout_attr.mLocation = location;
+					layout_attr.mOffset = size * 4; // n elements * 4 bytes (sizeof(float))
+					/*
+					//layout and pipeline for sphere draw
+					VertexLayout vertexLayout = {};
+					vertexLayout.mAttribCount = 2;
+					vertexLayout.mAttribs[0].mSemantic = SEMANTIC_POSITION;
+					vertexLayout.mAttribs[0].mFormat = TinyImageFormat_R32G32B32_SFLOAT;
+					vertexLayout.mAttribs[0].mBinding = 0;
+					vertexLayout.mAttribs[0].mLocation = 0;
+					vertexLayout.mAttribs[0].mOffset = 0;
+					vertexLayout.mAttribs[1].mSemantic = SEMANTIC_NORMAL;
+					vertexLayout.mAttribs[1].mFormat = TinyImageFormat_R32G32B32_SFLOAT;
+					vertexLayout.mAttribs[1].mBinding = 0;
+					vertexLayout.mAttribs[1].mLocation = 1;
+					vertexLayout.mAttribs[1].mOffset = 3 * sizeof(float);
+					*/
 					/*
 						var t = GL.FLOAT;
 
@@ -800,7 +841,7 @@ class ForgeDriver extends h3d.impl.Driver {
 					tmpBuff.blit(total, hl.Bytes.getArray(buf.vertex.params.toData()), 0, buf.vertex.params.length * 4);
 					total +=  buf.vertex.params.length;
 				}
-				trace ('Total is ${total}');
+				trace ('Vertex Total is ${total}');
 				if (total > 0) {					
 					_currentCmd.pushConstants( _curShader.rootSig, _curShader.vertex.globalsIndex, tmpBuff  );
 				}
@@ -811,10 +852,11 @@ class ForgeDriver extends h3d.impl.Driver {
 				//compute total in floats
 				var total = (buf.fragment.globals != null ? buf.fragment.globals.length : 0) + (buf.fragment.params != null ? buf.fragment.params.length : 0);
 				if (_tmpConstantBuffer.length < total) _tmpConstantBuffer.resize(total);
-				trace ('Total is ${total}');
+				trace ('Fragment Total is ${total}');
 				// Update buffer
-				_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.globalsIndex, hl.Bytes.getArray(_tmpConstantBuffer) );
-
+				if (total > 0) {		
+					_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.globalsIndex, hl.Bytes.getArray(_tmpConstantBuffer) );
+				}
 //					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
 			}
 			case Textures:  
@@ -1099,20 +1141,17 @@ class ForgeDriver extends h3d.impl.Driver {
 			_materialInternalMap.set(cmat._id, cmat);
 
 			var pdesc = new forge.Native.PipelineDesc();
-
 			var gdesc = pdesc.graphicsPipeline();
 			gdesc.mPrimitiveTopo = PRIMITIVE_TOPO_TRI_LIST;
-			gdesc.mRenderTargetCount = 1;
 			gdesc.pDepthState = stateBuilder.depth();
-			//gdesc.pColorFormats = &pSwapChain->ppRenderTargets[0]->mFormat;
-			//gdesc.mSampleCount = pSwapChain->ppRenderTargets[0]->mSampleCount;
-			//gdesc.mSampleQuality = pSwapChain->ppRenderTargets[0]->mSampleQuality;
-			//gdesc.mDepthStencilFormat = pDepthBuffer->mFormat;
+						
+			//gdesc.pColorFormats = &rt.mFormat;
+			gdesc.pVertexLayout = _curShader.layout;
 			gdesc.pRootSignature = _curShader.rootSig;
 			gdesc.pShaderProgram = _curShader.forgeShader;
-			//gdesc.pVertexLayout = &vertexLayout;
 			gdesc.pRasterizerState = stateBuilder.raster();
 			gdesc.mVRFoveatedRendering = false;
+			pdesc.addGraphicsRenderTarget( _sc.getRenderTarget(0 ) );
 			var p = _renderer.createPipeline( pdesc );
 
 			cmat._pipeline = p;
@@ -1120,6 +1159,9 @@ class ForgeDriver extends h3d.impl.Driver {
 		}
 
 		_currentMaterial = cmat;
+		trace('Binding pipeline');
+		_currentCmd.bindPipeline( _currentMaterial._pipeline );
+
 	}
 
 	var _curBuffer:h3d.Buffer;
@@ -1132,7 +1174,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 			trace('Binding n ${_curShader.inputs.names[a.index]} b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} s ${a.size} str ${buffers.buffer.buffer.stride * 4}');
 			
-			_bufferBinder.add( b, buffers.buffer.buffer.stride * 4 );
+			_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4 );
 			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
 			// gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
 			// updateDivisor(a);
@@ -1143,20 +1185,15 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	var _curIndexBuffer:IndexBuffer;
-	var _currentPipeline: forge.Native.Pipeline;
 
 	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
 		if (ibuf != _curIndexBuffer) {
 			_curIndexBuffer = ibuf;
 		}
 
-		_currentCmd.bindPipeline( _currentPipeline);
 		//cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
 		//cmdBindDescriptorSet(cmd, gFrameIndex * 2 + 0, pDescriptorSetUniforms);
 		//cmdBindVertexBuffer(cmd, 1, &pSkyBoxVertexBuffer, &skyboxVbStride, NULL);
-		//cmdDraw(cmd, 36, 0);
-//		cmdBindIndexBuffer(cmd, gMeshes[MESH_CUBE]->pIndexBuffer, gMeshes[MESH_CUBE]->mIndexType, 0);
-
 //		cmdBindDescriptorSet(cmd, 0, pDescriptorSetShadow[1]);
 		_currentCmd.bindIndexBuffer(ibuf.b, ibuf.is32 ? INDEX_TYPE_UINT32 : INDEX_TYPE_UINT16 , 0);
 		_currentCmd.drawIndexed( ntriangles * 3, 0, 0);
@@ -1171,9 +1208,8 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function selectBuffer(v:Buffer) {
-		trace('selecting buffer');
+		trace('selecting buffer ${v.id}');
 
-		throw ("Bang");
 		if( v == _curBuffer )
 			return;
 		if( _curBuffer != null && v.buffer == _curBuffer.buffer && v.buffer.flags.has(RawFormat) == _curBuffer.flags.has(RawFormat) ) {
@@ -1185,6 +1221,8 @@ class ForgeDriver extends h3d.impl.Driver {
 			throw "No shader selected";
 		_curBuffer = v;
 
+		_bufferBinder.reset();
+
 		var m = @:privateAccess v.buffer.vbuf;
 		if( m.stride < _curShader.stride )
 			throw "Buffer stride (" + m.stride + ") and shader stride (" + _curShader.stride + ") mismatch";
@@ -1195,9 +1233,13 @@ class ForgeDriver extends h3d.impl.Driver {
 		#end
 //		gl.bindBuffer(GL.ARRAY_BUFFER, m.b);
 
+
 		if( v.flags.has(RawFormat) ) {
 			for( a in _curShader.attribs ) {
 				var pos = a.offset;
+
+				_bufferBinder.add( m.b, m.stride * 4, pos * 4 );
+
 				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 				//updateDivisor(a);
 			}
@@ -1220,12 +1262,12 @@ class ForgeDriver extends h3d.impl.Driver {
 					offset += a.size;
 					if( offset > m.stride ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
 				}
+				_bufferBinder.add( m.b, m.stride * 4, pos * 4 );
+
 				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 				//updateDivisor(a);
 			}
 		}
-		throw "Not implemented";
-
 	}
 
 	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {

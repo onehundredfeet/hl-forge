@@ -1090,61 +1090,91 @@ HL_PRIM void HL_NAME(Globals_waitForAllResourceLoads0)() {
 }
 DEFINE_PRIM(_VOID, Globals_waitForAllResourceLoads0,);
 
-HL_PRIM _ref(Shader)* HL_NAME(GraphicsPipelineDesc_get_pShaderProgram)( _ref(GraphicsPipelineDesc)* _this ) {
-	return alloc_ref(_unref(_this)->pShaderProgram,Shader);
+HL_PRIM int HL_NAME(RenderTarget_get_sampleCount)( _ref(RenderTarget)* _this ) {
+	return HL_NAME(SampleCount_valueToIndex0)(_unref(_this)->mSampleCount);
+}
+DEFINE_PRIM(_I32,RenderTarget_get_sampleCount,_IDL);
+HL_PRIM int HL_NAME(RenderTarget_set_sampleCount)( _ref(RenderTarget)* _this, int value ) {
+	_unref(_this)->mSampleCount = (SampleCount)HL_NAME(SampleCount_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,RenderTarget_set_sampleCount,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(RenderTarget_get_sampleQuality)( _ref(RenderTarget)* _this ) {
+	return _unref(_this)->mSampleQuality;
+}
+DEFINE_PRIM(_I32,RenderTarget_get_sampleQuality,_IDL);
+HL_PRIM unsigned int HL_NAME(RenderTarget_set_sampleQuality)( _ref(RenderTarget)* _this, unsigned int value ) {
+	_unref(_this)->mSampleQuality = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,RenderTarget_set_sampleQuality,_IDL _I32);
+
+HL_PRIM int HL_NAME(RenderTarget_get_format)( _ref(RenderTarget)* _this ) {
+	return HL_NAME(TinyImageFormat_valueToIndex0)(_unref(_this)->mFormat);
+}
+DEFINE_PRIM(_I32,RenderTarget_get_format,_IDL);
+HL_PRIM int HL_NAME(RenderTarget_set_format)( _ref(RenderTarget)* _this, int value ) {
+	_unref(_this)->mFormat = (TinyImageFormat)HL_NAME(TinyImageFormat_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,RenderTarget_set_format,_IDL _I32);
+
+HL_PRIM HL_CONST _ref(Shader)* HL_NAME(GraphicsPipelineDesc_get_pShaderProgram)( _ref(GraphicsPipelineDesc)* _this ) {
+	return alloc_ref_const(_unref(_this)->pShaderProgram,Shader);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pShaderProgram,_IDL);
-HL_PRIM _ref(Shader)* HL_NAME(GraphicsPipelineDesc_set_pShaderProgram)( _ref(GraphicsPipelineDesc)* _this, _ref(Shader)* value ) {
+HL_PRIM HL_CONST _ref(Shader)* HL_NAME(GraphicsPipelineDesc_set_pShaderProgram)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(Shader)* value ) {
 	_unref(_this)->pShaderProgram = _unref(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pShaderProgram,_IDL _IDL);
 
-HL_PRIM _ref(RootSignature)* HL_NAME(GraphicsPipelineDesc_get_pRootSignature)( _ref(GraphicsPipelineDesc)* _this ) {
-	return alloc_ref(_unref(_this)->pRootSignature,RootSignature);
+HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(GraphicsPipelineDesc_get_pRootSignature)( _ref(GraphicsPipelineDesc)* _this ) {
+	return alloc_ref_const(_unref(_this)->pRootSignature,RootSignature);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pRootSignature,_IDL);
-HL_PRIM _ref(RootSignature)* HL_NAME(GraphicsPipelineDesc_set_pRootSignature)( _ref(GraphicsPipelineDesc)* _this, _ref(RootSignature)* value ) {
+HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(GraphicsPipelineDesc_set_pRootSignature)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(RootSignature)* value ) {
 	_unref(_this)->pRootSignature = _unref(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pRootSignature,_IDL _IDL);
 
-HL_PRIM _ref(VertexLayout)* HL_NAME(GraphicsPipelineDesc_get_pVertexLayout)( _ref(GraphicsPipelineDesc)* _this ) {
-	return alloc_ref(_unref(_this)->pVertexLayout,VertexLayout);
+HL_PRIM HL_CONST _ref(VertexLayout)* HL_NAME(GraphicsPipelineDesc_get_pVertexLayout)( _ref(GraphicsPipelineDesc)* _this ) {
+	return alloc_ref_const(_unref(_this)->pVertexLayout,VertexLayout);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pVertexLayout,_IDL);
-HL_PRIM _ref(VertexLayout)* HL_NAME(GraphicsPipelineDesc_set_pVertexLayout)( _ref(GraphicsPipelineDesc)* _this, _ref(VertexLayout)* value ) {
+HL_PRIM HL_CONST _ref(VertexLayout)* HL_NAME(GraphicsPipelineDesc_set_pVertexLayout)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(VertexLayout)* value ) {
 	_unref(_this)->pVertexLayout = _unref(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pVertexLayout,_IDL _IDL);
 
-HL_PRIM _ref(BlendStateDesc)* HL_NAME(GraphicsPipelineDesc_get_pBlendState)( _ref(GraphicsPipelineDesc)* _this ) {
-	return alloc_ref(_unref(_this)->pBlendState,BlendStateDesc);
+HL_PRIM HL_CONST _ref(BlendStateDesc)* HL_NAME(GraphicsPipelineDesc_get_pBlendState)( _ref(GraphicsPipelineDesc)* _this ) {
+	return alloc_ref_const(_unref(_this)->pBlendState,BlendStateDesc);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pBlendState,_IDL);
-HL_PRIM _ref(BlendStateDesc)* HL_NAME(GraphicsPipelineDesc_set_pBlendState)( _ref(GraphicsPipelineDesc)* _this, _ref(BlendStateDesc)* value ) {
+HL_PRIM HL_CONST _ref(BlendStateDesc)* HL_NAME(GraphicsPipelineDesc_set_pBlendState)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(BlendStateDesc)* value ) {
 	_unref(_this)->pBlendState = _unref(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pBlendState,_IDL _IDL);
 
-HL_PRIM _ref(DepthStateDesc)* HL_NAME(GraphicsPipelineDesc_get_pDepthState)( _ref(GraphicsPipelineDesc)* _this ) {
-	return alloc_ref(_unref(_this)->pDepthState,DepthStateDesc);
+HL_PRIM HL_CONST _ref(DepthStateDesc)* HL_NAME(GraphicsPipelineDesc_get_pDepthState)( _ref(GraphicsPipelineDesc)* _this ) {
+	return alloc_ref_const(_unref(_this)->pDepthState,DepthStateDesc);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pDepthState,_IDL);
-HL_PRIM _ref(DepthStateDesc)* HL_NAME(GraphicsPipelineDesc_set_pDepthState)( _ref(GraphicsPipelineDesc)* _this, _ref(DepthStateDesc)* value ) {
+HL_PRIM HL_CONST _ref(DepthStateDesc)* HL_NAME(GraphicsPipelineDesc_set_pDepthState)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(DepthStateDesc)* value ) {
 	_unref(_this)->pDepthState = _unref(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pDepthState,_IDL _IDL);
 
-HL_PRIM _ref(RasterizerStateDesc)* HL_NAME(GraphicsPipelineDesc_get_pRasterizerState)( _ref(GraphicsPipelineDesc)* _this ) {
-	return alloc_ref(_unref(_this)->pRasterizerState,RasterizerStateDesc);
+HL_PRIM HL_CONST _ref(RasterizerStateDesc)* HL_NAME(GraphicsPipelineDesc_get_pRasterizerState)( _ref(GraphicsPipelineDesc)* _this ) {
+	return alloc_ref_const(_unref(_this)->pRasterizerState,RasterizerStateDesc);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pRasterizerState,_IDL);
-HL_PRIM _ref(RasterizerStateDesc)* HL_NAME(GraphicsPipelineDesc_set_pRasterizerState)( _ref(GraphicsPipelineDesc)* _this, _ref(RasterizerStateDesc)* value ) {
+HL_PRIM HL_CONST _ref(RasterizerStateDesc)* HL_NAME(GraphicsPipelineDesc_set_pRasterizerState)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(RasterizerStateDesc)* value ) {
 	_unref(_this)->pRasterizerState = _unref(value);
 	return value;
 }
@@ -1160,25 +1190,25 @@ HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_set_mRenderTargetCount)( _ref(
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_mRenderTargetCount,_IDL _I32);
 
-HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_mSampleCount)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_sampleCount)( _ref(GraphicsPipelineDesc)* _this ) {
 	return HL_NAME(SampleCount_valueToIndex0)(_unref(_this)->mSampleCount);
 }
-DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_mSampleCount,_IDL);
-HL_PRIM int HL_NAME(GraphicsPipelineDesc_set_mSampleCount)( _ref(GraphicsPipelineDesc)* _this, int value ) {
+DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_sampleCount,_IDL);
+HL_PRIM int HL_NAME(GraphicsPipelineDesc_set_sampleCount)( _ref(GraphicsPipelineDesc)* _this, int value ) {
 	_unref(_this)->mSampleCount = (SampleCount)HL_NAME(SampleCount_indexToValue0)(value);
 	return value;
 }
-DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_mSampleCount,_IDL _I32);
+DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_sampleCount,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_get_mSampleQuality)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_get_sampleQuality)( _ref(GraphicsPipelineDesc)* _this ) {
 	return _unref(_this)->mSampleQuality;
 }
-DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_mSampleQuality,_IDL);
-HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_set_mSampleQuality)( _ref(GraphicsPipelineDesc)* _this, unsigned int value ) {
+DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_sampleQuality,_IDL);
+HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_set_sampleQuality)( _ref(GraphicsPipelineDesc)* _this, unsigned int value ) {
 	_unref(_this)->mSampleQuality = (value);
 	return value;
 }
-DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_mSampleQuality,_IDL _I32);
+DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_sampleQuality,_IDL _I32);
 
 HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_mDepthStencilFormat)( _ref(GraphicsPipelineDesc)* _this ) {
 	return HL_NAME(TinyImageFormat_valueToIndex0)(_unref(_this)->mDepthStencilFormat);
@@ -1256,6 +1286,26 @@ HL_PRIM void HL_NAME(PipelineDesc_setName1)(_ref(HlForgePipelineDesc)* _this, vs
 }
 DEFINE_PRIM(_VOID, PipelineDesc_setName1, _IDL _STRING);
 
+HL_PRIM int HL_NAME(PipelineDesc_addGraphicsRenderTarget1)(_ref(HlForgePipelineDesc)* _this, _ref(RenderTarget)* rt) {
+	return (_unref(_this)->addGraphicsRenderTarget(_unref_ptr_safe(rt)));
+}
+DEFINE_PRIM(_I32, PipelineDesc_addGraphicsRenderTarget1, _IDL _IDL);
+
+HL_PRIM _ref(BufferBinder)* HL_NAME(BufferBinder_new0)() {
+	return alloc_ref((new BufferBinder()),BufferBinder);
+}
+DEFINE_PRIM(_IDL, BufferBinder_new0,);
+
+HL_PRIM void HL_NAME(BufferBinder_reset0)(_ref(BufferBinder)* _this) {
+	(_unref(_this)->reset());
+}
+DEFINE_PRIM(_VOID, BufferBinder_reset0, _IDL);
+
+HL_PRIM int HL_NAME(BufferBinder_add3)(_ref(BufferBinder)* _this, _ref(Buffer)* buf, int stride, int offset) {
+	return (_unref(_this)->add(_unref_ptr_safe(buf), stride, offset));
+}
+DEFINE_PRIM(_I32, BufferBinder_add3, _IDL _IDL _I32 _I32);
+
 HL_PRIM void HL_NAME(Cmd_clear2)(_ref(Cmd)* _this, _ref(RenderTarget)* rt, _ref(RenderTarget)* depthstencil) {
 	(forge_render_target_clear( _unref(_this) , _unref_ptr_safe(rt), _unref_ptr_safe(depthstencil)));
 }
@@ -1286,6 +1336,11 @@ HL_PRIM void HL_NAME(Cmd_bindIndexBuffer3)(_ref(Cmd)* _this, _ref(Buffer)* b, in
 }
 DEFINE_PRIM(_VOID, Cmd_bindIndexBuffer3, _IDL _IDL _I32 _I32);
 
+HL_PRIM void HL_NAME(Cmd_bindVertexBuffer1)(_ref(Cmd)* _this, _ref(BufferBinder)* binder) {
+	(BufferBinder::bind( _unref(_this) , _unref_ptr_safe(binder)));
+}
+DEFINE_PRIM(_VOID, Cmd_bindVertexBuffer1, _IDL _IDL);
+
 HL_PRIM void HL_NAME(Cmd_drawIndexed3)(_ref(Cmd)* _this, int vertCount, unsigned int first_index, unsigned int first_vertex) {
 	(cmdDrawIndexed( _unref(_this) , vertCount, first_index, first_vertex));
 }
@@ -1295,26 +1350,6 @@ HL_PRIM void HL_NAME(Cmd_bindPipeline1)(_ref(Cmd)* _this, _ref(Pipeline)* pipeli
 	(cmdBindPipeline( _unref(_this) , _unref_ptr_safe(pipeline)));
 }
 DEFINE_PRIM(_VOID, Cmd_bindPipeline1, _IDL _IDL);
-
-HL_PRIM _ref(BufferBinder)* HL_NAME(BufferBinder_new0)() {
-	return alloc_ref((new BufferBinder()),BufferBinder);
-}
-DEFINE_PRIM(_IDL, BufferBinder_new0,);
-
-HL_PRIM void HL_NAME(BufferBinder_reset0)(_ref(BufferBinder)* _this) {
-	(_unref(_this)->reset());
-}
-DEFINE_PRIM(_VOID, BufferBinder_reset0, _IDL);
-
-HL_PRIM int HL_NAME(BufferBinder_add2)(_ref(BufferBinder)* _this, _ref(Buffer)* buf, int stride) {
-	return (_unref(_this)->add(_unref_ptr_safe(buf), stride));
-}
-DEFINE_PRIM(_I32, BufferBinder_add2, _IDL _IDL _I32);
-
-HL_PRIM void HL_NAME(BufferBinder_bind1)(_ref(BufferBinder)* _this, _ref(Cmd)* cmd) {
-	(_unref(_this)->bind(_unref_ptr_safe(cmd)));
-}
-DEFINE_PRIM(_VOID, BufferBinder_bind1, _IDL _IDL);
 
 HL_PRIM _ref(Map64Int)* HL_NAME(Map64Int_new0)() {
 	return alloc_ref((new Map64Int()),Map64Int);
