@@ -967,10 +967,10 @@ HL_PRIM HL_CONST _ref(RasterizerStateDesc)* HL_NAME(StateBuilder_raster0)(_ref(S
 }
 DEFINE_PRIM(_IDL, StateBuilder_raster0, _IDL);
 
-HL_PRIM int64_t HL_NAME(StateBuilder_getSignature0)(_ref(StateBuilder)* _this) {
-	return (_unref(_this)->getSignature());
+HL_PRIM int64_t HL_NAME(StateBuilder_getSignature1)(_ref(StateBuilder)* _this, int shaderID) {
+	return (_unref(_this)->getSignature(shaderID));
 }
-DEFINE_PRIM(_I64, StateBuilder_getSignature0, _IDL);
+DEFINE_PRIM(_I64, StateBuilder_getSignature1, _IDL _I32);
 
 HL_PRIM int HL_NAME(VertexAttrib_get_mSemantic)( _ref(VertexAttrib)* _this ) {
 	return HL_NAME(ShaderSemantic_valueToIndex0)(_unref(_this)->mSemantic);

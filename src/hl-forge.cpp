@@ -1,7 +1,7 @@
 
 #include <iostream>
 #include <sstream>
-#include <clhash.h>
+#include <xxhash.h>
 
 #include "hl-forge-shaders.h"
 
@@ -550,10 +550,26 @@ RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSigna
 }
 ////
 
-static clhasher _hasher(UINT64_C(0x23a23cf5033c3c81),UINT64_C(0xb3816f6a2c68e530));
+static XXH64_state_t *_state;
 
-int64_t StateBuilder::getSignature() {
-    return _hasher(this, sizeof(StateBuilder));
+uint64_t StateBuilder::getSignature(int shaderID) {
+    //memset(this, 0, sizeof(StateBuilder));
+    if (_state == NULL) _state = XXH64_createState();
+    
+    XXH64_hash_t const seed = 0xf1ebd85245909a37;
+    XXH64_reset(_state, seed);
+    XXH64_update(_state, this, sizeof(StateBuilder));
+    XXH64_update(_state, &shaderID, sizeof(int));
+    
+    XXH64_hash_t const hash = XXH64_digest(_state);
+
+//    *l = (int)(hash & 0x00000000ffffffff);
+  //  *h = (int)((hash >> 32) & 0x00000000ffffffff);
+
+//    printf("Signature HASH %llu\n", hash);
+    
+    //*h = y == x ? 1 : 0;
+    return hash;
 }
 
 ///////

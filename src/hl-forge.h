@@ -47,18 +47,13 @@ class RootSignatureFactory {
 
 class StateBuilder {
     public:
-        StateBuilder() {}
+        StateBuilder() {reset(); }
         ~StateBuilder() {}
         void reset() {
-            DepthStateDesc d = {};
-            _depth = d;
-            RasterizerStateDesc r = {};
-            _raster = r;
-            BlendStateDesc b = {};
-            _blend = b;
+            memset( this, 0, sizeof(StateBuilder));
         }
         
-        int64_t getSignature();
+        uint64_t getSignature(int shaderID);
 
         DepthStateDesc _depth;
         RasterizerStateDesc _raster;
@@ -101,13 +96,15 @@ class Map64Int {
 
     std::map<int64_t, int> _map;
 
-    inline bool exists( int64_t key ) {
+    inline bool exists(  int64 key   ) {
         return _map.find(key) != _map.end();
     }
-	inline void set(int64_t key, int value) {
+	inline void set(  int64 key, int value) {
+//        printf("Signature : Setting key %lld, unsigned %llu n", key, (* ((uint64 *) &key)));
+        
         _map[key] = value;
     }
-	inline int get(int64_t key) {
+	inline int get( int64 key) {
         auto x = _map.find(key);
         if (x != _map.end()) {
             return x->second;

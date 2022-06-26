@@ -563,7 +563,7 @@ interface StateBuilder {
 	[Const] DepthStateDesc depth();
 	[Const] RasterizerStateDesc raster();
 
-	int64 getSignature();
+	int64 getSignature(int shaderID);
 };
 
 enum VertexAttribRate
@@ -682,8 +682,8 @@ interface Cmd {
 interface Map64Int {
 	void Map64Int();
 	bool exists( int64 key );
-	void set(int64 key, int value);
-	int get(int64 key);
+	void set( int64 key , int value);
+	int get( int64 key );
 	int size();
 };
 

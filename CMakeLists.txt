@@ -21,8 +21,8 @@ if (NOT HL_INCLUDE_DIR)
     set(HL_INCLUDE_DIR "/usr/local/include")
 endif()
 
-if (NOT CLHASH_ROOT_DIR) 
-    set(CLHASH_ROOT_DIR "ext/clhash")
+if (NOT XXHASH_ROOT_DIR) 
+    set(XXHASH_ROOT_DIR "ext/xxHash")
 endif()
 
 if (NOT HL_LIB_DIR) 
@@ -103,7 +103,7 @@ ${FORGE_TP_SRCS}
 ${FORGE_RENDERER_SRCS}
 ${FORGE_MW_SRCS}
 ${FORGE_EASTL_SRCS}
-${CLHASH_ROOT_DIR}/src/clhash.c
+${XXHASH_ROOT_DIR}/xxhash.c
 )
 
 set_source_files_properties(${FORGE_RENDERER_SRCS} ${FORGE_MW_SRCS} src/forge.cpp src/hl-forge.cpp PROPERTIES COMPILE_FLAGS "-x objective-c++")
@@ -124,7 +124,7 @@ PRIVATE
 ${FORGE_INC_DIR}
 ${FORGE_LIB_INC}
 ${HL_INCLUDE_DIR}
-"${CLHASH_ROOT_DIR}/include"
+"${XXHASH_ROOT_DIR}"
 )
 
 find_library( METAL_LIB Metal)

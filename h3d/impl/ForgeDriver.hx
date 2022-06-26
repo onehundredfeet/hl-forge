@@ -1,5 +1,6 @@
 package h3d.impl;
 
+import haxe.Int64;
 import hl.I64;
 import h3d.mat.Data.Compare;
 import hxsl.GlslOut;
@@ -59,7 +60,7 @@ private class CompiledProgram {
 private class CompiledMaterial {
 	public function new() {}
 	public var _shader : CompiledProgram;
-	public var _hash : I64;
+	public var _hash : Int64;
 	public var _id : Int;
 	public var _rawState : StateBuilder;
 	public var _pipeline : forge.Native.Pipeline;
@@ -1127,17 +1128,19 @@ class ForgeDriver extends h3d.impl.Driver {
 		buildRasterState(stateBuilder.raster(), pass);
 		buildDepthState(stateBuilder.depth(), pass );
 
-		var x = stateBuilder.getSignature();
-		var cmatidx = _materialMap.get(x);
+		var xx = stateBuilder.getSignature(_curShader.id);
+
+		var cmatidx = _materialMap.get(xx);
 		var cmat = _materialInternalMap.get(cmatidx);
 
 		if (cmat == null) {
+			trace('Signature  xx.h ${xx.high} | xx.l ${xx.low}');
 			cmat = new CompiledMaterial();
 			cmat._id = _matID++;
-			cmat._hash = x;
+			cmat._hash = xx;
 			cmat._shader = _curShader;
 			trace('Adding material for pass ${pass.name} with id ${cmat._id} and hash ${cmat._hash}');
-			_materialMap.set( x,cmat._id );
+			_materialMap.set( xx, cmat._id );
 			_materialInternalMap.set(cmat._id, cmat);
 
 			var pdesc = new forge.Native.PipelineDesc();
