@@ -190,7 +190,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function hasFeature(f:Feature) {
-		trace('Has Feature ${f}');
+//		trace('Has Feature ${f}');
 		// copied from DX driver
 		return switch (f) {
 			case Queries, BottomLeftCoords:
@@ -570,7 +570,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	var _frameBegun = false;
 
 	public override function present() {
-		trace('Presenting');
+//		trace('Presenting');
 		if (_frameBegun) {
 			if (_sc != null) {
 				_forgeSDLWin.present(_queue, _sc, _frameIndex, _swapCompleteSemaphores[_frameIndex]);
@@ -812,7 +812,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		if (s == null) return;
 		if (buf == null) return;
 		if (s.textures == null) {
-			trace("WARNING: No texture array on compiled shader, may be a missing feature, also could just have no textures");
+//			trace("WARNING: No texture array on compiled shader, may be a missing feature, also could just have no textures");
 			return;
 		}
 		for (i in 0...s.textures.length) {
@@ -887,13 +887,13 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	}
 	var _tmpConstantBuffer = new Array<Float>();
 	public override function uploadShaderBuffers(buf:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
-		trace ('RENDER uploadShaderBuffers');
+		//trace ('RENDER uploadShaderBuffers');
 		if (_curShader == null)
 			throw "No current shader to upload buffers to";
 
 		switch (which) {
-			case Globals: trace ('Ignoring globals'); // do nothing as it was all done by the globals
-			case Params:  trace ('Upload Globals & Params'); 
+			case Globals:// trace ('Ignoring globals'); // do nothing as it was all done by the globals
+			case Params:  //trace ('Upload Globals & Params'); 
 			if( buf.vertex.globals != null || buf.vertex.params != null) {
 				var max = (buf.vertex.globals != null ? buf.vertex.globals.length : 0) + (buf.vertex.params != null ? buf.vertex.params.length : 0);
 				if (_tmpConstantBuffer.length < max) _tmpConstantBuffer.resize(max);
@@ -911,7 +911,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 					total +=  buf.vertex.params.length;
 				}
 				if (total > 0) {					
-					trace ('Pushing Vertex Constants ${total}');
+					//trace ('Pushing Vertex Constants ${total}');
 					_currentCmd.pushConstants( _curShader.rootSig, _curShader.vertex.globalsIndex, tmpBuff  );
 				}
 				// Update buffer
@@ -919,28 +919,49 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			}
 			if( buf.fragment.globals != null || buf.fragment.params != null ) {
 				//compute total in floats
-				var total = (buf.fragment.globals != null ? buf.fragment.globals.length : 0) + (buf.fragment.params != null ? buf.fragment.params.length : 0);
-				if (_tmpConstantBuffer.length < total) _tmpConstantBuffer.resize(total);
+				var max = (buf.fragment.globals != null ? buf.fragment.globals.length : 0) + (buf.fragment.params != null ? buf.fragment.params.length : 0);
+				if (_tmpConstantBuffer.length < max) _tmpConstantBuffer.resize(max);
 				
+				var tmpBuff = hl.Bytes.getArray(_tmpConstantBuffer);
+				var total = 0;
+
+				if (buf.fragment.globals != null && buf.fragment.globals.length > 0) {
+					var l = buf.fragment.globals.length * 4;
+					tmpBuff.blit(total, hl.Bytes.getArray(buf.fragment.globals.toData()), 0, buf.fragment.globals.length * 4);
+					total += buf.fragment.globals.length * 4;
+				}
+
+				if(buf.fragment.params != null && buf.fragment.params.length > 0) {
+					tmpBuff.blit(total, hl.Bytes.getArray(buf.fragment.params.toData()), 0, buf.fragment.params.length * 4);
+					total +=  buf.fragment.params.length;
+				}
+
+
 				// Update buffer
-				if (total > 0) {		
+				if (total > 0) {	
+					/*	
 					trace ('RENDER Pushing Fragment Constants ${total}');
+					for (i in 0...total) {
+						trace ('RENDER tmp constant ${_tmpConstantBuffer[i]}');
+					}
+					*/
+
 					_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.globalsIndex, hl.Bytes.getArray(_tmpConstantBuffer) );
 				}
 //					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
 			}
 			case Textures:  
-				trace ('Upload Textures');
+				//trace ('Upload Textures');
 				configureTextures(_curShader.vertex, buf.vertex);
 				configureTextures(_curShader.fragment, buf.fragment);
 
-			case Buffers:  trace ('Upload Buffers'); 
+			case Buffers:  //trace ('Upload Buffers'); 
 
 			if( _curShader.vertex.buffers != null ) {
-				trace('Vertex buffers length ${ _curShader.vertex.buffers}');
+				//trace('Vertex buffers length ${ _curShader.vertex.buffers}');
 			}
 			if (_curShader.fragment.buffers != null) {
-				trace('Fragment buffers length ${ _curShader.fragment.buffers}');
+				//trace('Fragment buffers length ${ _curShader.fragment.buffers}');
 			}
 			/*
 				var start = 0;
@@ -1188,7 +1209,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	var _currentMaterial : CompiledMaterial;
 
 	public override function selectMaterial(pass:h3d.mat.Pass) {
-		trace ('RENDER selectMaterial');
+		//trace ('RENDER selectMaterial');
 
 		// culling
 		// stencil
@@ -1239,7 +1260,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		}
 
 		_currentMaterial = cmat;
-		trace('Binding pipeline');
+//		trace('Binding pipeline');
 		_currentCmd.bindPipeline( _currentMaterial._pipeline );
 
 	}
@@ -1253,7 +1274,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		_curMultiBuffer = buffers;
 		_curBuffer = null;
 		var mb = buffers.buffer.buffer;
-		trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
+		//trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
 		_bufferBinder.reset();
 		for (a in _curShader.attribs) {
 			var bb = buffers.buffer;
@@ -1261,7 +1282,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			var b = @:privateAccess vb.b;
 
 			
-			trace('FILTER prebinding buffer b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} si ${a.size} bbvc ${bb.vertices} mbstr ${mb.stride} mbsi ${mb.size} bo ${buffers.offset} - ${_curShader.inputs.names[a.index]}' );
+			//trace('FILTER prebinding buffer b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} si ${a.size} bbvc ${bb.vertices} mbstr ${mb.stride} mbsi ${mb.size} bo ${buffers.offset} - ${_curShader.inputs.names[a.index]}' );
 
 			//
 			// 
@@ -1273,7 +1294,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			// updateDivisor(a);
 			buffers = buffers.next;
 		}
-		trace('Binding vertex buffer');
+		//trace('Binding vertex buffer');
 		_currentCmd.bindVertexBuffer(_bufferBinder);
 
 
@@ -1282,7 +1303,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	var _curIndexBuffer:IndexBuffer;
 	var _firstDraw = true;
 	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
-		trace ('RENDER draw multi - ${_curMultiBuffer != null}');
+		//trace ('RENDER draw multi - ${_curMultiBuffer != null}');
 
 		//if (!_firstDraw) return;
 		_firstDraw = false;
@@ -1293,9 +1314,9 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		//cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
 		//cmdBindDescriptorSet(cmd, gFrameIndex * 2 + 0, pDescriptorSetUniforms);
 		//cmdBindDescriptorSet(cmd, 0, pDescriptorSetShadow[1]);
-		trace('Binding index buffer');
+		//trace('Binding index buffer');
 		_currentCmd.bindIndexBuffer(ibuf.b, ibuf.is32 ? INDEX_TYPE_UINT32 : INDEX_TYPE_UINT16 , 0);
-		trace('Drawing ${ntriangles} triangles');
+		//trace('Drawing ${ntriangles} triangles');
 		_currentCmd.drawIndexed( ntriangles * 3, 0, 0);
 
 		/*
@@ -1308,7 +1329,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	}
 
 	public override function selectBuffer(v:Buffer) {
-		trace('selecting buffer ${v.id}');
+//		trace('selecting buffer ${v.id}');
 
 		if( v == _curBuffer )
 			return;
