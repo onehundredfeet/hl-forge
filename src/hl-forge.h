@@ -75,6 +75,8 @@ class BufferBinder {
 
         void reset() {
             _buffers.clear();
+            _strides.clear();
+            _offsets.clear();
         }
 
         int add(Buffer *b, int stride, int offset) {
@@ -85,6 +87,10 @@ class BufferBinder {
         }
 
     static void bind(Cmd *cmd, BufferBinder *binder ) {
+        if (binder->_buffers.size() == 0) {
+            printf("Warning: binding 0 size buffer\n");
+        }
+        // these strides don't seem to matter on Metal ENABLE_DRAW_INDEX_BASE_VERTEX_FALLBACK
         cmdBindVertexBuffer(cmd, binder->_buffers.size(), &binder->_buffers[0], &binder->_strides[0], &binder->_offsets[0]);
     }
 };

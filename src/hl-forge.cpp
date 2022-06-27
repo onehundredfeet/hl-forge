@@ -154,6 +154,7 @@ VertexAttrib *forge_vertex_layout_get_attrib( VertexLayout *layout, int idx) {
 
 void forge_vertex_attrib_set_semantic( VertexAttrib *attrib, const char *name ) {
     strncpy(&attrib->mSemanticName[0], name, MAX_SEMANTIC_NAME_LENGTH);
+//    attrib->mSemanticNameLength
 }
 
 void forge_init_loader(Renderer *renderer) {

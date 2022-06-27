@@ -64,6 +64,8 @@ private class CompiledMaterial {
 	public var _id : Int;
 	public var _rawState : StateBuilder;
 	public var _pipeline : forge.Native.Pipeline;
+	public var _layout: forge.Native.VertexLayout;
+	public var _state : StateBuilder;
 }
 
 @:access(h3d.impl.Shader)
@@ -185,6 +187,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	public override function uploadIndexBuffer(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:hxd.IndexBuffer, bufPos:Int) {
 		var bits = i.is32 ? 2 : 1;
+		trace('updating index buffer');
 		i.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startIndice << bits, indiceCount << bits, bufPos << bits);
 	}
 
@@ -332,6 +335,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var buff = desc.load(null);
 
+		trace ('FILTER - Allocating vertex buffer stride ${m.stride}');
 		return {b: buff, stride: m.stride #if multidriver, driver: this #end};
 	}
 
@@ -491,16 +495,43 @@ class ForgeDriver extends h3d.impl.Driver {
 		return tt;
 	}
 
+	static inline var STREAM_POS = #if hl 0 #else 1 #end;
+
+	/*
+	inline function streamData(data, pos:Int, length:Int) {
+		#if hl
+		var needed = streamPos + length;
+		var total = (needed + 7) & ~7; // align on 8 bytes
+		var alen = total - streamPos;
+		if( total > streamLen ) expandStream(total);
+		streamBytes.blit(streamPos, data, pos, length);
+		data = streamBytes.offset(streamPos);
+		streamPos += alen;
+		#end
+		return data;
+	}
+	*/
 	public override function uploadVertexBuffer(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:hxd.FloatBuffer, bufPos:Int) {
 		var stride:Int = v.stride;
 		/*
+		void glBufferSubData( 
+			GLenum target, 
+			GLintptr offset, 
+			GLsizeiptr size, 
+			const void * data);
+
 			gl.bindBuffer(GL.ARRAY_BUFFER, v.b);
-			var data = #if hl hl.Bytes.getArray(buf.getNative()) #else buf.getNative() #end;
-			gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * 4, streamData(data,bufPos * 4,vertexCount * stride * 4), bufPos * 4 * STREAM_POS, vertexCount * stride * 4);
+var data = #if hl hl.Bytes.getArray(buf.getNative()) #else buf.getNative() #end;
+gl.bufferSubData(GL.ARRAY_BUFFER, 
+	startVertex * stride * 4,  // effectively 0
+	streamData(data,bufPos * 4,vertexCount * stride * 4), 
+	bufPos * 4 * 0, 
+	vertexCount * stride * 4);
 			gl.bindBuffer(GL.ARRAY_BUFFER, null);
 		 */
 
-		v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4);
+		 trace('updating vertex buffer vstride ${v.stride} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length}');
+		v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4 * 0);
 	}
 
 	public override function uploadTexturePixels(t:h3d.mat.Texture, pixels:hxd.Pixels, mipLevel:Int, side:Int) {
@@ -568,6 +599,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		_currentCmd.begin();
 
 		_frameBegun = true;
+		_firstDraw = true;
 	}
 
 	var _shaders:Map<Int, CompiledProgram>;
@@ -642,6 +674,8 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		p.layout = vl;
 
+		var offset = 0;
+
 		for (v in shader.vertex.data.vars) {
 			switch (v.kind) {
 				case Input:
@@ -657,7 +691,7 @@ class ForgeDriver extends h3d.impl.Driver {
 					trace ('getting name for ${v.id}');
 					var name =  transcoder.varNames.get(v.id);
 					if (name == null) name = v.name;
-					trace ('Laying out ${v.name}');
+					trace ('Laying out ${v.name} with ${size} floats at ${offset}');
 
 					switch(name) {
 						case "position":layout_attr.mSemantic = SEMANTIC_POSITION;
@@ -666,11 +700,18 @@ class ForgeDriver extends h3d.impl.Driver {
 						case "color": layout_attr.mSemantic = SEMANTIC_COLOR;
 						default: throw ('unknown vertex attribute ${name}');
 					}
+					switch(size) {
+						case 1:layout_attr.mFormat = TinyImageFormat_R32_SFLOAT;
+						case 2:layout_attr.mFormat = TinyImageFormat_R32G32_SFLOAT;
+						case 3:layout_attr.mFormat = TinyImageFormat_R32G32B32_SFLOAT;
+						case 4:layout_attr.mFormat = TinyImageFormat_R32G32B32A32_SFLOAT;
+						default: throw ('Unsupported size ${size}');
+					}
 					
-					layout_attr.mFormat = TinyImageFormat_R32G32B32_SFLOAT;
 					layout_attr.mBinding = 0;
 					layout_attr.mLocation = location;
-					layout_attr.mOffset = size * 4; // n elements * 4 bytes (sizeof(float))
+					layout_attr.mOffset =  offset; // n elements * 4 bytes (sizeof(float))
+					offset += size * 4;
 					/*
 					//layout and pipeline for sphere draw
 					VertexLayout vertexLayout = {};
@@ -714,6 +755,17 @@ class ForgeDriver extends h3d.impl.Driver {
 					attribNames.push(v.name);
 					p.stride += size;
 				default:
+			}
+		}
+
+		var location = 0;
+
+		for (v in shader.vertex.data.vars) {
+			switch (v.kind) {
+				case Input:
+					trace('FILTER STRIDE Setting ${v.name} to stride ${p.stride * 4}');
+					vl.setstrides(location++, 32);
+					default:
 			}
 		}
 		p.inputs = InputNames.get(attribNames);
@@ -842,8 +894,8 @@ class ForgeDriver extends h3d.impl.Driver {
 					tmpBuff.blit(total, hl.Bytes.getArray(buf.vertex.params.toData()), 0, buf.vertex.params.length * 4);
 					total +=  buf.vertex.params.length;
 				}
-				trace ('Vertex Total is ${total}');
 				if (total > 0) {					
+					trace ('Pushing Vertex Constants ${total}');
 					_currentCmd.pushConstants( _curShader.rootSig, _curShader.vertex.globalsIndex, tmpBuff  );
 				}
 				// Update buffer
@@ -853,9 +905,10 @@ class ForgeDriver extends h3d.impl.Driver {
 				//compute total in floats
 				var total = (buf.fragment.globals != null ? buf.fragment.globals.length : 0) + (buf.fragment.params != null ? buf.fragment.params.length : 0);
 				if (_tmpConstantBuffer.length < total) _tmpConstantBuffer.resize(total);
-				trace ('Fragment Total is ${total}');
+				
 				// Update buffer
 				if (total > 0) {		
+					trace ('Pushing Fragment Constants ${total}');
 					_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.globalsIndex, hl.Bytes.getArray(_tmpConstantBuffer) );
 				}
 //					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
@@ -1128,6 +1181,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		buildRasterState(stateBuilder.raster(), pass);
 		buildDepthState(stateBuilder.depth(), pass );
 
+		//Layout = shader x buffers
+
 		var xx = stateBuilder.getSignature(_curShader.id);
 
 		var cmatidx = _materialMap.get(xx);
@@ -1158,6 +1213,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			var p = _renderer.createPipeline( pdesc );
 
 			cmat._pipeline = p;
+			cmat._state = stateBuilder;
 
 		}
 
@@ -1173,32 +1229,45 @@ class ForgeDriver extends h3d.impl.Driver {
 	public override function selectMultiBuffers(buffers:Buffer.BufferOffset) {
 		_bufferBinder.reset();
 		for (a in _curShader.attribs) {
-			var b = @:privateAccess buffers.buffer.buffer.vbuf.b;
+			var mb = buffers.buffer.buffer;
+			var bb = buffers.buffer;
+			var vb = @:privateAccess mb.vbuf;
+			var b = @:privateAccess vb.b;
 
-			trace('Binding n ${_curShader.inputs.names[a.index]} b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} s ${a.size} str ${buffers.buffer.buffer.stride * 4}');
 			
-			_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4 );
+			trace('FILTER prebinding buffer b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} si ${a.size} bbvc ${bb.vertices} mbstr ${mb.stride} mbsi ${mb.size} bo ${buffers.offset} - ${_curShader.inputs.names[a.index]}' );
+			//
+			// 
+//			_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
+			_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
+			
 			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
 			// gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
 			// updateDivisor(a);
 			buffers = buffers.next;
 		}
+		trace('Binding vertex buffer');
+		_currentCmd.bindVertexBuffer(_bufferBinder);
+
 		_curBuffer = null;
 
 	}
 
 	var _curIndexBuffer:IndexBuffer;
-
+	var _firstDraw = true;
 	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
+		//if (!_firstDraw) return;
+		_firstDraw = false;
 		if (ibuf != _curIndexBuffer) {
 			_curIndexBuffer = ibuf;
 		}
 
 		//cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
 		//cmdBindDescriptorSet(cmd, gFrameIndex * 2 + 0, pDescriptorSetUniforms);
-		//cmdBindVertexBuffer(cmd, 1, &pSkyBoxVertexBuffer, &skyboxVbStride, NULL);
-//		cmdBindDescriptorSet(cmd, 0, pDescriptorSetShadow[1]);
+		//cmdBindDescriptorSet(cmd, 0, pDescriptorSetShadow[1]);
+		trace('Binding index buffer');
 		_currentCmd.bindIndexBuffer(ibuf.b, ibuf.is32 ? INDEX_TYPE_UINT32 : INDEX_TYPE_UINT16 , 0);
+		trace('Drawing ${ntriangles} triangles');
 		_currentCmd.drawIndexed( ntriangles * 3, 0, 0);
 
 		/*
@@ -1241,7 +1310,9 @@ class ForgeDriver extends h3d.impl.Driver {
 			for( a in _curShader.attribs ) {
 				var pos = a.offset;
 
-				_bufferBinder.add( m.b, m.stride * 4, pos * 4 );
+				// m.stride * 4
+				//pos * 4
+				//_bufferBinder.add( m.b, 0, 0 );
 
 				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 				//updateDivisor(a);
@@ -1265,7 +1336,8 @@ class ForgeDriver extends h3d.impl.Driver {
 					offset += a.size;
 					if( offset > m.stride ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
 				}
-				_bufferBinder.add( m.b, m.stride * 4, pos * 4 );
+				//m.stride * 4
+				//_bufferBinder.add( m.b, 0, pos * 4 );
 
 				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 				//updateDivisor(a);
