@@ -1210,15 +1210,15 @@ HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_set_sampleQuality)( _ref(Graph
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_sampleQuality,_IDL _I32);
 
-HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_mDepthStencilFormat)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_depthStencilFormat)( _ref(GraphicsPipelineDesc)* _this ) {
 	return HL_NAME(TinyImageFormat_valueToIndex0)(_unref(_this)->mDepthStencilFormat);
 }
-DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_mDepthStencilFormat,_IDL);
-HL_PRIM int HL_NAME(GraphicsPipelineDesc_set_mDepthStencilFormat)( _ref(GraphicsPipelineDesc)* _this, int value ) {
+DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_depthStencilFormat,_IDL);
+HL_PRIM int HL_NAME(GraphicsPipelineDesc_set_depthStencilFormat)( _ref(GraphicsPipelineDesc)* _this, int value ) {
 	_unref(_this)->mDepthStencilFormat = (TinyImageFormat)HL_NAME(TinyImageFormat_indexToValue0)(value);
 	return value;
 }
-DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_mDepthStencilFormat,_IDL _I32);
+DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_depthStencilFormat,_IDL _I32);
 
 HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_mPrimitiveTopo)( _ref(GraphicsPipelineDesc)* _this ) {
 	return HL_NAME(PrimitiveTopology_valueToIndex0)(_unref(_this)->mPrimitiveTopo);

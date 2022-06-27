@@ -924,7 +924,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 				
 				// Update buffer
 				if (total > 0) {		
-					trace ('Pushing Fragment Constants ${total}');
+					trace ('RENDER Pushing Fragment Constants ${total}');
 					_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.globalsIndex, hl.Bytes.getArray(_tmpConstantBuffer) );
 				}
 //					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
@@ -1223,7 +1223,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			var gdesc = pdesc.graphicsPipeline();
 			gdesc.mPrimitiveTopo = PRIMITIVE_TOPO_TRI_LIST;
 			gdesc.pDepthState = stateBuilder.depth();
-						
+			gdesc.depthStencilFormat = @:privateAccess defaultDepth.b.r.format;
 			//gdesc.pColorFormats = &rt.mFormat;
 			gdesc.pVertexLayout = _curShader.layout;
 			gdesc.pRootSignature = _curShader.rootSig;

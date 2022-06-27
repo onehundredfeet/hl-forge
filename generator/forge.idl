@@ -627,7 +627,7 @@ interface GraphicsPipelineDesc {
 	attribute uint             mRenderTargetCount;
 	[Internal="mSampleCount"] attribute SampleCount          sampleCount;
 	[Internal="mSampleQuality"] attribute uint             sampleQuality;
-	attribute TinyImageFormat      mDepthStencilFormat;
+	[Internal="mDepthStencilFormat"] attribute TinyImageFormat  depthStencilFormat;
 	attribute PrimitiveTopology    mPrimitiveTopo;
 	attribute bool                 mSupportIndirectCommandBuffer;
     attribute bool                 mVRFoveatedRendering;
