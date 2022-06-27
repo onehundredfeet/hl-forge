@@ -135,9 +135,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		attach();
 	}
 
-	function addSwapChain() {
-		return true;
-	}
+
 
 	function addDepthBuffer() {
 		return true;
@@ -242,6 +240,8 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function allocDepthBuffer(b:h3d.mat.DepthBuffer):DepthBuffer {
+		trace('RENDER Allocating depth buffer ${b.width} ${b.height}');
+
 		var depthRT = new forge.Native.RenderTargetDesc();
 		depthRT.arraySize = 1;
 		// depthRT.clearValue.depth = 0.0f;
@@ -270,6 +270,21 @@ class ForgeDriver extends h3d.impl.Driver {
 		}
 		depthRT.flags = forge.Native.TextureCreationFlags.TEXTURE_CREATION_FLAG_ON_TILE.toValue() | forge.Native.TextureCreationFlags.TEXTURE_CREATION_FLAG_VR_MULTIVIEW.toValue();
 
+		/*
+		RenderTargetDesc depthRT = {};
+		depthRT.mArraySize = 1;
+		depthRT.mClearValue.depth = 0.0f;
+		depthRT.mClearValue.stencil = 0;
+		depthRT.mDepth = 1;
+		depthRT.mFormat = TinyImageFormat_D32_SFLOAT;
+		depthRT.mStartState = RESOURCE_STATE_DEPTH_WRITE;
+		depthRT.mHeight = mSettings.mHeight;
+		depthRT.mSampleCount = SAMPLE_COUNT_1;
+		depthRT.mSampleQuality = 0;
+		depthRT.mWidth = mSettings.mWidth;
+		depthRT.mFlags = TEXTURE_CREATION_FLAG_ON_TILE | TEXTURE_CREATION_FLAG_VR_MULTIVIEW;
+
+		*/
 		/*
 			var r = gl.createRenderbuffer();
 			if( b.format == null )
@@ -335,7 +350,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var buff = desc.load(null);
 
-		trace ('FILTER - Allocating vertex buffer stride ${m.stride}');
+		trace ('FILTER - Allocating vertex buffer ${m.size} with stride ${m.stride} total bytecount  ${byteCount}');
 		return {b: buff, stride: m.stride #if multidriver, driver: this #end};
 	}
 
@@ -872,6 +887,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	}
 	var _tmpConstantBuffer = new Array<Float>();
 	public override function uploadShaderBuffers(buf:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
+		trace ('RENDER uploadShaderBuffers');
 		if (_curShader == null)
 			throw "No current shader to upload buffers to";
 
@@ -1081,7 +1097,10 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	function buildDepthState(  d : forge.Native.DepthStateDesc, pass:h3d.mat.Pass ) {		
 		d.depthTest = pass.depthTest != Always || pass.depthWrite;
 		d.depthWrite = pass.depthWrite;
+//		d.depthTest = false;
 		d.depthFunc = convertDepthFunc(pass.depthTest);
+//		d.depthFunc = CMP_GREATER;
+//		trace ('RENDERER DEPTH config ${d.depthTest} ${d.depthWrite} ${d.depthFunc}');
 		d.stencilTest = pass.stencil != null;
 		d.stencilReadMask = pass.colorMask;
 		d.stencilWriteMask = 0; // TODO
@@ -1135,7 +1154,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			case OneMinusDstColor:BC_ONE_MINUS_DST_COLOR;
 			case ConstantColor:BC_BLEND_FACTOR;
 			case OneMinusConstantColor:BC_ONE_MINUS_BLEND_FACTOR;
-			default : BC_ZERO;
+			default : throw "Unrecognized blend";
 		}
 	}
 
@@ -1169,6 +1188,8 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	var _currentMaterial : CompiledMaterial;
 
 	public override function selectMaterial(pass:h3d.mat.Pass) {
+		trace ('RENDER selectMaterial');
+
 		// culling
 		// stencil
 		// mode
@@ -1226,20 +1247,26 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	var _curBuffer:h3d.Buffer;
 	var _bufferBinder = new forge.Native.BufferBinder();
 
+	var _curMultiBuffer : Buffer.BufferOffset;
+
 	public override function selectMultiBuffers(buffers:Buffer.BufferOffset) {
+		_curMultiBuffer = buffers;
+		_curBuffer = null;
+		var mb = buffers.buffer.buffer;
+		trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
 		_bufferBinder.reset();
 		for (a in _curShader.attribs) {
-			var mb = buffers.buffer.buffer;
 			var bb = buffers.buffer;
 			var vb = @:privateAccess mb.vbuf;
 			var b = @:privateAccess vb.b;
 
 			
 			trace('FILTER prebinding buffer b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} si ${a.size} bbvc ${bb.vertices} mbstr ${mb.stride} mbsi ${mb.size} bo ${buffers.offset} - ${_curShader.inputs.names[a.index]}' );
+
 			//
 			// 
 //			_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
-			_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
+			_bufferBinder.add( b, mb.stride * 4, buffers.offset * 4);
 			
 			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
 			// gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
@@ -1249,13 +1276,14 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		trace('Binding vertex buffer');
 		_currentCmd.bindVertexBuffer(_bufferBinder);
 
-		_curBuffer = null;
 
 	}
 
 	var _curIndexBuffer:IndexBuffer;
 	var _firstDraw = true;
 	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
+		trace ('RENDER draw multi - ${_curMultiBuffer != null}');
+
 		//if (!_firstDraw) return;
 		_firstDraw = false;
 		if (ibuf != _curIndexBuffer) {
@@ -1346,7 +1374,8 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	}
 
 	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
-		_currentCmd.clear(_currentRT, null);
+		// 
+		_currentCmd.clear(_currentRT,@:privateAccess defaultDepth.b.r);
 	}
 	public override function end() {
 		_currentCmd.unbindRenderTarget();

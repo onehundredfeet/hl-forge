@@ -311,8 +311,29 @@ void forge_render_target_clear(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarg
     LoadActionsDesc loadActions = {};
     loadActions.mLoadActionsColor[0] = LOAD_ACTION_CLEAR;
     loadActions.mLoadActionDepth = LOAD_ACTION_CLEAR;
-    loadActions.mClearDepth.depth = 0.0f;
+
+
+    // This seems to trump the stuff below
+    loadActions.mClearDepth.depth = 1.0f;
     loadActions.mClearDepth.stencil = 0;
+    loadActions.mClearColorValues[0].r = 0.5f;
+    loadActions.mClearColorValues[0].g = 0.5f;
+    loadActions.mClearColorValues[0].b = 0.5f;
+    loadActions.mClearColorValues[0].a = 0.0f;
+
+    pRenderTarget->mClearValue.depth = 0.0f;
+    pRenderTarget->mClearValue.r = 1.0f;
+    pRenderTarget->mClearValue.g = 0.0f;
+    pRenderTarget->mClearValue.b = 0.0f;
+    pRenderTarget->mClearValue.a = 0.0f;
+    pRenderTarget->mClearValue.stencil = 0;
+
+    if (pDepthStencilRT != nullptr) {
+        pDepthStencilRT->mClearValue.depth = 0.0f;
+        pDepthStencilRT->mClearValue.stencil = 0;
+    }
+
+
     cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
     cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
@@ -359,6 +380,7 @@ void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int
     memcpy(desc.pMappedData, &((char *)data)[soffset], size);
     endUpdateResource(&desc, NULL);
 }
+
 
 RenderTarget *forge_sdl_create_render_target(Renderer *renderer, RenderTargetDesc *desc) {
     RenderTarget *pRT;
