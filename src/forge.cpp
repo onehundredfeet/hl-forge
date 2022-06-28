@@ -539,6 +539,19 @@ HL_PRIM int HL_NAME(StencilOp_valueToIndex0)( int value ) {
 	for( int i = 0; i < 9; i++ ) if ( value == (int)StencilOp__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, StencilOp_valueToIndex0, _I32);
+static DescriptorUpdateFrequency DescriptorUpdateFrequency__values[] = { DESCRIPTOR_UPDATE_FREQ_NONE,DESCRIPTOR_UPDATE_FREQ_PER_FRAME,DESCRIPTOR_UPDATE_FREQ_PER_BATCH,DESCRIPTOR_UPDATE_FREQ_PER_DRAW,DESCRIPTOR_UPDATE_FREQ_COUNT };
+HL_PRIM int HL_NAME(DescriptorUpdateFrequency_toValue0)( int idx ) {
+	return DescriptorUpdateFrequency__values[idx];
+}
+DEFINE_PRIM(_I32, DescriptorUpdateFrequency_toValue0, _I32);
+HL_PRIM int HL_NAME(DescriptorUpdateFrequency_indexToValue0)( int idx ) {
+	return DescriptorUpdateFrequency__values[idx];
+}
+DEFINE_PRIM(_I32, DescriptorUpdateFrequency_indexToValue0, _I32);
+HL_PRIM int HL_NAME(DescriptorUpdateFrequency_valueToIndex0)( int value ) {
+	for( int i = 0; i < 5; i++ ) if ( value == (int)DescriptorUpdateFrequency__values[i]) return i; return -1;
+}
+DEFINE_PRIM(_I32, DescriptorUpdateFrequency_valueToIndex0, _I32);
 static void finalize_StateBuilder( _ref(StateBuilder)* _this ) { free_ref(_this ); }
 HL_PRIM void HL_NAME(StateBuilder_delete)( _ref(StateBuilder)* _this ) {
 	free_ref(_this );
@@ -587,6 +600,16 @@ HL_PRIM void HL_NAME(RenderTargetDesc_delete)( _ref(RenderTargetDesc)* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, RenderTargetDesc_delete, _IDL);
+static void finalize_SamplerDesc( _ref(SamplerDesc)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(SamplerDesc_delete)( _ref(SamplerDesc)* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, SamplerDesc_delete, _IDL);
+static void finalize_DescriptorSetDesc( _ref(DescriptorSetDesc)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(DescriptorSetDesc_delete)( _ref(DescriptorSetDesc)* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, DescriptorSetDesc_delete, _IDL);
 static void finalize_RootSignatureDesc( _ref(RootSignatureFactory)* _this ) { free_ref(_this ); }
 HL_PRIM void HL_NAME(RootSignatureDesc_delete)( _ref(RootSignatureFactory)* _this ) {
 	free_ref(_this );
@@ -1351,6 +1374,11 @@ HL_PRIM void HL_NAME(Cmd_bindPipeline1)(_ref(Cmd)* _this, _ref(Pipeline)* pipeli
 }
 DEFINE_PRIM(_VOID, Cmd_bindPipeline1, _IDL _IDL);
 
+HL_PRIM void HL_NAME(Cmd_bindDescriptorSet2)(_ref(Cmd)* _this, int index, _ref(DescriptorSet)* set) {
+	(cmdBindDescriptorSet( _unref(_this) , index, _unref_ptr_safe(set)));
+}
+DEFINE_PRIM(_VOID, Cmd_bindDescriptorSet2, _IDL _I32 _IDL);
+
 HL_PRIM _ref(Map64Int)* HL_NAME(Map64Int_new0)() {
 	return alloc_ref((new Map64Int()),Map64Int);
 }
@@ -1525,6 +1553,171 @@ HL_PRIM int HL_NAME(RootSignature_getDescriptorIndexFromName1)(_ref(RootSignatur
 }
 DEFINE_PRIM(_I32, RootSignature_getDescriptorIndexFromName1, _IDL _STRING);
 
+HL_PRIM int HL_NAME(SamplerDesc_get_mMinFilter)( _ref(SamplerDesc)* _this ) {
+	return HL_NAME(FilterType_valueToIndex0)(_unref(_this)->mMinFilter);
+}
+DEFINE_PRIM(_I32,SamplerDesc_get_mMinFilter,_IDL);
+HL_PRIM int HL_NAME(SamplerDesc_set_mMinFilter)( _ref(SamplerDesc)* _this, int value ) {
+	_unref(_this)->mMinFilter = (FilterType)HL_NAME(FilterType_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,SamplerDesc_set_mMinFilter,_IDL _I32);
+
+HL_PRIM int HL_NAME(SamplerDesc_get_mMagFilter)( _ref(SamplerDesc)* _this ) {
+	return HL_NAME(FilterType_valueToIndex0)(_unref(_this)->mMagFilter);
+}
+DEFINE_PRIM(_I32,SamplerDesc_get_mMagFilter,_IDL);
+HL_PRIM int HL_NAME(SamplerDesc_set_mMagFilter)( _ref(SamplerDesc)* _this, int value ) {
+	_unref(_this)->mMagFilter = (FilterType)HL_NAME(FilterType_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,SamplerDesc_set_mMagFilter,_IDL _I32);
+
+HL_PRIM int HL_NAME(SamplerDesc_get_mMipMapMode)( _ref(SamplerDesc)* _this ) {
+	return HL_NAME(MipMapMode_valueToIndex0)(_unref(_this)->mMipMapMode);
+}
+DEFINE_PRIM(_I32,SamplerDesc_get_mMipMapMode,_IDL);
+HL_PRIM int HL_NAME(SamplerDesc_set_mMipMapMode)( _ref(SamplerDesc)* _this, int value ) {
+	_unref(_this)->mMipMapMode = (MipMapMode)HL_NAME(MipMapMode_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,SamplerDesc_set_mMipMapMode,_IDL _I32);
+
+HL_PRIM int HL_NAME(SamplerDesc_get_mAddressU)( _ref(SamplerDesc)* _this ) {
+	return HL_NAME(AddressMode_valueToIndex0)(_unref(_this)->mAddressU);
+}
+DEFINE_PRIM(_I32,SamplerDesc_get_mAddressU,_IDL);
+HL_PRIM int HL_NAME(SamplerDesc_set_mAddressU)( _ref(SamplerDesc)* _this, int value ) {
+	_unref(_this)->mAddressU = (AddressMode)HL_NAME(AddressMode_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,SamplerDesc_set_mAddressU,_IDL _I32);
+
+HL_PRIM int HL_NAME(SamplerDesc_get_mAddressV)( _ref(SamplerDesc)* _this ) {
+	return HL_NAME(AddressMode_valueToIndex0)(_unref(_this)->mAddressV);
+}
+DEFINE_PRIM(_I32,SamplerDesc_get_mAddressV,_IDL);
+HL_PRIM int HL_NAME(SamplerDesc_set_mAddressV)( _ref(SamplerDesc)* _this, int value ) {
+	_unref(_this)->mAddressV = (AddressMode)HL_NAME(AddressMode_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,SamplerDesc_set_mAddressV,_IDL _I32);
+
+HL_PRIM int HL_NAME(SamplerDesc_get_mAddressW)( _ref(SamplerDesc)* _this ) {
+	return HL_NAME(AddressMode_valueToIndex0)(_unref(_this)->mAddressW);
+}
+DEFINE_PRIM(_I32,SamplerDesc_get_mAddressW,_IDL);
+HL_PRIM int HL_NAME(SamplerDesc_set_mAddressW)( _ref(SamplerDesc)* _this, int value ) {
+	_unref(_this)->mAddressW = (AddressMode)HL_NAME(AddressMode_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,SamplerDesc_set_mAddressW,_IDL _I32);
+
+HL_PRIM float HL_NAME(SamplerDesc_get_mMipLodBias)( _ref(SamplerDesc)* _this ) {
+	return _unref(_this)->mMipLodBias;
+}
+DEFINE_PRIM(_F32,SamplerDesc_get_mMipLodBias,_IDL);
+HL_PRIM float HL_NAME(SamplerDesc_set_mMipLodBias)( _ref(SamplerDesc)* _this, float value ) {
+	_unref(_this)->mMipLodBias = (value);
+	return value;
+}
+DEFINE_PRIM(_F32,SamplerDesc_set_mMipLodBias,_IDL _F32);
+
+HL_PRIM bool HL_NAME(SamplerDesc_get_mSetLodRange)( _ref(SamplerDesc)* _this ) {
+	return _unref(_this)->mSetLodRange;
+}
+DEFINE_PRIM(_BOOL,SamplerDesc_get_mSetLodRange,_IDL);
+HL_PRIM bool HL_NAME(SamplerDesc_set_mSetLodRange)( _ref(SamplerDesc)* _this, bool value ) {
+	_unref(_this)->mSetLodRange = (value);
+	return value;
+}
+DEFINE_PRIM(_BOOL,SamplerDesc_set_mSetLodRange,_IDL _BOOL);
+
+HL_PRIM float HL_NAME(SamplerDesc_get_mMinLod)( _ref(SamplerDesc)* _this ) {
+	return _unref(_this)->mMinLod;
+}
+DEFINE_PRIM(_F32,SamplerDesc_get_mMinLod,_IDL);
+HL_PRIM float HL_NAME(SamplerDesc_set_mMinLod)( _ref(SamplerDesc)* _this, float value ) {
+	_unref(_this)->mMinLod = (value);
+	return value;
+}
+DEFINE_PRIM(_F32,SamplerDesc_set_mMinLod,_IDL _F32);
+
+HL_PRIM float HL_NAME(SamplerDesc_get_mMaxLod)( _ref(SamplerDesc)* _this ) {
+	return _unref(_this)->mMaxLod;
+}
+DEFINE_PRIM(_F32,SamplerDesc_get_mMaxLod,_IDL);
+HL_PRIM float HL_NAME(SamplerDesc_set_mMaxLod)( _ref(SamplerDesc)* _this, float value ) {
+	_unref(_this)->mMaxLod = (value);
+	return value;
+}
+DEFINE_PRIM(_F32,SamplerDesc_set_mMaxLod,_IDL _F32);
+
+HL_PRIM float HL_NAME(SamplerDesc_get_mMaxAnisotropy)( _ref(SamplerDesc)* _this ) {
+	return _unref(_this)->mMaxAnisotropy;
+}
+DEFINE_PRIM(_F32,SamplerDesc_get_mMaxAnisotropy,_IDL);
+HL_PRIM float HL_NAME(SamplerDesc_set_mMaxAnisotropy)( _ref(SamplerDesc)* _this, float value ) {
+	_unref(_this)->mMaxAnisotropy = (value);
+	return value;
+}
+DEFINE_PRIM(_F32,SamplerDesc_set_mMaxAnisotropy,_IDL _F32);
+
+HL_PRIM int HL_NAME(SamplerDesc_get_mCompareFunc)( _ref(SamplerDesc)* _this ) {
+	return HL_NAME(CompareMode_valueToIndex0)(_unref(_this)->mCompareFunc);
+}
+DEFINE_PRIM(_I32,SamplerDesc_get_mCompareFunc,_IDL);
+HL_PRIM int HL_NAME(SamplerDesc_set_mCompareFunc)( _ref(SamplerDesc)* _this, int value ) {
+	_unref(_this)->mCompareFunc = (CompareMode)HL_NAME(CompareMode_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,SamplerDesc_set_mCompareFunc,_IDL _I32);
+
+HL_PRIM _ref(DescriptorSetDesc)* HL_NAME(DescriptorSetDesc_new0)() {
+	return alloc_ref((new DescriptorSetDesc()),DescriptorSetDesc);
+}
+DEFINE_PRIM(_IDL, DescriptorSetDesc_new0,);
+
+HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(DescriptorSetDesc_get_pRootSignature)( _ref(DescriptorSetDesc)* _this ) {
+	return alloc_ref_const(_unref(_this)->pRootSignature,RootSignature);
+}
+DEFINE_PRIM(_IDL,DescriptorSetDesc_get_pRootSignature,_IDL);
+HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(DescriptorSetDesc_set_pRootSignature)( _ref(DescriptorSetDesc)* _this, HL_CONST _ref(RootSignature)* value ) {
+	_unref(_this)->pRootSignature = _unref(value);
+	return value;
+}
+DEFINE_PRIM(_IDL,DescriptorSetDesc_set_pRootSignature,_IDL _IDL);
+
+HL_PRIM int HL_NAME(DescriptorSetDesc_get_updateFrequency)( _ref(DescriptorSetDesc)* _this ) {
+	return HL_NAME(DescriptorUpdateFrequency_valueToIndex0)(_unref(_this)->mUpdateFrequency);
+}
+DEFINE_PRIM(_I32,DescriptorSetDesc_get_updateFrequency,_IDL);
+HL_PRIM int HL_NAME(DescriptorSetDesc_set_updateFrequency)( _ref(DescriptorSetDesc)* _this, int value ) {
+	_unref(_this)->mUpdateFrequency = (DescriptorUpdateFrequency)HL_NAME(DescriptorUpdateFrequency_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,DescriptorSetDesc_set_updateFrequency,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_get_maxSets)( _ref(DescriptorSetDesc)* _this ) {
+	return _unref(_this)->mMaxSets;
+}
+DEFINE_PRIM(_I32,DescriptorSetDesc_get_maxSets,_IDL);
+HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_set_maxSets)( _ref(DescriptorSetDesc)* _this, unsigned int value ) {
+	_unref(_this)->mMaxSets = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,DescriptorSetDesc_set_maxSets,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_get_nodeIndex)( _ref(DescriptorSetDesc)* _this ) {
+	return _unref(_this)->mNodeIndex;
+}
+DEFINE_PRIM(_I32,DescriptorSetDesc_get_nodeIndex,_IDL);
+HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_set_nodeIndex)( _ref(DescriptorSetDesc)* _this, unsigned int value ) {
+	_unref(_this)->mNodeIndex = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,DescriptorSetDesc_set_nodeIndex,_IDL _I32);
+
 HL_PRIM _ref(RootSignatureFactory)* HL_NAME(RootSignatureDesc_new0)() {
 	return alloc_ref((new RootSignatureFactory()),RootSignatureDesc);
 }
@@ -1586,6 +1779,20 @@ acquireNextImage( _unref(_this) , _unref_ptr_safe(pSwapChain), _unref_ptr_safe(p
 	return __tmpret;
 }
 DEFINE_PRIM(_I32, Renderer_acquireNextImage4, _IDL _IDL _IDL _IDL);
+
+HL_PRIM _ref(DescriptorSet)* HL_NAME(Renderer_addDescriptorSet2)(_ref(Renderer)* _this, _ref(DescriptorSetDesc)* desc) {
+	DescriptorSet* __tmpret;
+addDescriptorSet( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
+	return alloc_ref_const( __tmpret, DescriptorSet );
+}
+DEFINE_PRIM(_IDL, Renderer_addDescriptorSet2, _IDL _IDL);
+
+HL_PRIM _ref(Sampler)* HL_NAME(Renderer_addSampler2)(_ref(Renderer)* _this, _ref(SamplerDesc)* desc) {
+	Sampler* __tmpret;
+addSampler( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
+	return alloc_ref_const( __tmpret, Sampler );
+}
+DEFINE_PRIM(_IDL, Renderer_addSampler2, _IDL _IDL);
 
 HL_PRIM void HL_NAME(Renderer_waitFence1)(_ref(Renderer)* _this, _ref(Fence)* fence) {
 	(forge_renderer_wait_fence( _unref(_this) , _unref_ptr_safe(fence)));

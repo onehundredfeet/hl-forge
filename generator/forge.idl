@@ -475,7 +475,14 @@ enum BlendMode
 	"MAX_STENCIL_OPS"
 } ;
 
-
+enum DescriptorUpdateFrequency
+{
+	"DESCRIPTOR_UPDATE_FREQ_NONE",
+	"DESCRIPTOR_UPDATE_FREQ_PER_FRAME",
+	"DESCRIPTOR_UPDATE_FREQ_PER_BATCH",
+	"DESCRIPTOR_UPDATE_FREQ_PER_DRAW",
+	"DESCRIPTOR_UPDATE_FREQ_COUNT"
+};
 
 [NoDelete]
 interface ColorsMask {
@@ -672,9 +679,7 @@ interface Cmd {
 	[CObject, Internal="BufferBinder::bind"] void bindVertexBuffer( BufferBinder binder );
 	[CObject,  Internal="cmdDrawIndexed"] void drawIndexed( int vertCount, uint first_index, uint first_vertex);
 	[CObject, Internal="cmdBindPipeline"] void bindPipeline( Pipeline pipeline );
-
-
-
+	[CObject, Internal="cmdBindDescriptorSet"] void bindDescriptorSet(int index, DescriptorSet set);
 };
 
 
@@ -783,8 +788,37 @@ interface RootSignature {
 	[CObject] int getDescriptorIndexFromName( String name );
 };
 
+interface SamplerDesc {
+	attribute FilterType  mMinFilter;
+	attribute FilterType  mMagFilter;
+	attribute MipMapMode  mMipMapMode;
+	attribute AddressMode mAddressU;
+	attribute AddressMode mAddressV;
+	attribute AddressMode mAddressW;
+	attribute float       mMipLodBias;
+	attribute bool		mSetLodRange;
+	attribute float       mMinLod;
+	attribute float       mMaxLod;
+	attribute float       mMaxAnisotropy;
+	attribute CompareMode mCompareFunc;
+};
+
 [NoDelete]
 interface Sampler {
+
+};
+
+interface DescriptorSetDesc {
+	void DescriptorSetDesc();
+
+	[Const] attribute RootSignature pRootSignature;
+	[Internal="mUpdateFrequency"] attribute DescriptorUpdateFrequency updateFrequency;
+	[Internal="mMaxSets"] attribute uint maxSets;
+	[Internal="mNodeIndex"] attribute uint nodeIndex;
+};
+
+[NoDelete]
+interface DescriptorSet {
 
 };
 
@@ -812,6 +846,9 @@ interface Renderer {
 	[CObject, Internal="forge_sdl_renderer_create_semaphore", Const] Semaphore createSemaphore();
 	[CObject] uint acquireNextImage(SwapChain pSwapChain, Semaphore pImageAcquiredSemaphore, Fence fence, [Return] uint swapIndex);
 
+
+	[CObject, Const] DescriptorSet addDescriptorSet( DescriptorSetDesc desc, [Return] DescriptorSet set ); 
+	[CObject, Const] Sampler addSampler(  SamplerDesc desc, [Return] Sampler samplers );
 	[CObject, Internal="forge_renderer_wait_fence"] void waitFence( Fence fence );
 	[CObject, Internal="forge_renderer_shader_create", Const] Shader createShader(String vertShaderPath, String fragShaderPath);
 	
@@ -820,6 +857,7 @@ interface Renderer {
 
 	[CObject,Internal="forge_renderer_createRootSignatureSimple", Const] RootSignature createRootSigSimple(Shader shader);
 	[CObject,Internal="forge_renderer_createRootSignature", Const] RootSignature createRootSig(RootSignatureDesc desc);
+
 };
 
 
