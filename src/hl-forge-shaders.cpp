@@ -16,11 +16,11 @@ std::string compile_file_to_assembly(const char *source_name,
     shaderc::Compiler compiler;
     shaderc::CompileOptions options;
 //    options.SetSourceLanguage(shaderc_source_language_glsl);
-    options.SetTargetEnvironment(shaderc_target_env_opengl, 0);
-      options.SetTargetEnvironment(shaderc_target_env_default, 0);
-      options.SetAutoBindUniforms(true);
+//    options.SetTargetEnvironment(shaderc_target_env_opengl, 0);
+      options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
+      //options.SetAutoBindUniforms(true);
       options.SetTargetSpirv(shaderc_spirv_version_1_0);
-    options.SetForcedVersionProfile(330, shaderc_profile_none);
+    //options.SetForcedVersionProfile(330, shaderc_profile_none);
     options.SetAutoMapLocations(true);
     //	options.SetAutoBindUniforms(true);
 

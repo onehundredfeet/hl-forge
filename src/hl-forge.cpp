@@ -450,6 +450,18 @@ std::string getFilename(const std::string &path) {
     return path.substr(lastindex + 1);
 }
 
+DescriptorSet *forge_renderer_create_descriptor_set( Renderer *pRenderer, RootSignature* pRootSignature, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex) {
+    DescriptorSet *tmp;
+    DescriptorSetDesc desc = {
+        pRootSignature, 
+        updateFrequency,
+        maxSets,
+        nodeIndex};
+
+    addDescriptorSet( pRenderer, &desc, &tmp );
+    return tmp;
+}
+
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile) {
     auto vertSrc = getShaderSource(vertFile);
     auto fragSrc = getShaderSource(fragFile);
@@ -565,6 +577,11 @@ RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Sha
 
     RootSignatureDesc rootDesc = {&shader, 1, 0, nullptr, nullptr, 0};
     addRootSignature(pRenderer, &rootDesc, &tmp);
+
+
+    for (auto i = 0; i < tmp->mDescriptorCount; i++) {
+        printf("\tRENDER Descriptor %d is %s\n", i, tmp->pDescriptors[i].pName);
+    }
     return tmp;
 }
 
@@ -615,17 +632,45 @@ Shader**           ppShaders;
 RootSignature *RootSignatureFactory::create(Renderer *pRenderer) {
 	RootSignature *tmp;
 
-    RootSignatureDesc rootDesc = {&_shaders[0], (uint32_t)_shaders.size() };
+/*
+Shader**           ppShaders;
+	uint32_t           mShaderCount;
+	uint32_t           mMaxBindlessTextures;
+	const char**       ppStaticSamplerNames;
+	Sampler**          ppStaticSamplers;
+	uint32_t           mStaticSamplerCount;
+	RootSignatureFlags mFlags;
+*/
+    const char **pointers = (const char **)alloca( sizeof(char *) * _names.size());
+
+    for (int i = 0; i < _names.size(); i++) {
+        pointers[i] = _names[i].c_str();
+    }
+    RootSignatureDesc rootDesc = {
+        &_shaders[0], 
+        (uint32_t)_shaders.size(),
+        0,
+        pointers,
+        &_samplers[0],
+        (uint32_t)_samplers.size()
+         };
     
 	
     addRootSignature(pRenderer, &rootDesc, &tmp);
+
+    for (auto i = 0; i < tmp->mDescriptorCount; i++) {
+        DescriptorInfo &info = tmp->pDescriptors[i];
+        printf("\tRENDER Descriptor %d is %s hi %d dim %d size %d static %d type %d\n", i, info.pName, info.mHandleIndex, info.mDim, info.mSize, info.mStaticSampler, info.mType);
+    }
+
 	return tmp;
 }
 void RootSignatureFactory::addShader( Shader *pShader ) {
 	_shaders.push_back(pShader);
 }
-void RootSignatureFactory::addSampler( Sampler * sampler ) {
+void RootSignatureFactory::addSampler( Sampler * sampler, const char *name ) {
 	_samplers.push_back(sampler);
+    _names.push_back(name);
 }
 ///// boilerplate
 

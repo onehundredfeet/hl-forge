@@ -6,3 +6,4 @@ forge.hdll
 build.xcode
 shadercache
 log
+example/res/.tmp

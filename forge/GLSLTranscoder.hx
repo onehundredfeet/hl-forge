@@ -725,9 +725,21 @@ class GLSLTranscoder {
         });
 
         add("//Samplers\n");
+		var binding = 0;
         for( v in sampler_params ) {
-            add("uniform ");
+            add('layout (set=0,binding=${binding}) uniform ');
+			switch(v.type) {
+				case TSampler2D: 
+					trace ('RENDER adding sampler ${v.name}');
+				case TArray(t, size): 
+					trace ('RENDER adding sampler array ${v.name}');
+
+					t == TSampler2D;
+				default:false;
+			}
+
             initVar(v);
+			binding++;
         }
 
 
@@ -816,12 +828,14 @@ class GLSLTranscoder {
 			add("\n\n");
 		}
 
+		/*
 		if( isES )
 			decl("#version " + (version < 100 ? 100 : version) + (version > 150 ? " es" : ""));
 		else if( version != null )
 			decl("#version " + (version > 150 ? 150 : version));
 		else
-			decl("#version 130"); // OpenGL 3.0
+*/
+			decl("#version 430"); // OpenGL 3.0
 
 		decls.push(buf.toString());
 		buf = null;

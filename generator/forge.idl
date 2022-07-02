@@ -484,6 +484,22 @@ enum DescriptorUpdateFrequency
 	"DESCRIPTOR_UPDATE_FREQ_COUNT"
 };
 
+enum DescriptorType
+{
+	"DESCRIPTOR_TYPE_UNDEFINED",
+	"DESCRIPTOR_TYPE_SAMPLER",
+	"DESCRIPTOR_TYPE_TEXTURE",
+	"DESCRIPTOR_TYPE_RW_TEXTURE",
+	"DESCRIPTOR_TYPE_BUFFER",
+	"DESCRIPTOR_TYPE_RW_BUFFER",
+	"DESCRIPTOR_TYPE_UNIFORM_BUFFER",
+	"DESCRIPTOR_TYPE_ROOT_CONSTANT",
+	"DESCRIPTOR_TYPE_VERTEX_BUFFER",
+	"DESCRIPTOR_TYPE_INDEX_BUFFER",
+	"DESCRIPTOR_TYPE_INDIRECT_BUFFER",
+	"DESCRIPTOR_TYPE_TEXTURE_CUBE"
+};
+
 [NoDelete]
 interface ColorsMask {
 	const int NONE = 0;
@@ -788,7 +804,9 @@ interface RootSignature {
 	[CObject] int getDescriptorIndexFromName( String name );
 };
 
+[Initialize]
 interface SamplerDesc {
+	void SamplerDesc();
 	attribute FilterType  mMinFilter;
 	attribute FilterType  mMagFilter;
 	attribute MipMapMode  mMipMapMode;
@@ -808,6 +826,7 @@ interface Sampler {
 
 };
 
+[Initialize]
 interface DescriptorSetDesc {
 	void DescriptorSetDesc();
 
@@ -822,12 +841,24 @@ interface DescriptorSet {
 
 };
 
+interface DescriptorDataBuilder {
+	void DescriptorDataBuilder(DescriptorSet set, int index);
+	void clear();
+	void clearSlot(int index);
+	int addSlot(String name, DescriptorType type);
+	[Internal="addSlotData"] void addSlotTexture( int slot, Texture tex );
+	[Internal="addSlotData"] void addSlotSampler( int slot, Sampler sampler );
+	void update(Renderer renderer);
+	void bind(Cmd cmd);	
+
+};
+
 [Internal="RootSignatureFactory"]
 interface RootSignatureDesc {
 	void RootSignatureDesc();
 	
 	void addShader(Shader shader);
-	void addSampler( Sampler sampler );
+	void addSampler( Sampler sampler, String name );
 
 };
 
@@ -848,7 +879,10 @@ interface Renderer {
 
 
 	[CObject, Const] DescriptorSet addDescriptorSet( DescriptorSetDesc desc, [Return] DescriptorSet set ); 
-	[CObject, Const] Sampler addSampler(  SamplerDesc desc, [Return] Sampler samplers );
+	[CObject, Const, Internal="forge_renderer_create_descriptor_set"] DescriptorSet createDescriptorSet( RootSignature sig, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex ); 
+
+
+	[CObject, Const, Internal="addSampler"] Sampler createSampler(  SamplerDesc desc, [Return] Sampler samplers );
 	[CObject, Internal="forge_renderer_wait_fence"] void waitFence( Fence fence );
 	[CObject, Internal="forge_renderer_shader_create", Const] Shader createShader(String vertShaderPath, String fragShaderPath);
 	

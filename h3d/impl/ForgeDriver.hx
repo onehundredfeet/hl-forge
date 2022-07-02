@@ -23,6 +23,14 @@ private class CompiledShader {
 	public var textures:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
 	public var buffers:Array<Int>;
 	public var shader:hxsl.RuntimeShader.RuntimeShaderData;
+	public var textureIndex:DescriptorIndex;
+	public var samplerIndex:DescriptorIndex;
+	public var textureDS: forge.Native.DescriptorSet;
+	public var samplerDS: forge.Native.DescriptorSet;
+	public var textureSlot: Int;
+	public var samplerSlot: Int;
+	public var textureDataBuilder:forge.Native.DescriptorDataBuilder;
+	public var samplerDataBuilder:forge.Native.DescriptorDataBuilder;
 
 	public function new(s, vertex, shader) {
 		this.s = s;
@@ -66,6 +74,7 @@ private class CompiledMaterial {
 	public var _pipeline : forge.Native.Pipeline;
 	public var _layout: forge.Native.VertexLayout;
 	public var _state : StateBuilder;
+	public var _textureDescriptor : forge.Native.DescriptorSet;
 }
 
 @:access(h3d.impl.Shader)
@@ -636,14 +645,17 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	}
 
 	var _programIds = 0;
+	var _bilinearClamp2DSampler : forge.Native.Sampler;
+
 	function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
-		var transcoder = new forge.GLSLTranscoder();
+		var vertTranscoder = new forge.GLSLTranscoder();
+		var fragTranscoder = new forge.GLSLTranscoder();
 
 		var p = new CompiledProgram();
 		p.id = _programIds++;
 
-		var vert_glsl = getGLSL(transcoder, shader.vertex);
-		var frag_glsl = getGLSL(transcoder, shader.fragment);
+		var vert_glsl = getGLSL(vertTranscoder, shader.vertex);
+		var frag_glsl = getGLSL(fragTranscoder, shader.fragment);
 
 		//trace('vert shader ${vert_glsl}');
 		//trace('frag shader ${frag_glsl}');
@@ -666,10 +678,53 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		p.fragment = new CompiledShader(fgShader, false, shader.fragment);
 
 
+
+		trace('RENDER Shader texture count frag ${shader.fragment.texturesCount}');
+		trace('RENDER Shader texture count vert ${shader.vertex.texturesCount}');
+
 		var rootDesc = new forge.Native.RootSignatureDesc();
+
 		rootDesc.addShader(fgShader);
+
+		
+		
+		
 		var rootSig = _renderer.createRootSig(rootDesc);
 		p.rootSig = rootSig;
+
+		if (shader.fragment.texturesCount > 0) {
+			if (_bilinearClamp2DSampler == null) {
+				var samplerDesc = new forge.Native.SamplerDesc();
+				samplerDesc.mMinFilter = FILTER_LINEAR;
+				samplerDesc.mMagFilter = FILTER_LINEAR;
+				samplerDesc.mAddressU = ADDRESS_MODE_CLAMP_TO_EDGE;
+				samplerDesc.mAddressV = ADDRESS_MODE_CLAMP_TO_EDGE;
+				samplerDesc.mAddressW = ADDRESS_MODE_CLAMP_TO_EDGE;	
+				_bilinearClamp2DSampler = _renderer.createSampler(samplerDesc);
+			}
+			
+
+			var tt = shader.fragment.textures;
+			
+			trace('RENDER texture name ${tt.name} index ${tt.index} instance ${tt.instance} pos ${tt.pos} type ${tt.type} next ${tt.next}');
+
+			var ds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
+			p.fragment.textureDS = ds;
+
+			p.fragment.textureIndex = rootSig.getDescriptorIndexFromName( "fragmentTextures");
+			p.fragment.samplerIndex = rootSig.getDescriptorIndexFromName( "fragmentTexturesSmplr");
+
+			var sds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
+			p.fragment.samplerDS = sds;
+
+			p.fragment.textureDataBuilder = new forge.Native.DescriptorDataBuilder( ds,0);
+			p.fragment.samplerDataBuilder = new forge.Native.DescriptorDataBuilder( sds, 0);
+
+			p.fragment.textureSlot = p.fragment.textureDataBuilder.addSlot("fragmentTextures", DESCRIPTOR_TYPE_TEXTURE);
+			p.fragment.samplerSlot = p.fragment.samplerDataBuilder.addSlot("fragmentTexturesSmplr", DESCRIPTOR_TYPE_SAMPLER);
+
+			//rootDesc.addSampler( _bilinearClamp2DSampler, "fragmentTexturesSmplr" );
+		}
 
 
 		// get inputs
@@ -677,6 +732,21 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName( "_vertrootconstants");
 		p.fragment.params = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
 		p.fragment.globalsIndex = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
+//		p.fragment.textures
+/*
+struct spvDescriptorSetBuffer0
+{
+    array<texture2d<float>, 1> fragmentTextures [[id(0)]];
+    array<sampler, 1> fragmentTexturesSmplr [[id(1)]];
+};
+*/
+		
+		// fragmentTextures = 1
+		var textureDescIndex = p.fragment.textureIndex;
+		// fragmentTexturesSmplr = 2
+		var textureSampIndex = p.fragment.samplerIndex;
+		// spvDescriptorSetBuffer0 = -1
+		trace('RENDER tdi ${textureDescIndex} tsi ${textureSampIndex}'); 
 		trace('Indices vg ${p.vertex.globalsIndex} vp ${p.vertex.params} fg ${p.fragment.globalsIndex} fp ${p.fragment.params}');
 
 		var attribNames = [];
@@ -704,7 +774,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 					var location = vl.attribCount++;
 					var layout_attr = vl.attrib(location);
 					trace ('getting name for ${v.id}');
-					var name =  transcoder.varNames.get(v.id);
+					var name =  vertTranscoder.varNames.get(v.id);
 					if (name == null) name = v.name;
 					trace ('Laying out ${v.name} with ${size} floats at ${offset}');
 
@@ -811,14 +881,32 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	function configureTextures( s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers) {
 		if (s == null) return;
 		if (buf == null) return;
-		if (s.textures == null) {
+		if (buf.tex.length == 0) return;
+		if (s.shader.texturesCount == 0) return;
+//		if (s.textures == null) {
 //			trace("WARNING: No texture array on compiled shader, may be a missing feature, also could just have no textures");
-			return;
+//			return;
+//		}
+		if (_currentMaterial == null) throw "No material bound while configuring textures";
+
+		if (s.textureDataBuilder == null || s.samplerDataBuilder == null) {
+			throw('No texture data builder? ${s.shader.texturesCount}');
 		}
-		for (i in 0...s.textures.length) {
+		s.textureDataBuilder.clearSlot(0);
+		s.samplerDataBuilder.clearSlot(0);
+		
+
+		
+		for (i in 0...buf.tex.length) {
 			var t = buf.tex[i];
+			
+			s.textureDataBuilder.addSlotTexture(0, t.t.t);
+			s.samplerDataBuilder.addSlotSampler(0,_bilinearClamp2DSampler);
+
+			#if false
 			var pt = s.textures[i];
 			if( t == null || t.isDisposed() ) {
+				throw "missing texture path unsupported";
 				switch( pt.t ) {
 				case TSampler2D:
 					var color = h3d.mat.Defaults.loadingTextureColor;
@@ -850,11 +938,12 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			if( _boundTextures[idx] != t.t ) {
 				_boundTextures[idx] = t.t;
 
+
+				trace ('Bindnig texture ${t.id} to ${idx}');
 				#if multidriver
 				if( t.t.driver != this )
 					throw "Invalid texture context";
 				#end
-				throw "Not implemented";
 
 				/*
 				var mode = getBindType(t);
@@ -866,6 +955,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 				lastActiveIndex = idx;
 				*/
 			}
+			/*
 			var mip = Type.enumIndex(t.mipMap);
 			var filter = Type.enumIndex(t.filter);
 			var wrap = Type.enumIndex(t.wrap);
@@ -882,8 +972,15 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 				gl.texParameteri(mode, GL.TEXTURE_WRAP_S, w);
 				gl.texParameteri(mode, GL.TEXTURE_WRAP_T, w);
 				*/
-			}
+			}*/
+
+			#end
 		}
+
+		s.textureDataBuilder.update(_renderer);
+		s.samplerDataBuilder.update(_renderer);
+		s.textureDataBuilder.bind(_currentCmd);
+		s.samplerDataBuilder.bind(_currentCmd);
 	}
 	var _tmpConstantBuffer = new Array<Float>();
 	public override function uploadShaderBuffers(buf:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
@@ -1259,10 +1356,14 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 		}
 
-		_currentMaterial = cmat;
-//		trace('Binding pipeline');
-		_currentCmd.bindPipeline( _currentMaterial._pipeline );
-
+		if (_currentMaterial != cmat) {
+			_currentMaterial = cmat;
+			//		trace('Binding pipeline');
+			_currentCmd.bindPipeline( _currentMaterial._pipeline );			
+			for (i in 0..._boundTextures.length) {
+				_boundTextures[i] = null;
+			}
+		}
 	}
 
 	var _curBuffer:h3d.Buffer;

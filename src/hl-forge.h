@@ -40,9 +40,10 @@ class RootSignatureFactory {
         ~RootSignatureFactory();
         RootSignature *create(Renderer *pRenderer);
         void addShader( Shader *);
-        void addSampler( Sampler * sampler );
+        void addSampler( Sampler * sampler, const char *name );
         std::vector<Shader *> _shaders;
         std::vector<Sampler *> _samplers;
+        std::vector<std::string> _names;
 };
 
 class StateBuilder {
@@ -152,7 +153,90 @@ class HlForgePipelineDesc : public PipelineDesc {
     std::string _name;
 };
 
+class DescriptorDataBuilder {
+    DescriptorSet *_set;
+    int _index;
+            std::vector<std::string> _names;
+            std::vector<DescriptorType> _types;
+            std::vector<std::vector<void *> *> _dataPointers;
+            std::vector<DescriptorData> _data;
+    public:
+        DescriptorDataBuilder( DescriptorSet *set, int index ) {
+            _set = set;
+            _index = index;
+        }
 
+        ~DescriptorDataBuilder() {
+            clear();
+        }
+        void clear() {
+            for(int i = 0; i < _dataPointers.size(); i++) {
+                ::delete _dataPointers[i];
+            }
+            _dataPointers.clear();
+            _names.clear();
+            _data.clear();
+        }
+
+        void clearSlot( int slot ) {
+            _dataPointers[slot]->clear();
+        }
+
+        int addSlot(const std::string &name, DescriptorType type) {
+            _names.push_back(name);            
+            _dataPointers.push_back(::new std::vector<void *>());
+            _types.push_back(type);
+            DescriptorData d = {};
+            _data.push_back(d);
+            return _names.size() - 1;
+        }
+        void addSlotData( int slot, void * data) {
+            _dataPointers[slot]->push_back(data);
+        }
+
+        void update(Renderer *pRenderer) {
+            for(auto i = 0; i < _names.size(); i++) {
+                _data[i].pName = _names[i].c_str();
+                switch(_types[i]) {
+                    case DescriptorType::DESCRIPTOR_TYPE_TEXTURE:
+                    _data[i].ppTextures = (Texture **)(&(*_dataPointers[i])[0]);
+                    break;
+                    case DescriptorType::DESCRIPTOR_TYPE_SAMPLER:
+                    _data[i].ppSamplers = (Sampler **)(&(*_dataPointers[i])[0]);
+                    break;
+                    default:
+                    _data[i].mCount = 0;
+                    continue;
+
+                }
+                _data[i].mCount = _dataPointers[i]->size();
+            }
+            updateDescriptorSet(pRenderer, _index, _set, _names.size(), &_data[0]);
+        }
+
+        void bind(Cmd *cmd ) {
+            cmdBindDescriptorSet(cmd, _index, _set  );
+        }
+        /*
+        // Prepare descriptor sets
+		DescriptorData params[6] = {};
+		params[0].pName = "RightText";
+		params[0].ppTextures = &pSkyBoxTextures[0];
+		params[1].pName = "LeftText";
+		params[1].ppTextures = &pSkyBoxTextures[1];
+		params[2].pName = "TopText";
+		params[2].ppTextures = &pSkyBoxTextures[2];
+		params[3].pName = "BotText";
+		params[3].ppTextures = &pSkyBoxTextures[3];
+		params[4].pName = "FrontText";
+		params[4].ppTextures = &pSkyBoxTextures[4];
+		params[5].pName = "BackText";
+		params[5].ppTextures = &pSkyBoxTextures[5];
+		updateDescriptorSet(pRenderer, 0, pDescriptorSetTexture, 6, params);
+*/
+    
+
+};
 
 Renderer *createRenderer(const char *name);
 void destroyRenderer( Renderer * );
@@ -161,7 +245,7 @@ SDL_Window *forge_sdl_get_window(void *ptr);
 void forge_sdl_buffer_load_desc_set_index_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
 void forge_sdl_buffer_load_desc_set_vertex_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
 void forge_cmd_unbind(Cmd *);
-
+DescriptorSet *forge_renderer_create_descriptor_set( Renderer *, RootSignature *, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex);
 Buffer*forge_sdl_buffer_load( BufferLoadDesc *bld, SyncToken *token);
 Texture*forge_texture_load(TextureLoadDesc *desc, SyncToken *token);
 Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, SyncToken *token );

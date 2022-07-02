@@ -552,6 +552,19 @@ HL_PRIM int HL_NAME(DescriptorUpdateFrequency_valueToIndex0)( int value ) {
 	for( int i = 0; i < 5; i++ ) if ( value == (int)DescriptorUpdateFrequency__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, DescriptorUpdateFrequency_valueToIndex0, _I32);
+static DescriptorType DescriptorType__values[] = { DESCRIPTOR_TYPE_UNDEFINED,DESCRIPTOR_TYPE_SAMPLER,DESCRIPTOR_TYPE_TEXTURE,DESCRIPTOR_TYPE_RW_TEXTURE,DESCRIPTOR_TYPE_BUFFER,DESCRIPTOR_TYPE_RW_BUFFER,DESCRIPTOR_TYPE_UNIFORM_BUFFER,DESCRIPTOR_TYPE_ROOT_CONSTANT,DESCRIPTOR_TYPE_VERTEX_BUFFER,DESCRIPTOR_TYPE_INDEX_BUFFER,DESCRIPTOR_TYPE_INDIRECT_BUFFER,DESCRIPTOR_TYPE_TEXTURE_CUBE };
+HL_PRIM int HL_NAME(DescriptorType_toValue0)( int idx ) {
+	return DescriptorType__values[idx];
+}
+DEFINE_PRIM(_I32, DescriptorType_toValue0, _I32);
+HL_PRIM int HL_NAME(DescriptorType_indexToValue0)( int idx ) {
+	return DescriptorType__values[idx];
+}
+DEFINE_PRIM(_I32, DescriptorType_indexToValue0, _I32);
+HL_PRIM int HL_NAME(DescriptorType_valueToIndex0)( int value ) {
+	for( int i = 0; i < 12; i++ ) if ( value == (int)DescriptorType__values[i]) return i; return -1;
+}
+DEFINE_PRIM(_I32, DescriptorType_valueToIndex0, _I32);
 static void finalize_StateBuilder( _ref(StateBuilder)* _this ) { free_ref(_this ); }
 HL_PRIM void HL_NAME(StateBuilder_delete)( _ref(StateBuilder)* _this ) {
 	free_ref(_this );
@@ -610,6 +623,11 @@ HL_PRIM void HL_NAME(DescriptorSetDesc_delete)( _ref(DescriptorSetDesc)* _this )
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, DescriptorSetDesc_delete, _IDL);
+static void finalize_DescriptorDataBuilder( _ref(DescriptorDataBuilder)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(DescriptorDataBuilder_delete)( _ref(DescriptorDataBuilder)* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_delete, _IDL);
 static void finalize_RootSignatureDesc( _ref(RootSignatureFactory)* _this ) { free_ref(_this ); }
 HL_PRIM void HL_NAME(RootSignatureDesc_delete)( _ref(RootSignatureFactory)* _this ) {
 	free_ref(_this );
@@ -1553,6 +1571,11 @@ HL_PRIM int HL_NAME(RootSignature_getDescriptorIndexFromName1)(_ref(RootSignatur
 }
 DEFINE_PRIM(_I32, RootSignature_getDescriptorIndexFromName1, _IDL _STRING);
 
+HL_PRIM _ref(SamplerDesc)* HL_NAME(SamplerDesc_new0)() {
+	return alloc_ref((new SamplerDesc()),SamplerDesc);
+}
+DEFINE_PRIM(_IDL, SamplerDesc_new0,);
+
 HL_PRIM int HL_NAME(SamplerDesc_get_mMinFilter)( _ref(SamplerDesc)* _this ) {
 	return HL_NAME(FilterType_valueToIndex0)(_unref(_this)->mMinFilter);
 }
@@ -1718,6 +1741,48 @@ HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_set_nodeIndex)( _ref(DescriptorSe
 }
 DEFINE_PRIM(_I32,DescriptorSetDesc_set_nodeIndex,_IDL _I32);
 
+HL_PRIM _ref(DescriptorDataBuilder)* HL_NAME(DescriptorDataBuilder_new2)(_ref(DescriptorSet)* set, int index) {
+	return alloc_ref((new DescriptorDataBuilder(_unref_ptr_safe(set), index)),DescriptorDataBuilder);
+}
+DEFINE_PRIM(_IDL, DescriptorDataBuilder_new2, _IDL _I32);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_clear0)(_ref(DescriptorDataBuilder)* _this) {
+	(_unref(_this)->clear());
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_clear0, _IDL);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_clearSlot1)(_ref(DescriptorDataBuilder)* _this, int index) {
+	(_unref(_this)->clearSlot(index));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_clearSlot1, _IDL _I32);
+
+HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlot2)(_ref(DescriptorDataBuilder)* _this, vstring * name, int type) {
+	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
+	auto ___retvalue = (_unref(_this)->addSlot(name__cstr, DescriptorType__values[type]));
+	return ___retvalue;
+}
+DEFINE_PRIM(_I32, DescriptorDataBuilder_addSlot2, _IDL _STRING _I32);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotTexture2)(_ref(DescriptorDataBuilder)* _this, int slot, _ref(Texture)* tex) {
+	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(tex)));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotTexture2, _IDL _I32 _IDL);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotSampler2)(_ref(DescriptorDataBuilder)* _this, int slot, _ref(Sampler)* sampler) {
+	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(sampler)));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotSampler2, _IDL _I32 _IDL);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_update1)(_ref(DescriptorDataBuilder)* _this, _ref(Renderer)* renderer) {
+	(_unref(_this)->update(_unref_ptr_safe(renderer)));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_update1, _IDL _IDL);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_bind1)(_ref(DescriptorDataBuilder)* _this, _ref(Cmd)* cmd) {
+	(_unref(_this)->bind(_unref_ptr_safe(cmd)));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_bind1, _IDL _IDL);
+
 HL_PRIM _ref(RootSignatureFactory)* HL_NAME(RootSignatureDesc_new0)() {
 	return alloc_ref((new RootSignatureFactory()),RootSignatureDesc);
 }
@@ -1728,10 +1793,11 @@ HL_PRIM void HL_NAME(RootSignatureDesc_addShader1)(_ref(RootSignatureFactory)* _
 }
 DEFINE_PRIM(_VOID, RootSignatureDesc_addShader1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(RootSignatureDesc_addSampler1)(_ref(RootSignatureFactory)* _this, _ref(Sampler)* sampler) {
-	(_unref(_this)->addSampler(_unref_ptr_safe(sampler)));
+HL_PRIM void HL_NAME(RootSignatureDesc_addSampler2)(_ref(RootSignatureFactory)* _this, _ref(Sampler)* sampler, vstring * name) {
+	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
+	(_unref(_this)->addSampler(_unref_ptr_safe(sampler), name__cstr));
 }
-DEFINE_PRIM(_VOID, RootSignatureDesc_addSampler1, _IDL _IDL);
+DEFINE_PRIM(_VOID, RootSignatureDesc_addSampler2, _IDL _IDL _STRING);
 
 HL_PRIM HL_CONST _ref(Queue)* HL_NAME(Renderer_createQueue0)(_ref(Renderer)* _this) {
 	return alloc_ref_const((createQueue( _unref(_this) )),Queue);
@@ -1787,12 +1853,17 @@ addDescriptorSet( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
 }
 DEFINE_PRIM(_IDL, Renderer_addDescriptorSet2, _IDL _IDL);
 
-HL_PRIM _ref(Sampler)* HL_NAME(Renderer_addSampler2)(_ref(Renderer)* _this, _ref(SamplerDesc)* desc) {
+HL_PRIM HL_CONST _ref(DescriptorSet)* HL_NAME(Renderer_createDescriptorSet4)(_ref(Renderer)* _this, _ref(RootSignature)* sig, int updateFrequency, unsigned int maxSets, unsigned int nodeIndex) {
+	return alloc_ref_const((forge_renderer_create_descriptor_set( _unref(_this) , _unref_ptr_safe(sig), DescriptorUpdateFrequency__values[updateFrequency], maxSets, nodeIndex)),DescriptorSet);
+}
+DEFINE_PRIM(_IDL, Renderer_createDescriptorSet4, _IDL _IDL _I32 _I32 _I32);
+
+HL_PRIM _ref(Sampler)* HL_NAME(Renderer_createSampler2)(_ref(Renderer)* _this, _ref(SamplerDesc)* desc) {
 	Sampler* __tmpret;
 addSampler( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
 	return alloc_ref_const( __tmpret, Sampler );
 }
-DEFINE_PRIM(_IDL, Renderer_addSampler2, _IDL _IDL);
+DEFINE_PRIM(_IDL, Renderer_createSampler2, _IDL _IDL);
 
 HL_PRIM void HL_NAME(Renderer_waitFence1)(_ref(Renderer)* _this, _ref(Fence)* fence) {
 	(forge_renderer_wait_fence( _unref(_this) , _unref_ptr_safe(fence)));
