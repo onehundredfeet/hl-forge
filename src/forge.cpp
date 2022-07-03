@@ -1437,6 +1437,11 @@ HL_PRIM HL_CONST _ref(RenderTarget)* HL_NAME(SwapChain_getRenderTarget1)(_ref(Sw
 }
 DEFINE_PRIM(_IDL, SwapChain_getRenderTarget1, _IDL _I32);
 
+HL_PRIM bool HL_NAME(SwapChain_isVSync0)(_ref(SwapChain)* _this) {
+	return (isVSync( _unref(_this) ));
+}
+DEFINE_PRIM(_BOOL, SwapChain_isVSync0, _IDL);
+
 HL_PRIM _ref(RenderTargetDesc)* HL_NAME(RenderTargetDesc_new0)() {
 	auto ___retvalue = alloc_ref((new RenderTargetDesc()),RenderTargetDesc);
 	*(___retvalue->value) = {};
@@ -1899,6 +1904,11 @@ HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(Renderer_createRootSig1)(_ref(Rend
 	return alloc_ref_const((forge_renderer_createRootSignature( _unref(_this) , _unref_ptr_safe(desc))),RootSignature);
 }
 DEFINE_PRIM(_IDL, Renderer_createRootSig1, _IDL _IDL);
+
+HL_PRIM void HL_NAME(Renderer_toggleVSync1)(_ref(Renderer)* _this, _ref(SwapChain)* sc) {
+	(::toggleVSync( _unref(_this) , &_unref(sc)));
+}
+DEFINE_PRIM(_VOID, Renderer_toggleVSync1, _IDL _IDL);
 
 HL_PRIM _ref(ForgeSDLWindow)* HL_NAME(ForgeSDLWindow_new1)(_ref(SDL_Window)* sdlWindow) {
 	return alloc_ref((new ForgeSDLWindow(_unref_ptr_safe(sdlWindow))),ForgeSDLWindow);

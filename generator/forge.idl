@@ -736,6 +736,9 @@ interface Queue {
 interface SwapChain {
 	[CObject, Const, Internal="forge_swap_chain_get_render_target"] RenderTarget getRenderTarget(int rtidx);
 
+	[CObject] bool isVSync();
+
+
 };
 
 
@@ -892,6 +895,7 @@ interface Renderer {
 	[CObject,Internal="forge_renderer_createRootSignatureSimple", Const] RootSignature createRootSigSimple(Shader shader);
 	[CObject,Internal="forge_renderer_createRootSignature", Const] RootSignature createRootSig(RootSignatureDesc desc);
 
+	[CObject,Internal="::toggleVSync"] void toggleVSync([AddressOf] SwapChain sc);
 };
 
 

@@ -598,6 +598,11 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 	public override function begin(frame:Int) {
 		// Check for VSYNC
+
+		if (_sc.isVSync() != true) {
+			_queue.waitIdle();
+			_renderer.toggleVSync(_sc);
+		}
 		/*
 			if (pSwapChain->mEnableVsync != mSettings.mVSyncEnabled)
 				{
@@ -892,6 +897,7 @@ struct spvDescriptorSetBuffer0
 		if (s.textureDataBuilder == null || s.samplerDataBuilder == null) {
 			throw('No texture data builder? ${s.shader.texturesCount}');
 		}
+
 		s.textureDataBuilder.clearSlot(0);
 		s.samplerDataBuilder.clearSlot(0);
 		
@@ -976,6 +982,8 @@ struct spvDescriptorSetBuffer0
 
 			#end
 		}
+
+		trace('RENDER updating texture desc');
 
 		s.textureDataBuilder.update(_renderer);
 		s.samplerDataBuilder.update(_renderer);

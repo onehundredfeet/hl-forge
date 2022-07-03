@@ -271,4 +271,7 @@ void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Se
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile);
 RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Shader *shader);
 RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSignatureFactory *);
+inline bool isVSync( SwapChain *sc) {
+    return sc->mEnableVsync != 0;
+}
 #endif
