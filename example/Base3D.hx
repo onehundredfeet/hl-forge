@@ -39,6 +39,7 @@ class Base3D extends SampleApp {
 
 		// set the second cube color
 		obj2.material.color.setColor(0xFFB280);
+		obj1.material.color.setColor(0xA0A0AF);
 
 		// put it above the first cube
 		obj2.z = 0.7;
