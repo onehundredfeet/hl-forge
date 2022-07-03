@@ -499,9 +499,9 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     auto vertFilePathMSL = vertFilePath + ".metal";
     auto fragFilePathMSL = fragFilePath + ".metal";
 
-    printf("RENDER modifying metal shader code\n");
     auto bufferspot = fragMSL.find("spvDescriptorSet0 [[buffer(");
-    if (bufferspot >= 0) {
+    if (bufferspot != std::string::npos) {
+        printf("RENDER modifying metal shader code at %d\n", bufferspot);
         bufferspot += sizeof("spvDescriptorSet0 [[buffer(") - 1;
         fragMSL = fragMSL.replace(bufferspot, 1, "UPDATE_FREQ_PER_DRAW");
     }

@@ -983,7 +983,7 @@ struct spvDescriptorSetBuffer0
 			#end
 		}
 
-		trace('RENDER updating texture desc');
+		//trace('RENDER updating texture desc');
 
 		s.textureDataBuilder.update(_renderer);
 		s.samplerDataBuilder.update(_renderer);
