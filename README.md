@@ -19,7 +19,7 @@ Progress
 - Submits indexed draw calls
 - Renders lit cube
 - Loads a texture from HEAPS into a texture buffer
-
-Next
 - Create texture descriptors & attach to draw
 
+Next
+- Fix Fonts & 2D
