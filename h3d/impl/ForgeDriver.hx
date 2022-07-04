@@ -358,7 +358,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var buff = desc.load(null);
 
-		trace ('FILTER - Allocating vertex buffer ${m.size} with stride ${m.stride} total bytecount  ${byteCount}');
+		trace ('STRIDE FILTER - Allocating vertex buffer ${m.size} with stride ${m.stride} total bytecount  ${byteCount}');
 		return {b: buff, stride: m.stride #if multidriver, driver: this #end};
 	}
 
@@ -553,7 +553,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			gl.bindBuffer(GL.ARRAY_BUFFER, null);
 		 */
 
-		 trace('updating vertex buffer vstride ${v.stride} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length}');
+		 trace('STRIDE updating vertex buffer vstride ${v.stride} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length}');
 		v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4 * 0);
 	}
 
@@ -784,7 +784,7 @@ struct spvDescriptorSetBuffer0
 					trace ('getting name for ${v.id}');
 					var name =  vertTranscoder.varNames.get(v.id);
 					if (name == null) name = v.name;
-					trace ('Laying out ${v.name} with ${size} floats at ${offset}');
+					trace ('STRIDE Laying out ${v.name} with ${size} floats at ${offset}');
 
 					switch(name) {
 						case "position":layout_attr.mSemantic = SEMANTIC_POSITION;
@@ -1063,7 +1063,12 @@ struct spvDescriptorSetBuffer0
 					total +=  buf.vertex.params.length;
 				}
 				if (total > 0) {					
-					//trace ('Pushing Vertex Constants ${total}');
+					var x = buf.vertex.params[0];
+					var y = buf.vertex.params[1];
+					var z = buf.vertex.params[2];
+					var w = buf.vertex.params[3];
+
+					trace ('PARAMS Pushing Vertex Constants ${total} floats ${total / 4} vectors: [0] = x ${x} y ${y} z ${z} w ${w}');
 					_currentCmd.pushConstants( _curShader.rootSig, _curShader.vertex.globalsIndex, tmpBuff  );
 				}
 				// Update buffer
@@ -1098,7 +1103,7 @@ struct spvDescriptorSetBuffer0
 					}
 					*/
 
-					_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.globalsIndex, hl.Bytes.getArray(_tmpConstantBuffer) );
+					_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.globalsIndex, tmpBuff );
 				}
 //					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
 			}
@@ -1271,6 +1276,7 @@ struct spvDescriptorSetBuffer0
 		d.depthTest = pass.depthTest != Always || pass.depthWrite;
 		d.depthWrite = pass.depthWrite;
 //		d.depthTest = false;
+//		trace('DEPTH depth test ${pass.depthTest} write ${pass.depthWrite}');
 		d.depthFunc = convertDepthFunc(pass.depthTest);
 //		d.depthFunc = CMP_GREATER;
 //		trace ('RENDERER DEPTH config ${d.depthTest} ${d.depthWrite} ${d.depthFunc}');
@@ -1341,6 +1347,7 @@ struct spvDescriptorSetBuffer0
 		};
 	}
 	function buildBlendState(b : forge.Native.BlendStateDesc, pass:h3d.mat.Pass) {
+		trace('BLENDING src ${pass.blendSrc} dest ${pass.blendDst} src alpha ${pass.blendAlphaSrc} op ${pass.blendOp}');
 		b.setMasks(0, pass.colorMask); // probably want a convienience function for this
 		b.setRenderTarget( BLEND_STATE_TARGET_0, true );
 		b.setSrcFactors(0, convertBlendConstant(pass.blendSrc) );
@@ -1443,6 +1450,8 @@ struct spvDescriptorSetBuffer0
 			//
 			// 
 //			_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
+
+			trace ('STRIDE mb.stride is ${mb.stride}');
 			_bufferBinder.add( b, mb.stride * 4, buffers.offset * 4);
 			
 			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
@@ -1459,7 +1468,7 @@ struct spvDescriptorSetBuffer0
 	var _curIndexBuffer:IndexBuffer;
 	var _firstDraw = true;
 	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
-		//trace ('RENDER draw multi - ${_curMultiBuffer != null}');
+//		trace ('RENDER INDEXED ${ntriangles} ${startIndex}');
 
 		//if (!_firstDraw) return;
 		_firstDraw = false;
@@ -1487,23 +1496,27 @@ struct spvDescriptorSetBuffer0
 	public override function selectBuffer(v:Buffer) {
 //		trace('selecting buffer ${v.id}');
 
+/*
 		if( v == _curBuffer )
 			return;
 		if( _curBuffer != null && v.buffer == _curBuffer.buffer && v.buffer.flags.has(RawFormat) == _curBuffer.flags.has(RawFormat) ) {
 			_curBuffer = v;
 			return;
 		}
-
+*/
 		if( _curShader == null )
 			throw "No shader selected";
 		_curBuffer = v;
 
 		_bufferBinder.reset();
 
-		var m = @:privateAccess v.buffer.vbuf;
-		if( m.stride < _curShader.stride )
-			throw "Buffer stride (" + m.stride + ") and shader stride (" + _curShader.stride + ") mismatch";
+		var m = @:privateAccess v.buffer;
+		var vbuf = @:privateAccess v.buffer.vbuf;
+		var b = @:privateAccess vbuf.b;
+		//if( m.stride < _curShader.stride )
+		//	throw "Buffer stride (" + m.stride + ") and shader stride (" + _curShader.stride + ") mismatch";
 
+		//trace('STRIDE SELECT BUFFER m.stride ${m.stride} vbuf ${vbuf.stride} cur shader stride ${_curShader.stride}');
 		#if multidriver
 		if( m.driver != this )
 			throw "Invalid buffer context";
@@ -1513,16 +1526,22 @@ struct spvDescriptorSetBuffer0
 
 		if( v.flags.has(RawFormat) ) {
 			for( a in _curShader.attribs ) {
-				var pos = a.offset;
+				trace('STRIDE selectBuffer binding ${a.index} strid ${m.stride} offset ${a.offset}');
+			
+				_bufferBinder.add( b, m.stride * 4, a.offset * 4);
+				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 
 				// m.stride * 4
 				//pos * 4
 				//_bufferBinder.add( m.b, 0, 0 );
 
-				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 				//updateDivisor(a);
 			}
+			_currentCmd.bindVertexBuffer(_bufferBinder);
 		} else {
+			throw ("unsupported");
+			trace('STRIDE selectBuffer RAW NOT');
+
 			var offset = 8;
 			for( i in 0..._curShader.attribs.length ) {
 				var a = _curShader.attribs[i];
