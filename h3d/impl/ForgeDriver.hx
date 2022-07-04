@@ -1597,12 +1597,19 @@ struct spvDescriptorSetBuffer0
 	public override function disposeVertexes(v:VertexBuffer) {
 //		trace("MISSING DELETE BUFFER");
 		v.b.dispose();
+		v.b = null;
 	}
 
 	public override function disposeIndexes(i:IndexBuffer) {
 		i.b.dispose();
+		i.b = null;
 	}
-
+	public override function disposeTexture(t:h3d.mat.Texture) {
+		var tt = t.t;
+		if( tt == null ) return;
+		tt.t.dispose();
+		t.t = null;
+	}
 
 	/*
 		function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
@@ -1866,9 +1873,7 @@ struct spvDescriptorSetBuffer0
 		throw "Not implemented";
 	}
 
-	public override function disposeTexture(t:h3d.mat.Texture) {
-		throw "Not implemented";
-	}
+
 
 
 

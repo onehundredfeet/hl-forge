@@ -948,6 +948,8 @@ interface BufferLoadDesc {
 [NoDelete]
 interface Texture {
 	[CObject, Internal="forge_sdl_texture_upload"] void upload(bytes data, int size);
+	[CObject, Internal="removeResource"]  void dispose();
+
 };
 
 interface TextureDesc {

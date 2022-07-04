@@ -1992,6 +1992,11 @@ HL_PRIM void HL_NAME(Texture_upload2)(_ref(Texture)* _this, vbyte* data, int siz
 }
 DEFINE_PRIM(_VOID, Texture_upload2, _IDL _BYTES _I32);
 
+HL_PRIM void HL_NAME(Texture_dispose0)(_ref(Texture)* _this) {
+	(removeResource( _unref(_this) ));
+}
+DEFINE_PRIM(_VOID, Texture_dispose0, _IDL);
+
 HL_PRIM _ref(TextureDesc)* HL_NAME(TextureDesc_new0)() {
 	auto ___retvalue = alloc_ref((new TextureDesc()),TextureDesc);
 	*(___retvalue->value) = {};
