@@ -59,7 +59,8 @@ class Base3D extends SampleApp {
 		obj2.material.shadows = false;
 
 		if (engine.driver.hasFeature(Wireframe)) {
-			//addCheck("Wireframe", function() { return obj2.material.mainPass.wireframe; }, function(v) { obj2.material.mainPass.wireframe = v; });
+			trace('Adding check');
+			addCheck("Wireframe", function() { return obj2.material.mainPass.wireframe; }, function(v) { obj2.material.mainPass.wireframe = v; });
 		}
 
 		trace('CWD INIT 2 IS ${FileSystem.absolutePath('')}');

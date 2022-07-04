@@ -6,6 +6,8 @@ class Base2D extends hxd.App {
 	override function init() {
 		// creates a new object and put it at the center of the sceen
 		obj = new h2d.Object(s2d);
+
+		//trace('FUCK2D Scene width  ${s2d.width} ${s2d.height}');
 		obj.x = Std.int(s2d.width / 2);
 		obj.y = Std.int(s2d.height / 2);
 
@@ -46,7 +48,7 @@ class Base2D extends hxd.App {
 
 	// if we the window has been resized
 	override function onResize() {
-
+		trace ('RESIZE ME ${obj}');
 		if( obj == null ) return;
 
 		// center our object

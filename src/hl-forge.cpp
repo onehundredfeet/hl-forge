@@ -316,9 +316,9 @@ void forge_render_target_clear(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarg
     // This seems to trump the stuff below
     loadActions.mClearDepth.depth = 1.0f;
     loadActions.mClearDepth.stencil = 0;
-    loadActions.mClearColorValues[0].r = 0.1f;
-    loadActions.mClearColorValues[0].g = 0.1f;
-    loadActions.mClearColorValues[0].b = 0.1f;
+    loadActions.mClearColorValues[0].r = 0.0f;
+    loadActions.mClearColorValues[0].g = 0.0f;
+    loadActions.mClearColorValues[0].b = 0.0f;
     loadActions.mClearColorValues[0].a = 0.0f;
 
     //pRenderTarget->mClearValue.depth = 0.0f;

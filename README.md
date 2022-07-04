@@ -6,6 +6,10 @@ THIS IS NOT FUNCTIONAL YET AND REQUIRES CHANGES TO BOTH HASHLINK AND HEAPS
 
 IT IS NOT RECOMMENDED TO CLONE THIS REPO AT THIS TIME
 
+Tested Samples
+- Base2D
+- Base3D
+
 Progress
 - Gets a HEAPS SDL window
 - Attaches a FORGE render target & depth buffer to it
@@ -20,6 +24,7 @@ Progress
 - Renders lit cube
 - Loads a texture from HEAPS into a texture buffer
 - Create texture descriptors & attach to draw
+- Fix Fonts & 2D
 
 Next
-- Fix Fonts & 2D
+- Test More Samples

@@ -9,7 +9,7 @@ import sys.FileSystem;
 import h3d.impl.Driver;
 import h3d.mat.Pass as Pass;
 import forge.Native.BlendStateTargets as BlendStateTargets;
-import forge.Native.ColorsMask as ColorsMask;
+import forge.Native.ColorMask as ColorMask;
 import forge.Native.StateBuilder as StateBuilder;
 
 private typedef DescriptorIndex = Null<Int>;
@@ -1312,14 +1312,14 @@ struct spvDescriptorSetBuffer0
 		r.cullMode = CULL_MODE_NONE;
 		r.depthBias = 0;
 		r.slopeScaledDepthBias = 0.;
-		r.fillMode = FILL_MODE_SOLID;
+		r.fillMode = pass.wireframe ? FILL_MODE_WIREFRAME : FILL_MODE_SOLID;
 		r.frontFace = FRONT_FACE_CCW;
 		r.multiSample = false;
 		r.scissor = false;
 		r.depthClampEnable = false;
 	}
 
-	function convertBlendConstant(blendSrc : h3d.mat.Data.Blend) : forge.Native.BlendConstant{
+	inline function convertBlendConstant(blendSrc : h3d.mat.Data.Blend) : forge.Native.BlendConstant{
 		return switch(blendSrc) {
 			case One: BC_ONE;
 			case Zero: BC_ZERO;
@@ -1337,7 +1337,7 @@ struct spvDescriptorSetBuffer0
 		}
 	}
 
-	function convertBlendMode(blend : h3d.mat.Data.Operation ) : forge.Native.BlendMode {
+	inline function convertBlendMode(blend : h3d.mat.Data.Operation ) : forge.Native.BlendMode {
 		return switch(blend) {
 			case Add: return BM_ADD;
 			case Sub: return BM_SUBTRACT;
@@ -1346,19 +1346,24 @@ struct spvDescriptorSetBuffer0
 			case Max: return BM_MAX;
 		};
 	}
+	inline function convertColorMask( heapsMask : Int ) : Int{
+		//Need to do the remap [RC]
+		return ColorMask.ALL;
+	}
+
 	function buildBlendState(b : forge.Native.BlendStateDesc, pass:h3d.mat.Pass) {
-		trace('BLENDING src ${pass.blendSrc} dest ${pass.blendDst} src alpha ${pass.blendAlphaSrc} op ${pass.blendOp}');
-		b.setMasks(0, pass.colorMask); // probably want a convienience function for this
-		b.setRenderTarget( BLEND_STATE_TARGET_0, true );
+		trace('BLENDING CM ${pass.colorMask} src ${pass.blendSrc} dest ${pass.blendDst} src alpha ${pass.blendAlphaSrc} op ${pass.blendOp}');
+		b.setMasks(0, convertColorMask(pass.colorMask));
+		b.setRenderTarget( BLEND_STATE_TARGET_ALL, true );
 		b.setSrcFactors(0, convertBlendConstant(pass.blendSrc) );
 		b.setDstFactors(0, convertBlendConstant(pass.blendDst) );
 		b.setSrcAlphaFactors(0, convertBlendConstant(pass.blendAlphaSrc));
 		b.setDstAlphaFactors(0, convertBlendConstant(pass.blendAlphaDst));
 		b.setBlendModes(0, convertBlendMode(pass.blendOp));
 		b.setBlendAlphaModes(0, convertBlendMode(pass.blendAlphaOp));
-
-		b.alphaToCoverage = false;
 		b.independentBlend = false;
+
+		//b.alphaToCoverage = false;
 	}
 
 
@@ -1403,6 +1408,7 @@ struct spvDescriptorSetBuffer0
 			var gdesc = pdesc.graphicsPipeline();
 			gdesc.mPrimitiveTopo = PRIMITIVE_TOPO_TRI_LIST;
 			gdesc.pDepthState = stateBuilder.depth();
+			gdesc.pBlendState = stateBuilder.blend();
 			gdesc.depthStencilFormat = @:privateAccess defaultDepth.b.r.format;
 			//gdesc.pColorFormats = &rt.mFormat;
 			gdesc.pVertexLayout = _curShader.layout;

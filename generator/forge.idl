@@ -501,7 +501,7 @@ enum DescriptorType
 };
 
 [NoDelete]
-interface ColorsMask {
+interface ColorMask {
 	const int NONE = 0;
 	const int RED = 0x01;
 	const int GREEN = 0x02;
