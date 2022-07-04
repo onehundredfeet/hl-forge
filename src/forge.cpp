@@ -1950,6 +1950,11 @@ HL_PRIM void HL_NAME(Buffer_update1)(_ref(Buffer)* _this, vbyte* data) {
 }
 DEFINE_PRIM(_VOID, Buffer_update1, _IDL _BYTES);
 
+HL_PRIM void HL_NAME(Buffer_dispose0)(_ref(Buffer)* _this) {
+	(removeResource( _unref(_this) ));
+}
+DEFINE_PRIM(_VOID, Buffer_dispose0, _IDL);
+
 HL_PRIM _ref(BufferLoadDesc)* HL_NAME(BufferLoadDesc_new0)() {
 	auto ___retvalue = alloc_ref((new BufferLoadDesc()),BufferLoadDesc);
 	*(___retvalue->value) = {};

@@ -314,19 +314,19 @@ void forge_render_target_clear(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarg
 
 
     // This seems to trump the stuff below
-    loadActions.mClearDepth.depth = 1.0f;
-    loadActions.mClearDepth.stencil = 0;
-    loadActions.mClearColorValues[0].r = 0.0f;
-    loadActions.mClearColorValues[0].g = 0.0f;
-    loadActions.mClearColorValues[0].b = 0.0f;
-    loadActions.mClearColorValues[0].a = 0.0f;
+    loadActions.mClearDepth.depth = pRenderTarget->mClearValue.depth = 1.0f;
+    loadActions.mClearDepth.stencil = pRenderTarget->mClearValue.stencil = 0;
+    loadActions.mClearColorValues[0].r = pRenderTarget->mClearValue.r = 0.0f;
+    loadActions.mClearColorValues[0].g = pRenderTarget->mClearValue.g = 0.0f;
+    loadActions.mClearColorValues[0].b = pRenderTarget->mClearValue.b = 0.0f;
+    loadActions.mClearColorValues[0].a = pRenderTarget->mClearValue.a = 0.0f;
 
     //pRenderTarget->mClearValue.depth = 0.0f;
 //    pRenderTarget->mClearValue.r = 1.0f;
   //  pRenderTarget->mClearValue.g = 0.0f;
     //pRenderTarget->mClearValue.b = 0.0f;
     //pRenderTarget->mClearValue.a = 0.0f;
-    pRenderTarget->mClearValue.stencil = 0;
+//    pRenderTarget->mClearValue.stencil = 0;
 
     if (pDepthStencilRT != nullptr) {
         pDepthStencilRT->mClearValue.depth = 0.0f;

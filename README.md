@@ -7,6 +7,7 @@ THIS IS NOT FUNCTIONAL YET AND REQUIRES CHANGES TO BOTH HASHLINK AND HEAPS
 IT IS NOT RECOMMENDED TO CLONE THIS REPO AT THIS TIME
 
 Tested Samples
+- Adjust Color (Has some blinking on mouse move, likely resource premature deleting)
 - Base2D
 - Base3D
 
@@ -28,3 +29,4 @@ Progress
 
 Next
 - Test More Samples
+- Viewport resizing

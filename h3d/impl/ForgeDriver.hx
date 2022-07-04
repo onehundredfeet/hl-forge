@@ -624,6 +624,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 		_currentCmd = _swapCmds[_frameIndex];
 
+		_currentMaterial = null;
 		_currentCmd.begin();
 		_currentCmd.renderBarrier( _currentRT );
 		_frameBegun = true;
@@ -755,7 +756,7 @@ struct spvDescriptorSetBuffer0
 		var textureSampIndex = p.fragment.samplerIndex;
 		// spvDescriptorSetBuffer0 = -1
 		trace('RENDER tdi ${textureDescIndex} tsi ${textureSampIndex}'); 
-		trace('Indices vg ${p.vertex.globalsIndex} vp ${p.vertex.params} fg ${p.fragment.globalsIndex} fp ${p.fragment.params}');
+		trace('PARAMS Indices vg ${p.vertex.globalsIndex} vp ${p.vertex.params} fg ${p.fragment.globalsIndex} fp ${p.fragment.params}');
 
 		var attribNames = [];
 		p.attribs = [];
@@ -1046,7 +1047,7 @@ struct spvDescriptorSetBuffer0
 		switch (which) {
 			case Globals:// trace ('Ignoring globals'); // do nothing as it was all done by the globals
 			case Params:  //trace ('Upload Globals & Params'); 
-			if( buf.vertex.globals != null || buf.vertex.params != null) {
+			if(( buf.vertex.globals != null || buf.vertex.params != null) && _curShader.vertex.globalsIndex != -1) {
 				var max = (buf.vertex.globals != null ? buf.vertex.globals.length : 0) + (buf.vertex.params != null ? buf.vertex.params.length : 0);
 				if (_tmpConstantBuffer.length < max) _tmpConstantBuffer.resize(max);
 				var total = 0;
@@ -1074,7 +1075,7 @@ struct spvDescriptorSetBuffer0
 				// Update buffer
 //					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
 			}
-			if( buf.fragment.globals != null || buf.fragment.params != null ) {
+			if (( buf.fragment.globals != null || buf.fragment.params != null) && _curShader.fragment.globalsIndex != -1) {
 				//compute total in floats
 				var max = (buf.fragment.globals != null ? buf.fragment.globals.length : 0) + (buf.fragment.params != null ? buf.fragment.params.length : 0);
 				if (_tmpConstantBuffer.length < max) _tmpConstantBuffer.resize(max);
@@ -1474,7 +1475,7 @@ struct spvDescriptorSetBuffer0
 	var _curIndexBuffer:IndexBuffer;
 	var _firstDraw = true;
 	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
-//		trace ('RENDER INDEXED ${ntriangles} ${startIndex}');
+		trace ('RENDER INDEXED ${ntriangles} ${startIndex}');
 
 		//if (!_firstDraw) return;
 		_firstDraw = false;
@@ -1587,7 +1588,22 @@ struct spvDescriptorSetBuffer0
 		_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
 	}
 	
-	
+	public override function uploadTextureBitmap(t:h3d.mat.Texture, bmp:hxd.BitmapData, mipLevel:Int, side:Int) {
+		var pixels = bmp.getPixels();
+		uploadTexturePixels(t, pixels, mipLevel, side);
+		pixels.dispose();
+	}
+
+	public override function disposeVertexes(v:VertexBuffer) {
+//		trace("MISSING DELETE BUFFER");
+		v.b.dispose();
+	}
+
+	public override function disposeIndexes(i:IndexBuffer) {
+		i.b.dispose();
+	}
+
+
 	/*
 		function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
 			switch( which ) {
@@ -1854,13 +1870,8 @@ struct spvDescriptorSetBuffer0
 		throw "Not implemented";
 	}
 
-	public override function disposeIndexes(i:IndexBuffer) {
-		throw "Not implemented";
-	}
 
-	public override function disposeVertexes(v:VertexBuffer) {
-		throw "Not implemented";
-	}
+
 
 	public override function disposeInstanceBuffer(b:h3d.impl.InstanceBuffer) {
 		throw "Not implemented";
@@ -1874,9 +1885,6 @@ struct spvDescriptorSetBuffer0
 		throw "Not implemented";
 	}
 
-	public override function uploadTextureBitmap(t:h3d.mat.Texture, bmp:hxd.BitmapData, mipLevel:Int, side:Int) {
-		throw "Not implemented";
-	}
 
 	public override function readVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
 		throw "Driver does not allow to read vertex bytes";

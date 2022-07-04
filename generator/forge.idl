@@ -923,6 +923,7 @@ interface SyncToken {
 interface Buffer {
 	[CObject, Internal="forge_sdl_buffer_update_region"] void updateRegion(bytes data, int toffset, int size, int soffset);
 	[CObject, Internal="forge_sdl_buffer_update"] void update(bytes data);
+	[CObject, Internal="removeResource"]  void dispose();
 };
 
 interface BufferLoadDesc {
