@@ -696,6 +696,8 @@ interface Cmd {
 	[CObject,  Internal="cmdDrawIndexed"] void drawIndexed( int vertCount, uint first_index, uint first_vertex);
 	[CObject, Internal="cmdBindPipeline"] void bindPipeline( Pipeline pipeline );
 	[CObject, Internal="cmdBindDescriptorSet"] void bindDescriptorSet(int index, DescriptorSet set);
+	[CObject,Internal="forge_cmd_wait_for_render"] void renderBarrier( RenderTarget rt );
+	[CObject,Internal="forge_cmd_wait_for_present"] void presentBarrier( RenderTarget rt );
 };
 
 
@@ -845,15 +847,14 @@ interface DescriptorSet {
 };
 
 interface DescriptorDataBuilder {
-	void DescriptorDataBuilder(DescriptorSet set, int index);
+	void DescriptorDataBuilder();
 	void clear();
-	void clearSlot(int index);
+	void clearSlotData(int index);
 	int addSlot(String name, DescriptorType type);
 	[Internal="addSlotData"] void addSlotTexture( int slot, Texture tex );
 	[Internal="addSlotData"] void addSlotSampler( int slot, Sampler sampler );
-	void update(Renderer renderer);
-	void bind(Cmd cmd);	
-
+	void update(Renderer renderer, int index, DescriptorSet set);
+	void bind(Cmd cmd, int index, DescriptorSet set);	
 };
 
 [Internal="RootSignatureFactory"]

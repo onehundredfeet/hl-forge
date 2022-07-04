@@ -154,16 +154,14 @@ class HlForgePipelineDesc : public PipelineDesc {
 };
 
 class DescriptorDataBuilder {
-    DescriptorSet *_set;
-    int _index;
+//    DescriptorSet *_set;
+//    int _index;
             std::vector<std::string> _names;
             std::vector<DescriptorType> _types;
             std::vector<std::vector<void *> *> _dataPointers;
             std::vector<DescriptorData> _data;
     public:
-        DescriptorDataBuilder( DescriptorSet *set, int index ) {
-            _set = set;
-            _index = index;
+        DescriptorDataBuilder( ) {
         }
 
         ~DescriptorDataBuilder() {
@@ -178,7 +176,7 @@ class DescriptorDataBuilder {
             _data.clear();
         }
 
-        void clearSlot( int slot ) {
+        void clearSlotData( int slot ) {
             _dataPointers[slot]->clear();
         }
 
@@ -194,7 +192,7 @@ class DescriptorDataBuilder {
             _dataPointers[slot]->push_back(data);
         }
 
-        void update(Renderer *pRenderer) {
+        void update(Renderer *pRenderer, int index, DescriptorSet *set) {
             for(auto i = 0; i < _names.size(); i++) {
                 _data[i].pName = _names[i].c_str();
                 switch(_types[i]) {
@@ -211,11 +209,11 @@ class DescriptorDataBuilder {
                 }
                 _data[i].mCount = _dataPointers[i]->size();
             }
-            updateDescriptorSet(pRenderer, _index, _set, _names.size(), &_data[0]);
+            updateDescriptorSet(pRenderer, index, set, _names.size(), &_data[0]);
         }
 
-        void bind(Cmd *cmd ) {
-            cmdBindDescriptorSet(cmd, _index, _set  );
+        void bind(Cmd *cmd, int index, DescriptorSet *set ) {
+            cmdBindDescriptorSet(cmd, index, set  );
         }
         /*
         // Prepare descriptor sets
@@ -274,4 +272,7 @@ RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSigna
 inline bool isVSync( SwapChain *sc) {
     return sc->mEnableVsync != 0;
 }
+
+void forge_cmd_wait_for_render(Cmd *cmd, RenderTarget *pRenderTarget);
+void forge_cmd_wait_for_present(Cmd *cmd, RenderTarget *pRenderTarget);
 #endif

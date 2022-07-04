@@ -1397,6 +1397,16 @@ HL_PRIM void HL_NAME(Cmd_bindDescriptorSet2)(_ref(Cmd)* _this, int index, _ref(D
 }
 DEFINE_PRIM(_VOID, Cmd_bindDescriptorSet2, _IDL _I32 _IDL);
 
+HL_PRIM void HL_NAME(Cmd_renderBarrier1)(_ref(Cmd)* _this, _ref(RenderTarget)* rt) {
+	(forge_cmd_wait_for_render( _unref(_this) , _unref_ptr_safe(rt)));
+}
+DEFINE_PRIM(_VOID, Cmd_renderBarrier1, _IDL _IDL);
+
+HL_PRIM void HL_NAME(Cmd_presentBarrier1)(_ref(Cmd)* _this, _ref(RenderTarget)* rt) {
+	(forge_cmd_wait_for_present( _unref(_this) , _unref_ptr_safe(rt)));
+}
+DEFINE_PRIM(_VOID, Cmd_presentBarrier1, _IDL _IDL);
+
 HL_PRIM _ref(Map64Int)* HL_NAME(Map64Int_new0)() {
 	return alloc_ref((new Map64Int()),Map64Int);
 }
@@ -1746,20 +1756,20 @@ HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_set_nodeIndex)( _ref(DescriptorSe
 }
 DEFINE_PRIM(_I32,DescriptorSetDesc_set_nodeIndex,_IDL _I32);
 
-HL_PRIM _ref(DescriptorDataBuilder)* HL_NAME(DescriptorDataBuilder_new2)(_ref(DescriptorSet)* set, int index) {
-	return alloc_ref((new DescriptorDataBuilder(_unref_ptr_safe(set), index)),DescriptorDataBuilder);
+HL_PRIM _ref(DescriptorDataBuilder)* HL_NAME(DescriptorDataBuilder_new0)() {
+	return alloc_ref((new DescriptorDataBuilder()),DescriptorDataBuilder);
 }
-DEFINE_PRIM(_IDL, DescriptorDataBuilder_new2, _IDL _I32);
+DEFINE_PRIM(_IDL, DescriptorDataBuilder_new0,);
 
 HL_PRIM void HL_NAME(DescriptorDataBuilder_clear0)(_ref(DescriptorDataBuilder)* _this) {
 	(_unref(_this)->clear());
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_clear0, _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_clearSlot1)(_ref(DescriptorDataBuilder)* _this, int index) {
-	(_unref(_this)->clearSlot(index));
+HL_PRIM void HL_NAME(DescriptorDataBuilder_clearSlotData1)(_ref(DescriptorDataBuilder)* _this, int index) {
+	(_unref(_this)->clearSlotData(index));
 }
-DEFINE_PRIM(_VOID, DescriptorDataBuilder_clearSlot1, _IDL _I32);
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_clearSlotData1, _IDL _I32);
 
 HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlot2)(_ref(DescriptorDataBuilder)* _this, vstring * name, int type) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
@@ -1778,15 +1788,15 @@ HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotSampler2)(_ref(DescriptorDataB
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotSampler2, _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_update1)(_ref(DescriptorDataBuilder)* _this, _ref(Renderer)* renderer) {
-	(_unref(_this)->update(_unref_ptr_safe(renderer)));
+HL_PRIM void HL_NAME(DescriptorDataBuilder_update3)(_ref(DescriptorDataBuilder)* _this, _ref(Renderer)* renderer, int index, _ref(DescriptorSet)* set) {
+	(_unref(_this)->update(_unref_ptr_safe(renderer), index, _unref_ptr_safe(set)));
 }
-DEFINE_PRIM(_VOID, DescriptorDataBuilder_update1, _IDL _IDL);
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_update3, _IDL _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_bind1)(_ref(DescriptorDataBuilder)* _this, _ref(Cmd)* cmd) {
-	(_unref(_this)->bind(_unref_ptr_safe(cmd)));
+HL_PRIM void HL_NAME(DescriptorDataBuilder_bind3)(_ref(DescriptorDataBuilder)* _this, _ref(Cmd)* cmd, int index, _ref(DescriptorSet)* set) {
+	(_unref(_this)->bind(_unref_ptr_safe(cmd), index, _unref_ptr_safe(set)));
 }
-DEFINE_PRIM(_VOID, DescriptorDataBuilder_bind1, _IDL _IDL);
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_bind3, _IDL _IDL _I32 _IDL);
 
 HL_PRIM _ref(RootSignatureFactory)* HL_NAME(RootSignatureDesc_new0)() {
 	return alloc_ref((new RootSignatureFactory()),RootSignatureDesc);

@@ -279,7 +279,7 @@ Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, Sync
     printf("Creating texture %s from description %d %d\n", name, tdesc->mWidth, tdesc->mHeight);
     const char *oldName = tdesc->pName;
     tdesc->pName = name;
-    tdesc->mDescriptors = DESCRIPTOR_TYPE_TEXTURE | DESCRIPTOR_TYPE_RW_TEXTURE;
+    tdesc->mDescriptors = DESCRIPTOR_TYPE_TEXTURE; // | DESCRIPTOR_TYPE_RW_TEXTURE;
 
     TextureLoadDesc defaultLoadDesc = {};
     defaultLoadDesc.pDesc = tdesc;
@@ -381,6 +381,21 @@ void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int
     endUpdateResource(&desc, NULL);
 }
 
+void forge_cmd_wait_for_render(Cmd *cmd, RenderTarget *pRenderTarget) {
+    RenderTargetBarrier barriers[] =    // wait for resource transition
+    {
+        { pRenderTarget, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET },
+    };
+    cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, barriers);
+}
+
+void forge_cmd_wait_for_present(Cmd *cmd, RenderTarget *pRenderTarget) {
+    RenderTargetBarrier barriers[] =    // wait for resource transition
+    {
+        { pRenderTarget, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_PRESENT },
+    };
+    cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, barriers);
+}
 
 RenderTarget *forge_sdl_create_render_target(Renderer *renderer, RenderTargetDesc *desc) {
     RenderTarget *pRT;
@@ -394,6 +409,7 @@ SDL_MetalView forge_create_metal_view(SDL_Window *win) {
 
 void forge_sdl_texture_upload(Texture *tex, void *data, int dataSize) {
     TextureUpdateDesc updateDesc = {tex};
+    printf("TEXTURE upading texture %d x %d\n", tex->mWidth, tex->mHeight);
     beginUpdateResource(&updateDesc);
     memcpy(updateDesc.pMappedData, data, dataSize);
     endUpdateResource(&updateDesc, NULL);

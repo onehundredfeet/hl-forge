@@ -1,5 +1,6 @@
 package h3d.impl;
 
+import haxe.crypto.Crc32;
 import haxe.Int64;
 import hl.I64;
 import h3d.mat.Data.Compare;
@@ -25,12 +26,10 @@ private class CompiledShader {
 	public var shader:hxsl.RuntimeShader.RuntimeShaderData;
 	public var textureIndex:DescriptorIndex;
 	public var samplerIndex:DescriptorIndex;
-	public var textureDS: forge.Native.DescriptorSet;
-	public var samplerDS: forge.Native.DescriptorSet;
 	public var textureSlot: Int;
 	public var samplerSlot: Int;
-	public var textureDataBuilder:forge.Native.DescriptorDataBuilder;
-	public var samplerDataBuilder:forge.Native.DescriptorDataBuilder;
+//	public var textureDataBuilder:forge.Native.DescriptorDataBuilder;
+//	public var samplerDataBuilder:forge.Native.DescriptorDataBuilder;
 
 	public function new(s, vertex, shader) {
 		this.s = s;
@@ -559,7 +558,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	}
 
 	public override function uploadTexturePixels(t:h3d.mat.Texture, pixels:hxd.Pixels, mipLevel:Int, side:Int) {
-		trace('Uploading pixels ${pixels.width} x ${pixels.height}');
+		trace('Uploading pixels ${pixels.width} x ${pixels.height} mip level ${mipLevel}');
 		trace('----> SC IS ${_sc}');
 
 		pixels.convert(t.format);
@@ -569,9 +568,9 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		var tt = t.t;
 		var ft = tt.t;
 
-		//		trace('Sending bytes ${pixels.bytes} : ${dataLen}');
+		trace('Uploading Sending bytes  ${dataLen}');
 		ft.upload(hl.Bytes.fromBytes(pixels.bytes), dataLen);
-		//		trace('Done uplaoding');
+		trace('Done Uploading');
 		t.flags.set(WasCleared);
 	}
 
@@ -626,7 +625,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		_currentCmd = _swapCmds[_frameIndex];
 
 		_currentCmd.begin();
-
+		_currentCmd.renderBarrier( _currentRT );
 		_frameBegun = true;
 		_firstDraw = true;
 	}
@@ -696,37 +695,41 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		
 		var rootSig = _renderer.createRootSig(rootDesc);
 		p.rootSig = rootSig;
+		
+		forge.Native.Globals.waitForAllResourceLoads();
 
 		if (shader.fragment.texturesCount > 0) {
 			if (_bilinearClamp2DSampler == null) {
 				var samplerDesc = new forge.Native.SamplerDesc();
-				samplerDesc.mMinFilter = FILTER_LINEAR;
-				samplerDesc.mMagFilter = FILTER_LINEAR;
+				samplerDesc.mMinFilter = FILTER_NEAREST;
+				samplerDesc.mMagFilter = FILTER_NEAREST;
 				samplerDesc.mAddressU = ADDRESS_MODE_CLAMP_TO_EDGE;
 				samplerDesc.mAddressV = ADDRESS_MODE_CLAMP_TO_EDGE;
 				samplerDesc.mAddressW = ADDRESS_MODE_CLAMP_TO_EDGE;	
+				samplerDesc.mMipMapMode = MIPMAP_MODE_NEAREST;
+				samplerDesc.mMipLodBias = 0.0;
+				samplerDesc.mMaxAnisotropy = 0.0;
+				
+
 				_bilinearClamp2DSampler = _renderer.createSampler(samplerDesc);
 			}
-			
+			forge.Native.Globals.waitForAllResourceLoads();
 
 			var tt = shader.fragment.textures;
 			
 			trace('RENDER texture name ${tt.name} index ${tt.index} instance ${tt.instance} pos ${tt.pos} type ${tt.type} next ${tt.next}');
 
-			var ds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
-			p.fragment.textureDS = ds;
+
+			//var ds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
+			//p.fragment.textureDS = ds;
 
 			p.fragment.textureIndex = rootSig.getDescriptorIndexFromName( "fragmentTextures");
 			p.fragment.samplerIndex = rootSig.getDescriptorIndexFromName( "fragmentTexturesSmplr");
 
-			var sds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
-			p.fragment.samplerDS = sds;
+			//var sds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
+			//p.fragment.samplerDS = sds;
 
-			p.fragment.textureDataBuilder = new forge.Native.DescriptorDataBuilder( ds,0);
-			p.fragment.samplerDataBuilder = new forge.Native.DescriptorDataBuilder( sds, 0);
-
-			p.fragment.textureSlot = p.fragment.textureDataBuilder.addSlot("fragmentTextures", DESCRIPTOR_TYPE_TEXTURE);
-			p.fragment.samplerSlot = p.fragment.samplerDataBuilder.addSlot("fragmentTexturesSmplr", DESCRIPTOR_TYPE_SAMPLER);
+			
 
 			//rootDesc.addSampler( _bilinearClamp2DSampler, "fragmentTexturesSmplr" );
 		}
@@ -883,7 +886,17 @@ struct spvDescriptorSetBuffer0
 		_curShader = shader;
 	}
 
-	function configureTextures( s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers) {
+	inline function crcInt( crc : Crc32, x : Int ) {
+		crc.byte(x & 0xff);
+		crc.byte((x >> 8) & 0xff);
+		crc.byte((x >> 16) & 0xff);
+		crc.byte((x >> 24) & 0xff);
+	}
+	var _textureDescriptorMap = new Map<Int, {mat:CompiledMaterial, tex: Array<h3d.mat.Texture>, ds : forge.Native.DescriptorSet}>();
+	var _textureDataBuilder :  forge.Native.DescriptorDataBuilder;
+
+
+	function configureTextures( p:CompiledProgram, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers) {
 		if (s == null) return;
 		if (buf == null) return;
 		if (buf.tex.length == 0) return;
@@ -894,22 +907,55 @@ struct spvDescriptorSetBuffer0
 //		}
 		if (_currentMaterial == null) throw "No material bound while configuring textures";
 
-		if (s.textureDataBuilder == null || s.samplerDataBuilder == null) {
-			throw('No texture data builder? ${s.shader.texturesCount}');
+		
+
+		var crc = new Crc32();
+
+		crcInt(crc, 0x3917437);
+		crcInt(crc, _currentMaterial._hash.low);
+		crcInt(crc, _currentMaterial._hash.high);
+
+		for (i in 0...buf.tex.length) {
+			crcInt(crc, buf.tex[i].id);
+		}
+		
+		var tds = _textureDescriptorMap.get(crc.get());
+
+		if (tds == null) {
+			trace('Adding texture ${crc.get()}');
+			var ds = _renderer.createDescriptorSet(p.rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 2, 0);
+			
+			if (_textureDataBuilder == null ) {
+				_textureDataBuilder = new forge.Native.DescriptorDataBuilder();
+				_textureDataBuilder.addSlot("fragmentTextures", DESCRIPTOR_TYPE_TEXTURE);
+				_textureDataBuilder.addSlot("fragmentTexturesSmplr", DESCRIPTOR_TYPE_SAMPLER);
+			} else {
+				_textureDataBuilder.clearSlotData(0);
+				_textureDataBuilder.clearSlotData(1);
+			}
+
+			for (i in 0...buf.tex.length) {
+				var t = buf.tex[i];
+
+				_textureDataBuilder.addSlotTexture(0, t.t.t);
+				_textureDataBuilder.addSlotSampler(1,_bilinearClamp2DSampler);
+				_textureDataBuilder.update(_renderer, 0, ds);
+			}
+
+			tds = {mat:_currentMaterial, tex:buf.tex.toArray(), ds:ds};
+			_textureDescriptorMap.set(crc.get(), tds);
 		}
 
-		s.textureDataBuilder.clearSlot(0);
-		s.samplerDataBuilder.clearSlot(0);
-		
-
-		
+		_currentCmd.bindDescriptorSet(0, tds.ds);
+		#if false
 		for (i in 0...buf.tex.length) {
 			var t = buf.tex[i];
 			
 			s.textureDataBuilder.addSlotTexture(0, t.t.t);
+			if (_bilinearClamp2DSampler == null) throw "sampler is null";
 			s.samplerDataBuilder.addSlotSampler(0,_bilinearClamp2DSampler);
 
-			#if false
+
 			var pt = s.textures[i];
 			if( t == null || t.isDisposed() ) {
 				throw "missing texture path unsupported";
@@ -980,7 +1026,7 @@ struct spvDescriptorSetBuffer0
 				*/
 			}*/
 
-			#end
+		
 		}
 
 		//trace('RENDER updating texture desc');
@@ -989,6 +1035,7 @@ struct spvDescriptorSetBuffer0
 		s.samplerDataBuilder.update(_renderer);
 		s.textureDataBuilder.bind(_currentCmd);
 		s.samplerDataBuilder.bind(_currentCmd);
+		#end
 	}
 	var _tmpConstantBuffer = new Array<Float>();
 	public override function uploadShaderBuffers(buf:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
@@ -1057,8 +1104,8 @@ struct spvDescriptorSetBuffer0
 			}
 			case Textures:  
 				//trace ('Upload Textures');
-				configureTextures(_curShader.vertex, buf.vertex);
-				configureTextures(_curShader.fragment, buf.fragment);
+				configureTextures(_curShader, _curShader.vertex, buf.vertex);
+				configureTextures(_curShader, _curShader.fragment, buf.fragment);
 
 			case Buffers:  //trace ('Upload Buffers'); 
 
@@ -1508,7 +1555,9 @@ struct spvDescriptorSetBuffer0
 		_currentCmd.clear(_currentRT,@:privateAccess defaultDepth.b.r);
 	}
 	public override function end() {
+
 		_currentCmd.unbindRenderTarget();
+		_currentCmd.presentBarrier( _currentRT );
 		_currentCmd.end();
 		_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
 	}
