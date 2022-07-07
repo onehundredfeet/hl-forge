@@ -538,7 +538,7 @@ interface BlendStateDesc {
 	/// Write mask per render target.
 	[Internal="mMasks"] attribute int [] Masks; //MAX_RENDER_TARGET_ATTACHMENTS
 	/// Mask that identifies the render targets affected by the blend state.
-	[Internal="mRenderTargetMask", Cast="BlendStateTargets"] attribute int renderTargetMask; //BlendStateTargets
+	[Internal="mRenderTargetMask", SetCast="BlendStateTargets"] attribute int renderTargetMask; //BlendStateTargets
 	
 	[CObject, Internal="forge_blend_state_desc_set_rt"] void setRenderTarget( BlendStateTargets target, bool mask );
 
@@ -586,7 +586,7 @@ interface StateBuilder {
 	[Const] DepthStateDesc depth();
 	[Const] RasterizerStateDesc raster();
 
-	int64 getSignature(int shaderID, RenderTarget rt);
+	int64 getSignature(int shaderID, RenderTarget rt, RenderTarget depth);
 };
 
 enum VertexAttribRate
@@ -687,6 +687,8 @@ interface BufferBinder {
 [NoDelete]
 interface Cmd {
 	
+	[CObject, Internal="forge_render_target_bind_and_clear"] void bindAndclear(RenderTarget rt, RenderTarget depthstencil);
+	[CObject, Internal="forge_render_target_bind"] void bind(RenderTarget rt, RenderTarget depthstencil);
 	[CObject, Internal="forge_render_target_clear"] void clear(RenderTarget rt, RenderTarget depthstencil);
 	[CObject, Internal="forge_cmd_unbind"] void unbindRenderTarget();
 	[CObject,  Internal="beginCmd"] void begin();
@@ -749,7 +751,7 @@ interface RenderTargetDesc {
 	[Initialize] void RenderTargetDesc();
 
 	/// Texture creation flags (decides memory allocation strategy, sharing access,...)
-	[Internal="mFlags", Cast="TextureCreationFlags"] attribute uint flags;
+	[Internal="mFlags", SetCast="TextureCreationFlags"] attribute uint flags;
 	/// Width
 	[Internal="mWidth"] attribute uint  width;
 	/// Height
@@ -779,7 +781,7 @@ interface RenderTargetDesc {
 	[Internal="mSampleQuality"] attribute uint sampleQuality;
 	/// Descriptor creation
 //	DescriptorType mDescriptors;
-//	const void*    pNativeHandle;
+	[Internal="pNativeHandle", GetCast="void*"] attribute VoidPtr nativeHandle;
 	/// Debug name used in gpu profile
 	//const char* pName;
 	/// GPU indices to share this texture
@@ -959,7 +961,7 @@ interface TextureDesc {
 
 	//ClearValue mClearValue;
 	/// Pointer to native texture handle if the texture does not own underlying resource
-	//const void* pNativeHandle;
+	[Internal="pNativeHandle", GetCast="void*"] attribute VoidPtr nativeHandle;
 	/// Debug name used in gpu profile
 	//const char* pName;
 	/// GPU indices to share this texture

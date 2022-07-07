@@ -54,7 +54,7 @@ class StateBuilder {
             memset( this, 0, sizeof(StateBuilder));
         }
         
-        uint64_t getSignature(int shaderID, RenderTarget *rt);
+        uint64_t getSignature(int shaderID, RenderTarget *rt, RenderTarget *depth);
 
         DepthStateDesc _depth;
         RasterizerStateDesc _raster;
@@ -259,7 +259,9 @@ void forge_blend_state_desc_set_rt( BlendStateDesc *, BlendStateTargets rt, bool
 VertexAttrib *forge_vertex_layout_get_attrib( VertexLayout *, int idx);
 void forge_vertex_attrib_set_semantic( VertexAttrib *, const char *name );
 void forge_texture_set_file_name(TextureLoadDesc *desc, const char *path);
+void forge_render_target_bind(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
 void forge_render_target_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
+void forge_render_target_bind_and_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
 void forge_sdl_buffer_update(Buffer *buffer, void *data);
 void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int size, int soffset);
 RenderTarget *forge_sdl_create_render_target(Renderer *, RenderTargetDesc *);

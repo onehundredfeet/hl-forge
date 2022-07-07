@@ -306,6 +306,40 @@ void forge_sdl_buffer_load_desc_set_index_buffer(BufferLoadDesc *bld, int size, 
     //
 }
 
+void forge_render_target_bind_and_clear(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT) {
+    // simply record the screen cleaning command
+    LoadActionsDesc loadActions = {};
+    loadActions.mLoadActionsColor[0] = LOAD_ACTION_CLEAR;
+    loadActions.mLoadActionDepth = LOAD_ACTION_CLEAR;
+
+
+    // This seems to trump the stuff below
+    loadActions.mClearDepth.depth = pRenderTarget->mClearValue.depth = 1.0f;
+    loadActions.mClearDepth.stencil = pRenderTarget->mClearValue.stencil = 0;
+    loadActions.mClearColorValues[0].r = pRenderTarget->mClearValue.r = 0.0f;
+    loadActions.mClearColorValues[0].g = pRenderTarget->mClearValue.g = 0.0f;
+    loadActions.mClearColorValues[0].b = pRenderTarget->mClearValue.b = 0.0f;
+    loadActions.mClearColorValues[0].a = pRenderTarget->mClearValue.a = 0.0f;
+
+    //pRenderTarget->mClearValue.depth = 0.0f;
+//    pRenderTarget->mClearValue.r = 1.0f;
+  //  pRenderTarget->mClearValue.g = 0.0f;
+    //pRenderTarget->mClearValue.b = 0.0f;
+    //pRenderTarget->mClearValue.a = 0.0f;
+//    pRenderTarget->mClearValue.stencil = 0;
+
+    if (pDepthStencilRT != nullptr) {
+        pDepthStencilRT->mClearValue.depth = 0.0f;
+        pDepthStencilRT->mClearValue.stencil = 0;
+    }
+
+
+    cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
+    cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
+    cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
+}
+
+
 void forge_render_target_clear(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT) {
     // simply record the screen cleaning command
     LoadActionsDesc loadActions = {};
@@ -333,6 +367,17 @@ void forge_render_target_clear(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarg
         pDepthStencilRT->mClearValue.stencil = 0;
     }
 
+
+    cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
+    cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
+    cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
+}
+
+void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT) {
+    // simply record the screen cleaning command
+    LoadActionsDesc loadActions = {};
+    loadActions.mLoadActionsColor[0] = LOAD_ACTION_DONTCARE;
+    loadActions.mLoadActionDepth = LOAD_ACTION_DONTCARE;
 
     cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
@@ -615,7 +660,7 @@ RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSigna
 
 static XXH64_state_t *_state;
 
-uint64_t StateBuilder::getSignature(int shaderID, RenderTarget *rt) {
+uint64_t StateBuilder::getSignature(int shaderID, RenderTarget *rt, RenderTarget *depth) {
     //memset(this, 0, sizeof(StateBuilder));
     if (_state == NULL) _state = XXH64_createState();
     
@@ -627,7 +672,11 @@ uint64_t StateBuilder::getSignature(int shaderID, RenderTarget *rt) {
     XXH64_update(_state, &rt->mSampleCount, sizeof(rt->mSampleCount));
     int sq = rt->mSampleQuality;
     XXH64_update(_state, &sq, sizeof(sq));
-    
+    uint8_t hasDepth = depth != nullptr ? 1 : 0;
+    XXH64_update(_state, &hasDepth, sizeof(hasDepth));
+    if (depth != nullptr) {
+        XXH64_update(_state, &depth->mFormat, sizeof(depth->mFormat));
+    }
     XXH64_hash_t const hash = XXH64_digest(_state);
 
 //    *l = (int)(hash & 0x00000000ffffffff);

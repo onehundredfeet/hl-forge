@@ -211,11 +211,10 @@ class ForgeDriver extends h3d.impl.Driver {
 			case Queries, BottomLeftCoords:
 				false;
 			case HardwareAccelerated: true;
+			case AllocDepthBuffer: true;
 			default:
 				true;
 		};
-
-		return false;
 	}
 
 	public override function isSupportedFormat(fmt:h3d.mat.Data.TextureFormat) {
@@ -242,8 +241,11 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _defaultDepth : h3d.mat.DepthBuffer;
 //	var defaultDepthInst : h3d.mat.DepthBuffer;
 
+var count = 0;
+
 	override function getDefaultDepthBuffer():h3d.mat.DepthBuffer {
 		debugTrace('Getting default depth buffer ${_width}  ${_height}');
+
 		if (_defaultDepth != null)
 			return _defaultDepth;
 
@@ -331,6 +333,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		/*
 		 */
 		var rt = _renderer.createRenderTarget(depthRT);
+
+		forge.Native.Globals.waitForAllResourceLoads();
 		return {r: rt};
 	}
 
@@ -382,6 +386,16 @@ class ForgeDriver extends h3d.impl.Driver {
 		return {b: buff, stride: m.stride #if multidriver, driver: this #end};
 	}
 
+	function getTinyTextureFormat(t:h3d.mat.Texture) : forge.Native.TinyImageFormat{
+		return switch (t.format) {
+			case RGBA: TinyImageFormat_R8G8B8A8_UNORM;
+			case SRGB: TinyImageFormat_R8G8B8A8_SRGB;
+			case RGBA16F: TinyImageFormat_R16G16B16A16_SFLOAT;
+			case R16F:  TinyImageFormat_R16_SFLOAT;
+			case R32F:TinyImageFormat_R32_SFLOAT;
+			default: throw "Unsupported texture format " + t.format;
+		}
+	}
 	function createShadowRT(width : Int, height : Int) {
 		var shadowPassRenderTargetDesc = new forge.Native.RenderTargetDesc();
 		shadowPassRenderTargetDesc.arraySize = 1;
@@ -401,7 +415,7 @@ class ForgeDriver extends h3d.impl.Driver {
 //		addRenderTarget(pRenderer, &shadowPassRenderTargetDesc, &pRenderTargetShadowMap);
 	}
 	public override function allocTexture(t:h3d.mat.Texture):Texture {
-		debugTrace('RENDER ALLOC Allocating texture width ${t.width} height ${t.height}');
+		debugTrace('RENDER ALLOC Allocating ${t} texture width ${t.width} height ${t.height}');
 
 		var ftd = new forge.Native.TextureDesc();
 
@@ -451,7 +465,8 @@ class ForgeDriver extends h3d.impl.Driver {
 			internalFmt: ftd.format.toValue(),
 			bits: -1,
 			bind: 0,
-			bias: 0
+			bias: 0,
+			rt : null,
 			#if multidriver
 			, driver: this
 			#end
@@ -1216,24 +1231,30 @@ struct spvDescriptorSetBuffer0
 		}
 	}
 	function buildDepthState(  d : forge.Native.DepthStateDesc, pass:h3d.mat.Pass ) {		
-		d.depthTest = pass.depthTest != Always || pass.depthWrite;
-		d.depthWrite = pass.depthWrite;
-//		d.depthTest = false;
-//		debugTrace('DEPTH depth test ${pass.depthTest} write ${pass.depthWrite}');
-		d.depthFunc = convertDepthFunc(pass.depthTest);
-//		d.depthFunc = CMP_GREATER;
-//		trace ('RENDERER DEPTH config ${d.depthTest} ${d.depthWrite} ${d.depthFunc}');
-		d.stencilTest = pass.stencil != null;
-		d.stencilReadMask = pass.colorMask;
-		d.stencilWriteMask = 0; // TODO
-		d.stencilFrontFunc = CMP_NEVER;
-		d.stencilFrontFail = STENCIL_OP_KEEP;
-		d.depthFrontFail = STENCIL_OP_KEEP;
-		d.stencilFrontPass = STENCIL_OP_KEEP;
-		d.stencilBackFunc = CMP_NEVER;
-		d.stencilBackFail = STENCIL_OP_KEEP;
-		d.depthBackFail = STENCIL_OP_KEEP;
-		d.stencilBackPass = STENCIL_OP_KEEP;
+		if (_currentDepth == null) {
+			d.depthTest = false;
+			d.stencilTest = false;
+		}
+		else {
+			d.depthTest = pass.depthTest != Always || pass.depthWrite;
+			d.depthWrite = pass.depthWrite;
+	//		d.depthTest = false;
+	//		debugTrace('DEPTH depth test ${pass.depthTest} write ${pass.depthWrite}');
+			d.depthFunc = convertDepthFunc(pass.depthTest);
+	//		d.depthFunc = CMP_GREATER;
+	//		trace ('RENDERER DEPTH config ${d.depthTest} ${d.depthWrite} ${d.depthFunc}');
+			d.stencilTest = pass.stencil != null;
+			d.stencilReadMask = pass.colorMask;
+			d.stencilWriteMask = 0; // TODO
+			d.stencilFrontFunc = CMP_NEVER;
+			d.stencilFrontFail = STENCIL_OP_KEEP;
+			d.depthFrontFail = STENCIL_OP_KEEP;
+			d.stencilFrontPass = STENCIL_OP_KEEP;
+			d.stencilBackFunc = CMP_NEVER;
+			d.stencilBackFail = STENCIL_OP_KEEP;
+			d.depthBackFail = STENCIL_OP_KEEP;
+			d.stencilBackPass = STENCIL_OP_KEEP;
+		}
 	}
 
 	function buildRasterState( r : forge.Native.RasterizerStateDesc, pass:h3d.mat.Pass) {
@@ -1327,7 +1348,7 @@ struct spvDescriptorSetBuffer0
 		if (_currentPass == null) {throw "can't build a pipeline without a pass";}
 		if (_curShader == null) throw "Can't build a pipeline without a shader";
 
-		var xx = _currentState.getSignature(_curShader.id, _currentRT);
+		var xx = _currentState.getSignature(_curShader.id, _currentRT, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null );
 
 		var cmatidx = _materialMap.get(xx);
 		var cmat = _materialInternalMap.get(cmatidx);
@@ -1339,16 +1360,16 @@ struct spvDescriptorSetBuffer0
 			cmat._hash = xx;
 			cmat._shader = _curShader;
 			cmat._pass = _currentPass;
-			debugTrace('Adding material for pass ${_currentPass.name} with id ${cmat._id} and hash ${cmat._hash}');
+			debugTrace('Adding material for pass ${_currentPass.name} with id ${cmat._id} and hash ${cmat._hash.high}|${cmat._hash.low}');
 			_materialMap.set( xx, cmat._id );
 			_materialInternalMap.set(cmat._id, cmat);
 
 			var pdesc = new forge.Native.PipelineDesc();
 			var gdesc = pdesc.graphicsPipeline();
 			gdesc.mPrimitiveTopo = PRIMITIVE_TOPO_TRI_LIST;
-			gdesc.pDepthState = _currentState.depth();
+			gdesc.pDepthState = _currentDepth != null ? _currentState.depth() : null;
 			gdesc.pBlendState = _currentState.blend();
-			gdesc.depthStencilFormat = @:privateAccess _defaultDepth.b.r.format;
+			gdesc.depthStencilFormat =_currentDepth != null ? @:privateAccess _currentDepth.b.r.format : TinyImageFormat_UNDEFINED;
 			//gdesc.pColorFormats = &rt.mFormat;
 			gdesc.pVertexLayout = _curShader.layout;
 			gdesc.pRootSignature = _curShader.rootSig;
@@ -1728,16 +1749,19 @@ struct spvDescriptorSetBuffer0
 	}
 
 	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
-		debugTrace('RENDER CALLSTACK clear');
+		debugTrace('RENDER CALLSTACK TARGET bind and clear ${_currentRT} and ${_currentDepth}');
 		// 
-		_currentCmd.clear(_currentRT,@:privateAccess _defaultDepth.b.r);
+		_currentCmd.bindAndclear(_currentRT,_currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
 	}
 	public override function end() {
-		debugTrace('RENDER CALLSTACK end');
+		debugTrace('RENDER CALLSTACK TARGET end');
 		_currentCmd.unbindRenderTarget();
 		_currentCmd.presentBarrier( _currentRT );
+		_currentRT = null;
+		_currentDepth = null;
 		_currentCmd.end();
 		_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
+
 	}
 	
 	public override function uploadTextureBitmap(t:h3d.mat.Texture, bmp:hxd.BitmapData, mipLevel:Int, side:Int) {
@@ -1794,27 +1818,59 @@ struct spvDescriptorSetBuffer0
 
 	function setRenderTargetsInternal( textures:Array<h3d.mat.Texture>, layer : Int, mipLevel : Int) {
 		debugTrace('RENDER TARGET CALLSTACK setRenderTargetsInternal');
-		if( textures == null || textures.length == 0 ) {
-			setDefaultRenderTarget();
-			return;
-		}
 
 		if (textures.length > 1) throw "Multiple render targets are unsupported";
 
 		var tex = textures[0];
+		
+		if( tex.t == null ) {
+			tex.alloc();
+		}
+
+		var itex = tex.t;
+		if (itex.rt == null) {
+			debugTrace('RENDER TARGET  creating new render target on ${tex} w ${tex.width} h ${tex.height}');
+			var renderTargetDesc = new forge.Native.RenderTargetDesc();
+			renderTargetDesc.arraySize = 1;
+	//		renderTargetDesc.clearValue.depth = 1.0f;
+	//		renderTargetDesc.clearValue.stencil = 0;
+			renderTargetDesc.depth = 1;
+	//		renderTargetDesc.descriptors = DESCRIPTOR_TYPE_TEXTURE;
+			renderTargetDesc.format = getTinyTextureFormat(tex);
+			renderTargetDesc.startState = RESOURCE_STATE_SHADER_RESOURCE;
+			renderTargetDesc.height = tex.width;
+			renderTargetDesc.width = tex.height;
+			renderTargetDesc.sampleCount = SAMPLE_COUNT_1;
+			renderTargetDesc.sampleQuality = 0;
+//			renderTargetDesc.nativeHandle = itex.t.
+	//		renderTargetDesc.flags = forge.Native.TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT.toValue();
+	//		renderTargetDesc.name = "Shadow Map Render Target";
+			itex.rt = _renderer.createRenderTarget( renderTargetDesc );
+		} else {
+			debugTrace('RENDER TARGET  setting render target to existing ${tex} w ${tex.width} h ${tex.height}');
+		}
+
+		_currentRT = itex.rt;
+
 //		curTexture = textures[0];
 
 		if( tex.depthBuffer != null && (tex.depthBuffer.width != tex.width || tex.depthBuffer.height != tex.height) )
 			throw "Invalid depth buffer size : does not match render target size";
 
 		_currentDepth = @:privateAccess (tex.depthBuffer == null ? null : tex.depthBuffer);
+		debugTrace('RENDER TARGET  setting depth buffer target to existing ${_currentDepth} ${_currentDepth != null ? _currentDepth.width : null} ${_currentDepth != null ? _currentDepth.height : null}');
+		_currentCmd.bind(_currentRT, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
 
+		if (_currentPass != null) {
+			selectMaterial( _currentPass);
+		}
+//		_currentRT = 
+
+/*
 		for( i in 0...textures.length ) {
 			var tex = textures[i];
 
-			if( tex.t == null ) {
-				tex.alloc();
-			}
+			
 
 			//tex.t
 //			if( tex.t.rt == null )
@@ -1828,7 +1884,7 @@ struct spvDescriptorSetBuffer0
 			}
 
 		}
-
+*/
 
 		/*
 		Driver.omSetRenderTargets(textures.length, currentTargets, currentDepth == null ? null : currentDepth.view);
@@ -1897,12 +1953,19 @@ struct spvDescriptorSetBuffer0
 	var _currentTargets = new Array<forge.Native.RenderTarget>();
 	function setDefaultRenderTarget() {
 		debugTrace('RENDER CALLSTACK TARGET setDefaultRenderTarget');
+		
 		_currentDepth = _defaultDepth;
 		_targetsCount = 1;
 		_curTexture = null;
 		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
 		_currentTargets[0] = _currentRT;
 
+		_currentCmd.bind(_currentRT, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
+
+		if (_currentPass != null) {
+			selectMaterial( _currentPass);
+		}
+		
 		//currentTargetResources[0] = null;
 
 		/*
@@ -1918,7 +1981,7 @@ struct spvDescriptorSetBuffer0
 	}
 
 	public override function setRenderTarget(tex:Null<h3d.mat.Texture>, layer = 0, mipLevel = 0) {
-		debugTrace('RENDER CALLSTACK setRenderTarget');
+		debugTrace('RENDER CALLSTACK TARGET setRenderTarget  ${tex} layer ${layer} mip ${mipLevel} db ${tex != null ? tex.depthBuffer : null}');
 
 		if( tex == null ) {
 			setDefaultRenderTarget();
@@ -1927,11 +1990,10 @@ struct spvDescriptorSetBuffer0
 			setRenderTargetsInternal(_tmpTextures, layer, mipLevel);	
 		}
 		_currentPipeline = null;
-
 	}
 
 	public override function setRenderTargets(textures:Array<h3d.mat.Texture>) {
-		debugTrace('RENDER CALLSTACK setRenderTargets');
+		debugTrace('RENDER CALLSTACK TARGET setRenderTargets');
 
 		setRenderTargetsInternal(textures, 0, 0);
 	}
