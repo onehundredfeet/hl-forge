@@ -179,6 +179,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	// second function called
 	public override function allocIndexes(count:Int, is32:Bool):IndexBuffer {
+		debugTrace('RENDER ALLOC INDEX allocating index buffer ${count} is32 ${is32}');
 		var bits = is32 ? 2 : 1;
 		var desc = new forge.Native.BufferLoadDesc();
 		var placeHolder = new Array<hl.UI8>();
@@ -195,8 +196,11 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function uploadIndexBuffer(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:hxd.IndexBuffer, bufPos:Int) {
+		var x = buf.getNative();
+		var idx = 0;
+
 		var bits = i.is32 ? 2 : 1;
-		debugTrace('updating index buffer');
+		debugTrace('RENDER UPDATE INDEX updating index buffer | start ${startIndice} count ${indiceCount} is32 ${i.is32} buf pos ${bufPos}');
 		i.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startIndice << bits, indiceCount << bits, bufPos << bits);
 	}
 
@@ -263,7 +267,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		return extraDepthInst;
 	*/
 	public override function allocDepthBuffer(b:h3d.mat.DepthBuffer):DepthBuffer {
-		debugTrace('RENDER Allocating depth buffer ${b.width} ${b.height}');
+		debugTrace('RENDER ALLOC Allocating depth buffer ${b.width} ${b.height}');
 
 		var depthRT = new forge.Native.RenderTargetDesc();
 		depthRT.arraySize = 1;
@@ -335,7 +339,8 @@ class ForgeDriver extends h3d.impl.Driver {
 	//
 
 	public override function allocVertexes(m:ManagedBuffer):VertexBuffer {
-		
+		debugTrace('RENDER ALLOC VERTEX BUFFER llocating vertex buffer size ${m.size} stride ${m.stride}');
+
 		//		desc.setVertexbuffer
 
 		/*
@@ -396,6 +401,8 @@ class ForgeDriver extends h3d.impl.Driver {
 //		addRenderTarget(pRenderer, &shadowPassRenderTargetDesc, &pRenderTargetShadowMap);
 	}
 	public override function allocTexture(t:h3d.mat.Texture):Texture {
+		debugTrace('RENDER ALLOC Allocating texture width ${t.width} height ${t.height}');
+
 		var ftd = new forge.Native.TextureDesc();
 
 		var mips = 1;
@@ -603,7 +610,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			gl.bindBuffer(GL.ARRAY_BUFFER, null);
 		 */
 
-		 debugTrace('STRIDE updating vertex buffer vstride ${v.stride} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length}');
+		 debugTrace('RENDER STRIDE INDEX VERTEX BUFFER UPDATE updating vertex buffer start ${startVertex} vstride ${v.stride} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} floats');
 		v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4 * 0);
 	}
 
@@ -648,7 +655,8 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	var _fragConstantBuffer = new Array<Float>();
 	var _vertConstantSize = 0;
 	var _fragConstantSize = 0;
-	
+	var _currentSwapIndex = 0;
+
 	var _vertexTextures = new Array<h3d.mat.Texture>();
 	var _fragmentTextures = new Array<h3d.mat.Texture>();
 
@@ -668,9 +676,8 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 		 */
 
-		var swapIndex = _renderer.acquireNextImage(_sc, _ImageAcquiredSemaphore, null);
-
-		_currentRT = _sc.getRenderTarget(swapIndex);
+		_currentSwapIndex = _renderer.acquireNextImage(_sc, _ImageAcquiredSemaphore, null);
+		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
 		_currentSem = _swapCompleteSemaphores[_frameIndex];
 		_currentFence = _swapCompleteFences[_frameIndex];
 
@@ -685,10 +692,13 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		_currentCmd.renderBarrier( _currentRT );
 		_frameBegun = true;
 		_firstDraw = true;
+		_currentPipeline = null;
+		_curMultiBuffer = null;
+		_curBuffer = null;
+		_curShader = null;
 	}
 
 	var _shaders:Map<Int, CompiledProgram>;
-
 	var _curShader:CompiledProgram;
 
 	function getGLSL(transcoder:forge.GLSLTranscoder, shader:hxsl.RuntimeShader.RuntimeShaderData) {
@@ -915,7 +925,7 @@ struct spvDescriptorSetBuffer0
 			switch (v.kind) {
 				case Input:
 					debugTrace('FILTER STRIDE Setting ${v.name} to stride ${p.stride * 4}');
-					vl.setstrides(location++, 32);
+					vl.setstrides(location++, p.stride * 4);
 					default:
 			}
 		}
@@ -943,6 +953,10 @@ struct spvDescriptorSetBuffer0
 
 		_curShader = p;
 
+		if (_curShader != null) {
+
+//			debugTrace('RENDER CALLSTACK selecting ${_curShader.}');
+		}
 
 
 		return true;
@@ -1313,7 +1327,7 @@ struct spvDescriptorSetBuffer0
 		if (_currentPass == null) {throw "can't build a pipeline without a pass";}
 		if (_curShader == null) throw "Can't build a pipeline without a shader";
 
-		var xx = _currentState.getSignature(_curShader.id);
+		var xx = _currentState.getSignature(_curShader.id, _currentRT);
 
 		var cmatidx = _materialMap.get(xx);
 		var cmat = _materialInternalMap.get(cmatidx);
@@ -1341,16 +1355,17 @@ struct spvDescriptorSetBuffer0
 			gdesc.pShaderProgram = _curShader.forgeShader;
 			gdesc.pRasterizerState = _currentState.raster();
 			gdesc.mVRFoveatedRendering = false;
-			pdesc.addGraphicsRenderTarget( _sc.getRenderTarget(0 ) );
+			var rt = _currentRT;
+			pdesc.setRenderTargetGlobals(rt.sampleCount, rt.sampleQuality);
+			pdesc.addGraphicsRenderTarget( rt.format );
 			var p = _renderer.createPipeline( pdesc );
 
 			cmat._pipeline = p;
-
 		}
 
 		if (_currentPipeline != cmat) {
 			_currentPipeline = cmat;
-			debugTrace("RENDER CALLSTACK binding new pipeline");
+			debugTrace("RENDER CALLSTACK changing binding to another existing pipeline");
 			_currentCmd.bindPipeline( _currentPipeline._pipeline );			
 		}
 	}
@@ -1554,7 +1569,8 @@ struct spvDescriptorSetBuffer0
 	}
 
 	public  function bindMultiBuffers() {
-		debugTrace('RENDER CALLSTACK bindMultiBuffers');
+		debugTrace('RENDER CALLSTACK bindMultiBuffers ${_curShader.attribs.length}');
+		if (_curMultiBuffer == null) throw "Multibuffers are null";
 		var buffers = _curMultiBuffer;
 		var mb = buffers.buffer.buffer;
 		//trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
@@ -1563,13 +1579,8 @@ struct spvDescriptorSetBuffer0
 			var bb = buffers.buffer;
 			var vb = @:privateAccess mb.vbuf;
 			var b = @:privateAccess vb.b;
-
-			
 			//debugTrace('FILTER prebinding buffer b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} si ${a.size} bbvc ${bb.vertices} mbstr ${mb.stride} mbsi ${mb.size} bo ${buffers.offset} - ${_curShader.inputs.names[a.index]}' );
-
-			//
-			// 
-//			_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
+			//_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
 
 			trace ('STRIDE mb.stride is ${mb.stride}');
 			_bufferBinder.add( b, mb.stride * 4, buffers.offset * 4);
@@ -1589,7 +1600,7 @@ struct spvDescriptorSetBuffer0
 	var _curIndexBuffer:IndexBuffer;
 	var _firstDraw = true;
 	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
-		debugTrace('RENDER CALLSTACK draw INDEXED ${ntriangles} ${startIndex}');
+		debugTrace('RENDER CALLSTACK draw INDEXED tri count ${ntriangles} index count ${ntriangles * 3} start ${startIndex} is32 ${ibuf.is32}');
 
 
 		bindPipeline();
@@ -1612,7 +1623,7 @@ struct spvDescriptorSetBuffer0
 		//debugTrace('Binding index buffer');
 		_currentCmd.bindIndexBuffer(ibuf.b, ibuf.is32 ? INDEX_TYPE_UINT32 : INDEX_TYPE_UINT16 , 0);
 		//debugTrace('Drawing ${ntriangles} triangles');
-		_currentCmd.drawIndexed( ntriangles * 3, 0, 0);
+		_currentCmd.drawIndexed( ntriangles * 3, startIndex, 0);
 
 		/*
 			if( ibuf.is32 )
@@ -1620,7 +1631,7 @@ struct spvDescriptorSetBuffer0
 			else
 				gl.drawElements(drawMode, ntriangles * 3, GL.UNSIGNED_SHORT, startIndex * 2);
 		 */
-
+		 debugTrace('RENDER CALLSTACK drawing complete');
 	}
 
 	public override function selectBuffer(v:Buffer) {
@@ -1737,16 +1748,19 @@ struct spvDescriptorSetBuffer0
 	}
 
 	public override function disposeVertexes(v:VertexBuffer) {
-//		debugTrace("MISSING DELETE BUFFER");
+		debugTrace('RENDER CALLSTACK DEALLOC disposeVertexes');
 		v.b.dispose();
 		v.b = null;
 	}
 
 	public override function disposeIndexes(i:IndexBuffer) {
+		debugTrace('RENDER CALLSTACK DEALLOC disposeIndexes');
 		i.b.dispose();
 		i.b = null;
 	}
 	public override function disposeTexture(t:h3d.mat.Texture) {
+		debugTrace('RENDER CALLSTACK DEALLOC disposeTexture');
+
 		var tt = t.t;
 		if( tt == null ) return;
 		tt.t.dispose();
@@ -1779,10 +1793,13 @@ struct spvDescriptorSetBuffer0
 	var _currentDepth : h3d.mat.DepthBuffer;
 
 	function setRenderTargetsInternal( textures:Array<h3d.mat.Texture>, layer : Int, mipLevel : Int) {
-		if( textures.length == 0 ) {
+		debugTrace('RENDER TARGET CALLSTACK setRenderTargetsInternal');
+		if( textures == null || textures.length == 0 ) {
 			setDefaultRenderTarget();
 			return;
 		}
+
+		if (textures.length > 1) throw "Multiple render targets are unsupported";
 
 		var tex = textures[0];
 //		curTexture = textures[0];
@@ -1806,7 +1823,7 @@ struct spvDescriptorSetBuffer0
 			// prevent garbage
 			if( !tex.flags.has(WasCleared) ) {
 				tex.flags.set(WasCleared);
-				debugTrace('RENDER REMINDER to clear render target [RC]');
+				debugTrace('RENDER TARGET REMINDER to clear render target [RC]');
 //				Driver.clearColor(rt, 0, 0, 0, 0);
 			}
 
@@ -1877,13 +1894,15 @@ struct spvDescriptorSetBuffer0
 	var _tmpTextures = new Array<h3d.mat.Texture>();
 	var _targetsCount = 1;
 	var _curTexture : h3d.mat.Texture;
-	var _defaultTarget : forge.Native.RenderTarget;
 	var _currentTargets = new Array<forge.Native.RenderTarget>();
 	function setDefaultRenderTarget() {
+		debugTrace('RENDER CALLSTACK TARGET setDefaultRenderTarget');
 		_currentDepth = _defaultDepth;
 		_targetsCount = 1;
 		_curTexture = null;
-		_currentTargets[0] = _defaultTarget;
+		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
+		_currentTargets[0] = _currentRT;
+
 		//currentTargetResources[0] = null;
 
 		/*
@@ -1895,20 +1914,25 @@ struct spvDescriptorSetBuffer0
 		Driver.rsSetViewports(1, viewport);
 		*/
 
-		debugTrace("RENDER REMINDER return to default RT [RC]");
+//		debugTrace("RENDER REMINDER return to default RT [RC]");
 	}
 
 	public override function setRenderTarget(tex:Null<h3d.mat.Texture>, layer = 0, mipLevel = 0) {
-		
+		debugTrace('RENDER CALLSTACK setRenderTarget');
+
 		if( tex == null ) {
 			setDefaultRenderTarget();
 		} else {
 			_tmpTextures[0] = tex;
 			setRenderTargetsInternal(_tmpTextures, layer, mipLevel);	
 		}
+		_currentPipeline = null;
+
 	}
 
 	public override function setRenderTargets(textures:Array<h3d.mat.Texture>) {
+		debugTrace('RENDER CALLSTACK setRenderTargets');
+
 		setRenderTargetsInternal(textures, 0, 0);
 	}
 	/*

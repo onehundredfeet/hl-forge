@@ -54,7 +54,7 @@ class StateBuilder {
             memset( this, 0, sizeof(StateBuilder));
         }
         
-        uint64_t getSignature(int shaderID);
+        uint64_t getSignature(int shaderID, RenderTarget *rt);
 
         DepthStateDesc _depth;
         RasterizerStateDesc _raster;
@@ -138,13 +138,19 @@ class HlForgePipelineDesc : public PipelineDesc {
         this->pName = _name.c_str();
     }
 
-    int addGraphicsRenderTarget(  RenderTarget *rt ) {
-        auto idx = mGraphicsDesc.mRenderTargetCount;
+    void reset() {
+        mGraphicsDesc.mRenderTargetCount = 0;
+        _formats.clear();
+    }
+    void setRenderTargetGlobals(  SampleCount sampleCount, int sampleQuality ) {
+        mGraphicsDesc.mSampleCount = sampleCount;
+        mGraphicsDesc.mSampleQuality = sampleQuality;
+    }
 
-        _formats.push_back(rt->mFormat);
+    int addGraphicsRenderTarget(  TinyImageFormat format ) {
+        auto idx = mGraphicsDesc.mRenderTargetCount;
+        _formats.push_back(format);
         mGraphicsDesc.pColorFormats = &_formats[0];
-        mGraphicsDesc.mSampleCount = rt->mSampleCount;
-        mGraphicsDesc.mSampleQuality = rt->mSampleQuality;
         mGraphicsDesc.mRenderTargetCount++;
         return idx;
     }

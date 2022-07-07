@@ -586,7 +586,7 @@ interface StateBuilder {
 	[Const] DepthStateDesc depth();
 	[Const] RasterizerStateDesc raster();
 
-	int64 getSignature(int shaderID);
+	int64 getSignature(int shaderID, RenderTarget rt);
 };
 
 enum VertexAttribRate
@@ -672,8 +672,9 @@ interface PipelineDesc {
 	attribute uint       mExtensionCount;
 
 	void setName( String name );
-	int addGraphicsRenderTarget( RenderTarget rt );
-
+	void reset();
+    void setRenderTargetGlobals(  SampleCount sampleCount, int sampleQuality );
+    int addGraphicsRenderTarget(  TinyImageFormat format );
 };
 
 interface BufferBinder {

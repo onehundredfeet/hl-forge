@@ -615,7 +615,7 @@ RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSigna
 
 static XXH64_state_t *_state;
 
-uint64_t StateBuilder::getSignature(int shaderID) {
+uint64_t StateBuilder::getSignature(int shaderID, RenderTarget *rt) {
     //memset(this, 0, sizeof(StateBuilder));
     if (_state == NULL) _state = XXH64_createState();
     
@@ -623,6 +623,10 @@ uint64_t StateBuilder::getSignature(int shaderID) {
     XXH64_reset(_state, seed);
     XXH64_update(_state, this, sizeof(StateBuilder));
     XXH64_update(_state, &shaderID, sizeof(int));
+    XXH64_update(_state, &rt->mFormat, sizeof(rt->mFormat));
+    XXH64_update(_state, &rt->mSampleCount, sizeof(rt->mSampleCount));
+    int sq = rt->mSampleQuality;
+    XXH64_update(_state, &sq, sizeof(sq));
     
     XXH64_hash_t const hash = XXH64_digest(_state);
 

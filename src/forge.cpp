@@ -1008,10 +1008,10 @@ HL_PRIM HL_CONST _ref(RasterizerStateDesc)* HL_NAME(StateBuilder_raster0)(_ref(S
 }
 DEFINE_PRIM(_IDL, StateBuilder_raster0, _IDL);
 
-HL_PRIM int64_t HL_NAME(StateBuilder_getSignature1)(_ref(StateBuilder)* _this, int shaderID) {
-	return (_unref(_this)->getSignature(shaderID));
+HL_PRIM int64_t HL_NAME(StateBuilder_getSignature2)(_ref(StateBuilder)* _this, int shaderID, _ref(RenderTarget)* rt) {
+	return (_unref(_this)->getSignature(shaderID, _unref_ptr_safe(rt)));
 }
-DEFINE_PRIM(_I64, StateBuilder_getSignature1, _IDL _I32);
+DEFINE_PRIM(_I64, StateBuilder_getSignature2, _IDL _I32 _IDL);
 
 HL_PRIM int HL_NAME(VertexAttrib_get_mSemantic)( _ref(VertexAttrib)* _this ) {
 	return HL_NAME(ShaderSemantic_valueToIndex0)(_unref(_this)->mSemantic);
@@ -1327,10 +1327,20 @@ HL_PRIM void HL_NAME(PipelineDesc_setName1)(_ref(HlForgePipelineDesc)* _this, vs
 }
 DEFINE_PRIM(_VOID, PipelineDesc_setName1, _IDL _STRING);
 
-HL_PRIM int HL_NAME(PipelineDesc_addGraphicsRenderTarget1)(_ref(HlForgePipelineDesc)* _this, _ref(RenderTarget)* rt) {
-	return (_unref(_this)->addGraphicsRenderTarget(_unref_ptr_safe(rt)));
+HL_PRIM void HL_NAME(PipelineDesc_reset0)(_ref(HlForgePipelineDesc)* _this) {
+	(_unref(_this)->reset());
 }
-DEFINE_PRIM(_I32, PipelineDesc_addGraphicsRenderTarget1, _IDL _IDL);
+DEFINE_PRIM(_VOID, PipelineDesc_reset0, _IDL);
+
+HL_PRIM void HL_NAME(PipelineDesc_setRenderTargetGlobals2)(_ref(HlForgePipelineDesc)* _this, int sampleCount, int sampleQuality) {
+	(_unref(_this)->setRenderTargetGlobals(SampleCount__values[sampleCount], sampleQuality));
+}
+DEFINE_PRIM(_VOID, PipelineDesc_setRenderTargetGlobals2, _IDL _I32 _I32);
+
+HL_PRIM int HL_NAME(PipelineDesc_addGraphicsRenderTarget1)(_ref(HlForgePipelineDesc)* _this, int format) {
+	return (_unref(_this)->addGraphicsRenderTarget(TinyImageFormat__values[format]));
+}
+DEFINE_PRIM(_I32, PipelineDesc_addGraphicsRenderTarget1, _IDL _I32);
 
 HL_PRIM _ref(BufferBinder)* HL_NAME(BufferBinder_new0)() {
 	return alloc_ref((new BufferBinder()),BufferBinder);
