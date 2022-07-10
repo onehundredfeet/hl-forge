@@ -8,33 +8,44 @@ IT IS NOT RECOMMENDED TO CLONE THIS REPO AT THIS TIME
 
 Tested Samples
 ==============
-- Adjust Color (Has some blinking on mouse move, likely resource premature deleting)
-- Base2D
-- Base3D
-- Bounds
-- Collide Check
+- Adjust Color (Runs)
+- Base2D (Runs)
+- Base3D (Runs)
+- Bounds (Runs)
+- Collide Check (Runs)
 - Cube Texture (Fails - Needs generateMipMaps)
-- Cursor
+- Cursor (Runs)
 - Filters (Fails - Needs copyTexture)
 - GPU Particles (Fails - selectBuffer unsupported path)
 - GraphicsDraw (Fails - Needs capturePixels)
-- Blur (Runs - 2D elements are not in the right place / scaled properly, may have something to do with power of 2)
-- Input 
-- Interactive (Fails - Unsupported texture format R16F)
-- Lights (Fails - Unsupported texture format RGBA32F)
+- Blur (Runs)
+- Input (Runs)
+- Interactive (Fails - unknown vertex attribute weights)
+- Lights (Fails - Unimplemented mip support)
 - Mask (Fails - Unimplemented setRenderZone)
-- Pbr (Fails - Unsupported texture format RGBA32F)
-- Quaternion (Fails - Unsupported texture format R16F)
-- Shadows (Runs - Totally black)
-- Skin (Fails - Unsupported texture format R16F)
+- Pbr (Fails - Unimplemented mip support)
+- Quaternion (Fails - Unsupported current buffer)
+- Shadows (Runs)
+- Skin (Fails - unknown vertex attribute weights)
 - Stencil (Fails - Below)
 [MTLDebugRenderCommandEncoder validateCommonDrawErrors:]:5252: failed assertion `Draw Errors Validation
 MTLDepthStencilDescriptor uses frontFaceStencil but MTLRenderPassDescriptor has a nil stencilAttachment texture
 MTLDepthStencilDescriptor uses backFaceStencil but MTLRenderPassDescriptor has a nil stencilAttachment texture
 
-- World (Fails - Unsupported texture format R16F)
+- World (Fails - unknown vertex attribute time)
 
-Progress
+Incomplete
+====
+- Auto generate mipmaps
+- Capture pixels / copy texture
+- Skinned rendereing
+- Fix Unsupported texture format RGBA32F
+- Viewport resizing
+- Check sRGB configuration on render target & texture load
+- Support sub render zone
+- Stecil support
+
+Completed
 ========
 - Gets a HEAPS SDL window
 - Attaches a FORGE render target & depth buffer to it
@@ -49,12 +60,8 @@ Progress
 - Renders lit cube
 - Loads a texture from HEAPS into a texture buffer
 - Create texture descriptors & attach to draw
-- Fix Fonts & 2D
+- Fixed Fonts & 2D
+- Fixed setRenderTarget
+- Fixed Unsupported texture format R16F (Likely a render target)
+- Fixed shadows
 
-Next
-====
-- Fix Unsupported texture format R16F (Likely a render target)
-- Fix Unsupported texture format RGBA32F
-- Fix setRenderTarget
-- Viewport resizing
-- Check sRGB configuration on render target & texture load
