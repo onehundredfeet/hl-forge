@@ -1644,6 +1644,16 @@ HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_sampleQuality)( _ref(RenderTar
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_sampleQuality,_IDL _I32);
 
+HL_PRIM int HL_NAME(RenderTargetDesc_get_descriptors)( _ref(RenderTargetDesc)* _this ) {
+	return HL_NAME(DescriptorType_valueToIndex0)(_unref(_this)->mDescriptors);
+}
+DEFINE_PRIM(_I32,RenderTargetDesc_get_descriptors,_IDL);
+HL_PRIM int HL_NAME(RenderTargetDesc_set_descriptors)( _ref(RenderTargetDesc)* _this, int value ) {
+	_unref(_this)->mDescriptors = (DescriptorType)HL_NAME(DescriptorType_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,RenderTargetDesc_set_descriptors,_IDL _I32);
+
 HL_PRIM void* HL_NAME(RenderTargetDesc_get_nativeHandle)( _ref(RenderTargetDesc)* _this ) {
 	return (void*)_unref(_this)->pNativeHandle;
 }
@@ -2215,6 +2225,16 @@ HL_PRIM int HL_NAME(TextureDesc_set_startState)( _ref(TextureDesc)* _this, int v
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_startState,_IDL _I32);
+
+HL_PRIM int HL_NAME(TextureDesc_get_descriptors)( _ref(TextureDesc)* _this ) {
+	return HL_NAME(DescriptorType_valueToIndex0)(_unref(_this)->mDescriptors);
+}
+DEFINE_PRIM(_I32,TextureDesc_get_descriptors,_IDL);
+HL_PRIM int HL_NAME(TextureDesc_set_descriptors)( _ref(TextureDesc)* _this, int value ) {
+	_unref(_this)->mDescriptors = (DescriptorType)HL_NAME(DescriptorType_indexToValue0)(value);
+	return value;
+}
+DEFINE_PRIM(_I32,TextureDesc_set_descriptors,_IDL _I32);
 
 HL_PRIM unsigned int HL_NAME(TextureDesc_get_sharedNodeIndexCount)( _ref(TextureDesc)* _this ) {
 	return _unref(_this)->mSharedNodeIndexCount;

@@ -511,7 +511,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			, driver: this
 			#end
 		};
-
+		t.flags.unset(WasCleared);
 		/*
 			var tt = gl.createTexture();
 			var bind = getBindType(t);
@@ -704,7 +704,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 	public override function begin(frame:Int) {
 		// Check for VSYNC
-
+		debugTrace('RENDERING BEGIN CLEAR Begin');
 		if (_sc.isVSync() != true) {
 			_queue.waitIdle();
 			_renderer.toggleVSync(_sc);
@@ -734,7 +734,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		_currentCmd = _swapCmds[_frameIndex];
 
 		_currentCmd.begin();
-		_currentCmd.insertBarrier( _currentRT.begin);
+		_currentCmd.insertBarrier( _currentRT.begin );
 //		_currentCmd.renderBarrier( _currentRT.rt );
 		_frameBegun = true;
 		_firstDraw = true;
@@ -1908,16 +1908,16 @@ struct spvDescriptorSetBuffer0
 	}
 
 	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
-		debugTrace('RENDER CALLSTACK TARGET bind and clear ${_currentRT} and ${_currentDepth}');
+		debugTrace('RENDER CALLSTACK TARGET CLEAR bind and clear ${_currentRT} and ${_currentDepth}');
 		// 
 		_currentCmd.bindAndclear(_currentRT.rt,_currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
+		
 	}
 	
 	public override function end() {
 		debugTrace('RENDER CALLSTACK TARGET end');
 		_currentCmd.unbindRenderTarget();
 		_currentCmd.insertBarrier( _currentRT.present );
-//		_currentCmd.presentBarrier( _currentRT );
 		_currentRT = null;
 		_currentDepth = null;
 		_currentCmd.end();
@@ -1999,7 +1999,7 @@ struct spvDescriptorSetBuffer0
 	//		renderTargetDesc.clearValue.depth = 1.0f;
 	//		renderTargetDesc.clearValue.stencil = 0;
 			renderTargetDesc.depth = 1;
-	//		renderTargetDesc.descriptors = DESCRIPTOR_TYPE_TEXTURE;
+			renderTargetDesc.descriptors = DESCRIPTOR_TYPE_TEXTURE;
 			renderTargetDesc.format = getTinyTextureFormat(tex);
 			renderTargetDesc.startState = RESOURCE_STATE_SHADER_RESOURCE;
 			renderTargetDesc.height = tex.width;
@@ -2007,7 +2007,7 @@ struct spvDescriptorSetBuffer0
 			renderTargetDesc.sampleCount = SAMPLE_COUNT_1;
 			renderTargetDesc.sampleQuality = 0;
 //			renderTargetDesc.nativeHandle = itex.t.
-	//		renderTargetDesc.flags = forge.Native.TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT.toValue();
+			renderTargetDesc.flags = forge.Native.TextureCreationFlags.TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT.toValue();
 	//		renderTargetDesc.name = "Shadow Map Render Target";
 
 			var rt =  _renderer.createRenderTarget( renderTargetDesc );
@@ -2030,9 +2030,18 @@ struct spvDescriptorSetBuffer0
 
 		_currentDepth = @:privateAccess (tex.depthBuffer == null ? null : tex.depthBuffer);
 		debugTrace('RENDER TARGET  setting depth buffer target to existing ${_currentDepth} ${_currentDepth != null ? _currentDepth.width : null} ${_currentDepth != null ? _currentDepth.height : null}');
-		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
 		_currentCmd.insertBarrier(_currentRT.inBarrier);
 		
+		if( !tex.flags.has(WasCleared) ) {
+			tex.flags.set(WasCleared); // once we draw to, do not clear again
+
+			debugTrace('RENDER TARGET CLEAR set render target internal cleared');
+			_currentCmd.bindAndclear( _currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null );
+		} else {
+			debugTrace('RENDER TARGET CLEAR set render target internal no clear');
+			_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
+		}
+
 		if (_currentPass != null) {
 			selectMaterial( _currentPass);
 		}
@@ -2124,7 +2133,7 @@ struct spvDescriptorSetBuffer0
 	var _curTexture : h3d.mat.Texture;
 	var _currentTargets = new Array<forge.Native.RenderTarget>();
 	function setDefaultRenderTarget() {
-		debugTrace('RENDER CALLSTACK TARGET setDefaultRenderTarget');
+		debugTrace('RENDER CALLSTACK TARGET CLEAR setDefaultRenderTarget');
 		
 		_currentCmd.unbindRenderTarget();
 		_currentCmd.insertBarrier( _currentRT.outBarrier );
@@ -2135,8 +2144,8 @@ struct spvDescriptorSetBuffer0
 		_currentRT = _swapRenderTargets[_currentSwapIndex];
 		_currentTargets[0] = _currentRT.rt;
 
-		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
 		_currentCmd.insertBarrier( _currentRT.inBarrier );
+		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
 
 		if (_currentPass != null) {
 			selectMaterial( _currentPass);
