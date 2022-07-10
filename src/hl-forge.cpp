@@ -306,84 +306,44 @@ void forge_sdl_buffer_load_desc_set_index_buffer(BufferLoadDesc *bld, int size, 
     //
 }
 
-void forge_render_target_bind_and_clear(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT) {
+
+void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT, LoadActionType color, LoadActionType depth ) {
     // simply record the screen cleaning command
     LoadActionsDesc loadActions = {};
-    loadActions.mLoadActionsColor[0] = LOAD_ACTION_CLEAR;
-    loadActions.mLoadActionDepth = LOAD_ACTION_CLEAR;
+    loadActions.mLoadActionsColor[0] = color;
+    loadActions.mLoadActionDepth = depth;
+
+    printf("RENDER CLEAR c++ BIND %f %f %f %f\n", pRenderTarget->mClearValue.r, pRenderTarget->mClearValue.g, pRenderTarget->mClearValue.b, pRenderTarget->mClearValue.a );
 
 
-    // This seems to trump the stuff below
-    loadActions.mClearDepth.depth = pRenderTarget->mClearValue.depth = 1.0f;
-    loadActions.mClearDepth.stencil = pRenderTarget->mClearValue.stencil = 0;
-    loadActions.mClearColorValues[0].r = pRenderTarget->mClearValue.r = 0.0f;
-    loadActions.mClearColorValues[0].g = pRenderTarget->mClearValue.g = 0.0f;
-    loadActions.mClearColorValues[0].b = pRenderTarget->mClearValue.b = 0.0f;
-    loadActions.mClearColorValues[0].a = pRenderTarget->mClearValue.a = 0.0f;
+     // This seems to trump the stuff below
+    loadActions.mClearDepth.depth = pDepthStencilRT->mClearValue.depth ;
+    loadActions.mClearDepth.stencil = pDepthStencilRT->mClearValue.stencil;
+    loadActions.mClearColorValues[0].r = pRenderTarget->mClearValue.r;
+    loadActions.mClearColorValues[0].g = pRenderTarget->mClearValue.g;
+    loadActions.mClearColorValues[0].b = pRenderTarget->mClearValue.b;
+    loadActions.mClearColorValues[0].a = pRenderTarget->mClearValue.a;
 
-    //pRenderTarget->mClearValue.depth = 0.0f;
-//    pRenderTarget->mClearValue.r = 1.0f;
-  //  pRenderTarget->mClearValue.g = 0.0f;
-    //pRenderTarget->mClearValue.b = 0.0f;
-    //pRenderTarget->mClearValue.a = 0.0f;
-//    pRenderTarget->mClearValue.stencil = 0;
 
-    if (pDepthStencilRT != nullptr) {
-        pDepthStencilRT->mClearValue.depth = 0.0f;
-        pDepthStencilRT->mClearValue.stencil = 0;
-    }
-
-    //cmdBindRenderTargets(cmd, 0, NULL, NULL, NULL, NULL, NULL, -1, -1);
+    printf("RENDER CLEAR c++ %f %f %f %f - %f %d\n", loadActions.mClearColorValues[0].r, loadActions.mClearColorValues[0].g, loadActions.mClearColorValues[0].b, loadActions.mClearColorValues[0].a,  loadActions.mClearDepth.depth, loadActions.mClearDepth.stencil);
     cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
     cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
 }
+void forge_render_target_set_clear_colour( RenderTarget *rt, float r, float g, float b,float a) {
+    rt->mClearValue.r = r;
+    rt->mClearValue.g = g;
+    rt->mClearValue.b = b;
+    rt->mClearValue.a = a;
 
-
-void forge_render_target_clear(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT) {
-    // simply record the screen cleaning command
-    LoadActionsDesc loadActions = {};
-    loadActions.mLoadActionsColor[0] = LOAD_ACTION_CLEAR;
-    loadActions.mLoadActionDepth = LOAD_ACTION_CLEAR;
-
-
-    // This seems to trump the stuff below
-    loadActions.mClearDepth.depth = pRenderTarget->mClearValue.depth = 1.0f;
-    loadActions.mClearDepth.stencil = pRenderTarget->mClearValue.stencil = 0;
-    loadActions.mClearColorValues[0].r = pRenderTarget->mClearValue.r = 0.0f;
-    loadActions.mClearColorValues[0].g = pRenderTarget->mClearValue.g = 0.0f;
-    loadActions.mClearColorValues[0].b = pRenderTarget->mClearValue.b = 0.0f;
-    loadActions.mClearColorValues[0].a = pRenderTarget->mClearValue.a = 0.0f;
-
-    //pRenderTarget->mClearValue.depth = 0.0f;
-//    pRenderTarget->mClearValue.r = 1.0f;
-  //  pRenderTarget->mClearValue.g = 0.0f;
-    //pRenderTarget->mClearValue.b = 0.0f;
-    //pRenderTarget->mClearValue.a = 0.0f;
-//    pRenderTarget->mClearValue.stencil = 0;
-
-    if (pDepthStencilRT != nullptr) {
-        pDepthStencilRT->mClearValue.depth = 0.0f;
-        pDepthStencilRT->mClearValue.stencil = 0;
-    }
-
-
-    cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
-    cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
-    cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
+    printf("RENDER CLEAR SET %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
 }
-
-void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT) {
-    // simply record the screen cleaning command
-    LoadActionsDesc loadActions = {};
-    loadActions.mLoadActionsColor[0] = LOAD_ACTION_DONTCARE;
-    loadActions.mLoadActionDepth = LOAD_ACTION_DONTCARE;
-
-    cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
-    cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
-    cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
+void forge_render_target_set_clear_depth( RenderTarget *rt, float depth, int stencil) {
+    printf("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
+    rt->mClearValue.depth = depth;
+    rt->mClearValue.stencil = stencil;
+    printf("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
 }
-
 void forge_cmd_unbind(Cmd *cmd) {
 	cmdBindRenderTargets(cmd, 0, NULL, NULL, NULL, NULL, NULL, -1, -1);
 }

@@ -332,9 +332,7 @@ void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int
 // Cmd
 void forge_cmd_unbind(Cmd *);
 void forge_cmd_push_constant(Cmd *cmd, RootSignature *rs, int index, void *data);
-void forge_render_target_bind(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
-void forge_render_target_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
-void forge_render_target_bind_and_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
+void forge_render_target_bind(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil, LoadActionType color, LoadActionType depth);
 void forge_cmd_wait_for_render(Cmd *cmd, RenderTarget *pRenderTarget);
 void forge_cmd_wait_for_present(Cmd *cmd, RenderTarget *pRenderTarget);
 void forge_cmd_insert_barrier(Cmd *cmd, ResourceBarrierBuilder *barrier);
@@ -351,6 +349,8 @@ void forge_sdl_texture_upload(Texture *, void *data, int dataSize);
 
 // Render Target
 Texture *forge_render_target_get_texture( RenderTarget *rt);
+void forge_render_target_set_clear_colour( RenderTarget *rt, float r, float g, float b,float a);
+void forge_render_target_set_clear_depth( RenderTarget *rt, float depth, int stencil);
 
 //Blend State
 void forge_blend_state_desc_set_rt( BlendStateDesc *, BlendStateTargets rt, bool enabled);

@@ -1046,7 +1046,14 @@ struct spvDescriptorSetBuffer0
 				for (i in 0...buf.fragment.tex.length) {
 					_fragmentTextures[i] = buf.fragment.tex[i];
 					var t = _fragmentTextures[i];
+					t.lastFrame = _currentFrame;
+/*					var pt = _curShader.fragment.textures[i];
 
+					if( pt.u == null ) {
+						throw "Shader texture descriptor is null";
+						continue;
+					}
+					*/
 					if (t.t.rt != null) {
 						var rtt = t.t.rt.rt.getTexture();
 						if (rtt == null) {
@@ -1908,9 +1915,28 @@ struct spvDescriptorSetBuffer0
 	}
 
 	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
-		debugTrace('RENDER CALLSTACK TARGET CLEAR bind and clear ${_currentRT} and ${_currentDepth}');
+		debugTrace('RENDER CALLSTACK TARGET CLEAR bind and clear ${_currentRT} and ${_currentDepth} ${color} ${depth} ${stencil}');
+
+		if (color != null) {
+			var x : h3d.Vector = color;
+			debugTrace('RENDER CLEAR ${x} : ${x.r}, ${x.g}, ${x.b}, ${x.a}');
+			_currentRT.rt.setClearColor( x.r, x.g, x.b, x.a);
+		}
+
+		if (depth != null && _currentDepth != null) {
+			var sten = stencil != null ? stencil : 0;
+			var d : Float = depth;
+			var rt = @:privateAccess _currentDepth.b.r;
+			if (rt != null) rt.setClearDepthNormalized( d, sten );
+		}
+
+
+		
+		debugTrace('RENDER CLEAR BINDING');
 		// 
-		_currentCmd.bindAndclear(_currentRT.rt,_currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
+
+		_currentCmd.bind(_currentRT.rt,_currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
+		debugTrace('RENDER CLEAR BINDING DONE');
 		
 	}
 	
@@ -1948,6 +1974,7 @@ struct spvDescriptorSetBuffer0
 
 		var tt = t.t;
 		if( tt == null ) return;
+		if (tt.t == null) return;
 		tt.t.dispose();
 		t.t = null;
 	}
@@ -2036,10 +2063,10 @@ struct spvDescriptorSetBuffer0
 			tex.flags.set(WasCleared); // once we draw to, do not clear again
 
 			debugTrace('RENDER TARGET CLEAR set render target internal cleared');
-			_currentCmd.bindAndclear( _currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null );
+			_currentCmd.bind( _currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR );
 		} else {
 			debugTrace('RENDER TARGET CLEAR set render target internal no clear');
-			_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
+			_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);
 		}
 
 		if (_currentPass != null) {
@@ -2145,7 +2172,7 @@ struct spvDescriptorSetBuffer0
 		_currentTargets[0] = _currentRT.rt;
 
 		_currentCmd.insertBarrier( _currentRT.inBarrier );
-		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
+		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);
 
 		if (_currentPass != null) {
 			selectMaterial( _currentPass);

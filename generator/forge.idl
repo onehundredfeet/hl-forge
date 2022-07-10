@@ -499,6 +499,13 @@ enum DescriptorType
 	"DESCRIPTOR_TYPE_INDIRECT_BUFFER",
 	"DESCRIPTOR_TYPE_TEXTURE_CUBE"
 };
+enum LoadActionType
+{
+	"LOAD_ACTION_DONTCARE",
+	"LOAD_ACTION_LOAD",
+	"LOAD_ACTION_CLEAR",
+	"MAX_LOAD_ACTION"
+} ;
 
 [NoDelete]
 interface ColorMask {
@@ -650,6 +657,10 @@ interface RenderTarget {
 	/// Internal image format
 	[Internal="mFormat"] attribute TinyImageFormat format;
 	[CObject, Const, Internal="forge_render_target_get_texture"] Texture getTexture();
+
+	[CObject, Internal="forge_render_target_set_clear_colour"] void setClearColor( float r, float g, float b,float a);
+	[CObject, Internal="forge_render_target_set_clear_depth"] void setClearDepthNormalized( float depth, int stencil );
+
 };
 
 [NoDelete]
@@ -707,9 +718,7 @@ interface ResourceBarrierBuilder {
 [NoDelete]
 interface Cmd {
 	
-	[CObject, Internal="forge_render_target_bind_and_clear"] void bindAndclear(RenderTarget rt, RenderTarget depthstencil);
-	[CObject, Internal="forge_render_target_bind"] void bind(RenderTarget rt, RenderTarget depthstencil);
-	[CObject, Internal="forge_render_target_clear"] void clear(RenderTarget rt, RenderTarget depthstencil);
+	[CObject, Internal="forge_render_target_bind"] void bind(RenderTarget rt, RenderTarget depthstencil, LoadActionType color, LoadActionType depth);
 	[CObject, Internal="forge_cmd_unbind"] void unbindRenderTarget();
 	[CObject,  Internal="beginCmd"] void begin();
 	[CObject,  Internal="endCmd"] void end();
@@ -791,6 +800,7 @@ interface RenderTargetDesc {
 
 	/// Internal image format
 	[Internal="mFormat"] attribute TinyImageFormat format;
+
 
 	/*
 	

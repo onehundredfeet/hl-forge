@@ -15,19 +15,23 @@ Tested Samples
 - Collide Check
 - Cube Texture (Fails - Needs generateMipMaps)
 - Cursor
-- Filters (Fails - Needs setRenderTarget)
+- Filters (Fails - Needs copyTexture)
 - GPU Particles (Fails - selectBuffer unsupported path)
-- GraphicsDraw (Fails - Needs setRenderTarget)
-- Blur (Fails - Needs setRenderTarget)
+- GraphicsDraw (Fails - Needs capturePixels)
+- Blur (Runs - 2D elements are not in the right place / scaled properly, may have something to do with power of 2)
 - Input 
 - Interactive (Fails - Unsupported texture format R16F)
 - Lights (Fails - Unsupported texture format RGBA32F)
 - Mask (Fails - Unimplemented setRenderZone)
 - Pbr (Fails - Unsupported texture format RGBA32F)
 - Quaternion (Fails - Unsupported texture format R16F)
-- Shadows (Fails - Unsupported texture format R16F)
+- Shadows (Runs - Totally black)
 - Skin (Fails - Unsupported texture format R16F)
-- Stencil (Runs - Missing reflection)
+- Stencil (Fails - Below)
+[MTLDebugRenderCommandEncoder validateCommonDrawErrors:]:5252: failed assertion `Draw Errors Validation
+MTLDepthStencilDescriptor uses frontFaceStencil but MTLRenderPassDescriptor has a nil stencilAttachment texture
+MTLDepthStencilDescriptor uses backFaceStencil but MTLRenderPassDescriptor has a nil stencilAttachment texture
+
 - World (Fails - Unsupported texture format R16F)
 
 Progress

@@ -565,6 +565,19 @@ HL_PRIM int HL_NAME(DescriptorType_valueToIndex0)( int value ) {
 	for( int i = 0; i < 12; i++ ) if ( value == (int)DescriptorType__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, DescriptorType_valueToIndex0, _I32);
+static LoadActionType LoadActionType__values[] = { LOAD_ACTION_DONTCARE,LOAD_ACTION_LOAD,LOAD_ACTION_CLEAR,MAX_LOAD_ACTION };
+HL_PRIM int HL_NAME(LoadActionType_toValue0)( int idx ) {
+	return LoadActionType__values[idx];
+}
+DEFINE_PRIM(_I32, LoadActionType_toValue0, _I32);
+HL_PRIM int HL_NAME(LoadActionType_indexToValue0)( int idx ) {
+	return LoadActionType__values[idx];
+}
+DEFINE_PRIM(_I32, LoadActionType_indexToValue0, _I32);
+HL_PRIM int HL_NAME(LoadActionType_valueToIndex0)( int value ) {
+	for( int i = 0; i < 4; i++ ) if ( value == (int)LoadActionType__values[i]) return i; return -1;
+}
+DEFINE_PRIM(_I32, LoadActionType_valueToIndex0, _I32);
 static void finalize_HashBuilder( _ref(HashBuilder)* _this ) { free_ref(_this ); }
 HL_PRIM void HL_NAME(HashBuilder_delete)( _ref(HashBuilder)* _this ) {
 	free_ref(_this );
@@ -1216,6 +1229,17 @@ HL_PRIM HL_CONST _ref(Texture)* HL_NAME(RenderTarget_getTexture0)(_ref(RenderTar
 }
 DEFINE_PRIM(_IDL, RenderTarget_getTexture0, _IDL);
 
+HL_PRIM void HL_NAME(RenderTarget_setClearColor4)(_ref(RenderTarget)* _this, float r, float g, float b, float a) {
+	printf("RENDER CLEAR RGBA %f %f %f %f\n", r, g, b, a);
+	(forge_render_target_set_clear_colour( _unref(_this) , r, g, b, a));
+}
+DEFINE_PRIM(_VOID, RenderTarget_setClearColor4, _IDL _F32 _F32 _F32 _F32);
+
+HL_PRIM void HL_NAME(RenderTarget_setClearDepthNormalized2)(_ref(RenderTarget)* _this, float depth, int stencil) {
+	(forge_render_target_set_clear_depth( _unref(_this) , depth, stencil));
+}
+DEFINE_PRIM(_VOID, RenderTarget_setClearDepthNormalized2, _IDL _F32 _I32);
+
 HL_PRIM HL_CONST _ref(Shader)* HL_NAME(GraphicsPipelineDesc_get_pShaderProgram)( _ref(GraphicsPipelineDesc)* _this ) {
 	return alloc_ref_const(_unref(_this)->pShaderProgram,Shader);
 }
@@ -1427,20 +1451,10 @@ HL_PRIM void HL_NAME(ResourceBarrierBuilder_insert1)(_ref(ResourceBarrierBuilder
 }
 DEFINE_PRIM(_VOID, ResourceBarrierBuilder_insert1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(Cmd_bindAndclear2)(_ref(Cmd)* _this, _ref(RenderTarget)* rt, _ref(RenderTarget)* depthstencil) {
-	(forge_render_target_bind_and_clear( _unref(_this) , _unref_ptr_safe(rt), _unref_ptr_safe(depthstencil)));
+HL_PRIM void HL_NAME(Cmd_bind4)(_ref(Cmd)* _this, _ref(RenderTarget)* rt, _ref(RenderTarget)* depthstencil, int color, int depth) {
+	(forge_render_target_bind( _unref(_this) , _unref_ptr_safe(rt), _unref_ptr_safe(depthstencil), LoadActionType__values[color], LoadActionType__values[depth]));
 }
-DEFINE_PRIM(_VOID, Cmd_bindAndclear2, _IDL _IDL _IDL);
-
-HL_PRIM void HL_NAME(Cmd_bind2)(_ref(Cmd)* _this, _ref(RenderTarget)* rt, _ref(RenderTarget)* depthstencil) {
-	(forge_render_target_bind( _unref(_this) , _unref_ptr_safe(rt), _unref_ptr_safe(depthstencil)));
-}
-DEFINE_PRIM(_VOID, Cmd_bind2, _IDL _IDL _IDL);
-
-HL_PRIM void HL_NAME(Cmd_clear2)(_ref(Cmd)* _this, _ref(RenderTarget)* rt, _ref(RenderTarget)* depthstencil) {
-	(forge_render_target_clear( _unref(_this) , _unref_ptr_safe(rt), _unref_ptr_safe(depthstencil)));
-}
-DEFINE_PRIM(_VOID, Cmd_clear2, _IDL _IDL _IDL);
+DEFINE_PRIM(_VOID, Cmd_bind4, _IDL _IDL _IDL _I32 _I32);
 
 HL_PRIM void HL_NAME(Cmd_unbindRenderTarget0)(_ref(Cmd)* _this) {
 	(forge_cmd_unbind( _unref(_this) ));
