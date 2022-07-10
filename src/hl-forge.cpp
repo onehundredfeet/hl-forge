@@ -317,8 +317,10 @@ void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarge
 
 
      // This seems to trump the stuff below
-    loadActions.mClearDepth.depth = pDepthStencilRT->mClearValue.depth ;
-    loadActions.mClearDepth.stencil = pDepthStencilRT->mClearValue.stencil;
+     if (pDepthStencilRT != nullptr) {
+        loadActions.mClearDepth.depth = pDepthStencilRT->mClearValue.depth ;
+        loadActions.mClearDepth.stencil = pDepthStencilRT->mClearValue.stencil;
+    }
     loadActions.mClearColorValues[0].r = pRenderTarget->mClearValue.r;
     loadActions.mClearColorValues[0].g = pRenderTarget->mClearValue.g;
     loadActions.mClearColorValues[0].b = pRenderTarget->mClearValue.b;
