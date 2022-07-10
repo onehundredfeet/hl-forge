@@ -565,6 +565,11 @@ HL_PRIM int HL_NAME(DescriptorType_valueToIndex0)( int value ) {
 	for( int i = 0; i < 12; i++ ) if ( value == (int)DescriptorType__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, DescriptorType_valueToIndex0, _I32);
+static void finalize_HashBuilder( _ref(HashBuilder)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(HashBuilder_delete)( _ref(HashBuilder)* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, HashBuilder_delete, _IDL);
 static void finalize_StateBuilder( _ref(StateBuilder)* _this ) { free_ref(_this ); }
 HL_PRIM void HL_NAME(StateBuilder_delete)( _ref(StateBuilder)* _this ) {
 	free_ref(_this );
@@ -658,6 +663,46 @@ HL_PRIM void HL_NAME(TextureLoadDesc_delete)( _ref(TextureLoadDesc)* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, TextureLoadDesc_delete, _IDL);
+HL_PRIM _ref(HashBuilder)* HL_NAME(HashBuilder_new0)() {
+	return alloc_ref((new HashBuilder()),HashBuilder);
+}
+DEFINE_PRIM(_IDL, HashBuilder_new0,);
+
+HL_PRIM void HL_NAME(HashBuilder_reset1)(_ref(HashBuilder)* _this, int64_t seed) {
+	(_unref(_this)->reset(seed));
+}
+DEFINE_PRIM(_VOID, HashBuilder_reset1, _IDL _I64);
+
+HL_PRIM void HL_NAME(HashBuilder_addInt81)(_ref(HashBuilder)* _this, int v) {
+	(_unref(_this)->addInt8(v));
+}
+DEFINE_PRIM(_VOID, HashBuilder_addInt81, _IDL _I32);
+
+HL_PRIM void HL_NAME(HashBuilder_addInt161)(_ref(HashBuilder)* _this, int v) {
+	(_unref(_this)->addInt16(v));
+}
+DEFINE_PRIM(_VOID, HashBuilder_addInt161, _IDL _I32);
+
+HL_PRIM void HL_NAME(HashBuilder_addInt321)(_ref(HashBuilder)* _this, int v) {
+	(_unref(_this)->addInt32(v));
+}
+DEFINE_PRIM(_VOID, HashBuilder_addInt321, _IDL _I32);
+
+HL_PRIM void HL_NAME(HashBuilder_addInt641)(_ref(HashBuilder)* _this, int64_t v) {
+	(_unref(_this)->addInt64(v));
+}
+DEFINE_PRIM(_VOID, HashBuilder_addInt641, _IDL _I64);
+
+HL_PRIM void HL_NAME(HashBuilder_addBytes3)(_ref(HashBuilder)* _this, vbyte* b, int offset, int length) {
+	(_unref(_this)->addBytes(b, offset, length));
+}
+DEFINE_PRIM(_VOID, HashBuilder_addBytes3, _IDL _BYTES _I32 _I32);
+
+HL_PRIM int64_t HL_NAME(HashBuilder_getValue0)(_ref(HashBuilder)* _this) {
+	return (_unref(_this)->getValue());
+}
+DEFINE_PRIM(_I64, HashBuilder_getValue0, _IDL);
+
 HL_PRIM int HL_NAME(BlendStateDesc_get_SrcFactors)( _ref(BlendStateDesc)* _this, int index ) {
 	return _unref(_this)->mSrcFactors[index];
 }
@@ -1008,10 +1053,10 @@ HL_PRIM HL_CONST _ref(RasterizerStateDesc)* HL_NAME(StateBuilder_raster0)(_ref(S
 }
 DEFINE_PRIM(_IDL, StateBuilder_raster0, _IDL);
 
-HL_PRIM int64_t HL_NAME(StateBuilder_getSignature3)(_ref(StateBuilder)* _this, int shaderID, _ref(RenderTarget)* rt, _ref(RenderTarget)* depth) {
-	return (_unref(_this)->getSignature(shaderID, _unref_ptr_safe(rt), _unref_ptr_safe(depth)));
+HL_PRIM void HL_NAME(StateBuilder_addToHash1)(_ref(StateBuilder)* _this, _ref(HashBuilder)* hash) {
+	(_unref(_this)->addToHash(_unref_ptr_safe(hash)));
 }
-DEFINE_PRIM(_I64, StateBuilder_getSignature3, _IDL _I32 _IDL _IDL);
+DEFINE_PRIM(_VOID, StateBuilder_addToHash1, _IDL _IDL);
 
 HL_PRIM int HL_NAME(VertexAttrib_get_mSemantic)( _ref(VertexAttrib)* _this ) {
 	return HL_NAME(ShaderSemantic_valueToIndex0)(_unref(_this)->mSemantic);

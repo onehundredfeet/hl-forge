@@ -42,8 +42,11 @@ private class CompiledAttribute {
 	public var index:Int;
 	public var type:Int;
 	public var size:Int;
-	public var offset:Int;
 	public var divisor:Int;
+	public var offset:Int;
+	public var name:String;
+	public var stride:Int;
+	public var semantic:forge.Native.ShaderSemantic;
 
 	public function new() {}
 }
@@ -55,11 +58,10 @@ private class CompiledProgram {
 	public var forgeShader:forge.Native.Shader;
 	public var vertex:CompiledShader;
 	public var fragment:CompiledShader;
-	public var stride:Int;
 	public var inputs:InputNames;
+	public var naturalLayout: forge.Native.VertexLayout;
 	public var attribs:Array<CompiledAttribute>;
 	public var hasAttribIndex:Array<Bool>;
-	public var layout: forge.Native.VertexLayout;
 
 	public function new() {}
 }
@@ -74,6 +76,7 @@ private class CompiledMaterial {
 	public var _layout: forge.Native.VertexLayout;
 	public var _textureDescriptor : forge.Native.DescriptorSet;
 	public var _pass : h3d.mat.Pass;
+	public var _stride : Int;
 }
 
 inline function debugTrace(s : String) {
@@ -241,7 +244,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _defaultDepth : h3d.mat.DepthBuffer;
 //	var defaultDepthInst : h3d.mat.DepthBuffer;
 
-var count = 0;
+	var count = 0;
 
 	override function getDefaultDepthBuffer():h3d.mat.DepthBuffer {
 		debugTrace('Getting default depth buffer ${_width}  ${_height}');
@@ -693,6 +696,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 		_currentSwapIndex = _renderer.acquireNextImage(_sc, _ImageAcquiredSemaphore, null);
 		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
+		_currentDepth = _defaultDepth;
 		_currentSem = _swapCompleteSemaphores[_frameIndex];
 		_currentFence = _swapCompleteFences[_frameIndex];
 
@@ -844,14 +848,9 @@ struct spvDescriptorSetBuffer0
 		var attribNames = [];
 		p.attribs = [];
 		p.hasAttribIndex = [];
-		p.stride = 0;
 		var idxCount = 0;
-		var vl = new forge.Native.VertexLayout();
-		vl.attribCount = 0;
-
-		p.layout = vl;
-
-		var offset = 0;
+		var attribCount = 0;
+		var curOffset = 0;
 
 		for (v in shader.vertex.data.vars) {
 			switch (v.kind) {
@@ -862,63 +861,24 @@ struct spvDescriptorSetBuffer0
 						default: throw "assert " + v.type;
 					}
 					
-					var location = vl.attribCount++;
-					var layout_attr = vl.attrib(location);
-					trace ('getting name for ${v.id}');
+					var location = attribCount++;
 					var name =  vertTranscoder.varNames.get(v.id);
 					if (name == null) name = v.name;
-					trace ('STRIDE Laying out ${v.name} with ${size} floats at ${offset}');
-
-					switch(name) {
-						case "position":layout_attr.mSemantic = SEMANTIC_POSITION;
-						case "normal": layout_attr.mSemantic = SEMANTIC_NORMAL;
-						case "uv": layout_attr.mSemantic = SEMANTIC_TEXCOORD0;
-						case "color": layout_attr.mSemantic = SEMANTIC_COLOR;
-						default: throw ('unknown vertex attribute ${name}');
-					}
-					switch(size) {
-						case 1:layout_attr.mFormat = TinyImageFormat_R32_SFLOAT;
-						case 2:layout_attr.mFormat = TinyImageFormat_R32G32_SFLOAT;
-						case 3:layout_attr.mFormat = TinyImageFormat_R32G32B32_SFLOAT;
-						case 4:layout_attr.mFormat = TinyImageFormat_R32G32B32A32_SFLOAT;
-						default: throw ('Unsupported size ${size}');
-					}
-					
-					layout_attr.mBinding = 0;
-					layout_attr.mLocation = location;
-					layout_attr.mOffset =  offset; // n elements * 4 bytes (sizeof(float))
-					offset += size * 4;
-					/*
-					//layout and pipeline for sphere draw
-					VertexLayout vertexLayout = {};
-					vertexLayout.mAttribCount = 2;
-					vertexLayout.mAttribs[0].mSemantic = SEMANTIC_POSITION;
-					vertexLayout.mAttribs[0].mFormat = TinyImageFormat_R32G32B32_SFLOAT;
-					vertexLayout.mAttribs[0].mBinding = 0;
-					vertexLayout.mAttribs[0].mLocation = 0;
-					vertexLayout.mAttribs[0].mOffset = 0;
-					vertexLayout.mAttribs[1].mSemantic = SEMANTIC_NORMAL;
-					vertexLayout.mAttribs[1].mFormat = TinyImageFormat_R32G32B32_SFLOAT;
-					vertexLayout.mAttribs[1].mBinding = 0;
-					vertexLayout.mAttribs[1].mLocation = 1;
-					vertexLayout.mAttribs[1].mOffset = 3 * sizeof(float);
-					*/
-					/*
-						var t = GL.FLOAT;
-
-						var index = gl.getAttribLocation(p.p, transcoder.varNames.exists(v.id) ? transcoder.varNames.get(v.id) : v.name);
-						if (index < 0) {
-							p.stride += size;
-							continue;
-						}
-					 */
-
 					var a = new CompiledAttribute();
 					a.type = 0;
+					a.name = name;
 					a.size = size;
 					a.index = idxCount++;
-					a.offset = p.stride;
 					a.divisor = 0;
+					a.offset = curOffset;
+					curOffset += size;
+					a.semantic = switch(name) {
+						case "position": SEMANTIC_POSITION;
+						case "normal":  SEMANTIC_NORMAL;
+						case "uv": SEMANTIC_TEXCOORD0;
+						case "color":SEMANTIC_COLOR;
+						default: throw ('unknown vertex attribute ${name}');
+					}
 					if (v.qualifiers != null) {
 						for (q in v.qualifiers)
 							switch (q) {
@@ -929,23 +889,12 @@ struct spvDescriptorSetBuffer0
 					p.attribs.push(a);
 					p.hasAttribIndex[a.index] = true;
 					attribNames.push(v.name);
-					p.stride += size;
 				default:
 			}
 		}
 
-		var location = 0;
-
-		for (v in shader.vertex.data.vars) {
-			switch (v.kind) {
-				case Input:
-					debugTrace('FILTER STRIDE Setting ${v.name} to stride ${p.stride * 4}');
-					vl.setstrides(location++, p.stride * 4);
-					default:
-			}
-		}
 		p.inputs = InputNames.get(attribNames);
-
+		p.naturalLayout = buildLayoutFromShader(p);
 		return p;
 	}
 
@@ -1061,7 +1010,7 @@ struct spvDescriptorSetBuffer0
 //					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
 			}
 			case Textures:  
-				trace ('RENDER TEXTURES PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length}');
+				trace ('RENDER TEXTURES PIPELINE PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length}');
 				
 				_vertexTextures.resize( buf.vertex.tex.length );
 				_fragmentTextures.resize( buf.fragment.tex.length );
@@ -1070,12 +1019,15 @@ struct spvDescriptorSetBuffer0
 				for (i in 0...buf.fragment.tex.length) _fragmentTextures[i] = buf.fragment.tex[i];
 				
 
-			case Buffers:  //trace ('Upload Buffers'); 
+			case Buffers:  
+				trace ('RENDER BUFFERS Upload Buffers v ${buf.vertex.buffers} f ${buf.fragment.buffers}'); 
 
 			if( _curShader.vertex.buffers != null ) {
+				throw ("Not supported");
 				//debugTrace('Vertex buffers length ${ _curShader.vertex.buffers}');
 			}
 			if (_curShader.fragment.buffers != null) {
+				throw ("Not supported");
 				//debugTrace('Fragment buffers length ${ _curShader.fragment.buffers}');
 			}
 			/*
@@ -1340,28 +1292,183 @@ struct spvDescriptorSetBuffer0
 	var _currentState = new StateBuilder();
 	var _currentPass : h3d.mat.Pass;
 
+	function buildLayoutFromShader(s:CompiledProgram) : forge.Native.VertexLayout {
+		var vl = new forge.Native.VertexLayout();
+		vl.attribCount = 0;
+
+
+		for (a in s.attribs) {
+			var location = vl.attribCount++;
+			var layout_attr = vl.attrib(location);
+
+			layout_attr.mFormat = switch(a.size) {
+				case 1:layout_attr.mFormat = TinyImageFormat_R32_SFLOAT;
+				case 2:layout_attr.mFormat = TinyImageFormat_R32G32_SFLOAT;
+				case 3:layout_attr.mFormat = TinyImageFormat_R32G32B32_SFLOAT;
+				case 4:layout_attr.mFormat = TinyImageFormat_R32G32B32A32_SFLOAT;
+				default: throw ('Unsupported size ${a.size}');
+			}
+
+			layout_attr.mBinding = 0;
+			layout_attr.mLocation = a.index; 
+			layout_attr.mOffset = a.offset * 4;
+			//layout_attr.mRate = VERTEX_ATTRIB_RATE_VERTEX;
+			layout_attr.mSemantic = a.semantic;
+			layout_attr.mSemanticNameLength = a.name.length;
+			layout_attr.setSemanticName( a.name );
+			vl.setstrides(location, a.stride * 4);
+		}
+
+		return vl;
+	}
+
+	function buildLayoutFromMultiBuffer(s :CompiledProgram, b : Buffer.BufferOffset ) : forge.Native.VertexLayout {
+		var vl = buildLayoutFromShader(s);
+		for (i in 0...vl.attribCount) {
+			vl.setstrides(i, b.buffer.buffer.stride * 4);
+		}
+
+		return vl;
+		/*
+		for (v in shader.vertex.data.vars) {
+			switch (v.kind) {
+				case Input:
+					var size = switch (v.type) {
+						case TVec(n, _): n;
+						case TFloat: 1;
+						default: throw "assert " + v.type;
+					}
+					
+					var location = vl.attribCount++;
+					var layout_attr = vl.attrib(location);
+					trace ('getting name for ${v.id}');
+					var name =  vertTranscoder.varNames.get(v.id);
+					if (name == null) name = v.name;
+					trace ('STRIDE Laying out ${v.name} with ${size} floats at ${offset}');
+
+					switch(name) {
+						case "position":layout_attr.mSemantic = SEMANTIC_POSITION;
+						case "normal": layout_attr.mSemantic = SEMANTIC_NORMAL;
+						case "uv": layout_attr.mSemantic = SEMANTIC_TEXCOORD0;
+						case "color": layout_attr.mSemantic = SEMANTIC_COLOR;
+						default: throw ('unknown vertex attribute ${name}');
+					}
+					switch(size) {
+						case 1:layout_attr.mFormat = TinyImageFormat_R32_SFLOAT;
+						case 2:layout_attr.mFormat = TinyImageFormat_R32G32_SFLOAT;
+						case 3:layout_attr.mFormat = TinyImageFormat_R32G32B32_SFLOAT;
+						case 4:layout_attr.mFormat = TinyImageFormat_R32G32B32A32_SFLOAT;
+						default: throw ('Unsupported size ${size}');
+					}
+					
+					layout_attr.mBinding = 0;
+					layout_attr.mLocation = location;
+					layout_attr.mOffset =  offset; // n elements * 4 bytes (sizeof(float))
+					offset += size * 4;
+
+
+
+					var a = new CompiledAttribute();
+					a.type = 0;
+					a.size = size;
+					a.index = idxCount++;
+					a.offset = p.stride;
+					a.divisor = 0;
+					if (v.qualifiers != null) {
+						for (q in v.qualifiers)
+							switch (q) {
+								case PerInstance(n): a.divisor = n;
+								default:
+							}
+					}
+					p.attribs.push(a);
+					p.hasAttribIndex[a.index] = true;
+					attribNames.push(v.name);
+					p.stride += size;
+				default:
+			}
+		}
+
+		var location = 0;
+
+		for (v in shader.vertex.data.vars) {
+			switch (v.kind) {
+				case Input:
+					debugTrace('FILTER STRIDE Setting ${v.name} to stride ${p.stride * 4}');
+					vl.setstrides(location++, p.stride * 4);
+					default:
+			}
+		}
+		*/
+	}
+
+	var _hashBulder = new forge.Native.HashBuilder();
+	var _pipelineSeed = Int64.make( 0x41843714, 0x85913423);
+
 	function bindPipeline() {
 		debugTrace("RENDER CALLSTACK bindPipeline");
-
-		//Layout = shader x buffers
 
 		if (_currentPass == null) {throw "can't build a pipeline without a pass";}
 		if (_curShader == null) throw "Can't build a pipeline without a shader";
 
-		var xx = _currentState.getSignature(_curShader.id, _currentRT, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null );
+		// Unique hash code for pipeline
+		_hashBulder.reset(_pipelineSeed);
+		_hashBulder.addInt32( _curShader.id );
+		_hashBulder.addInt32( _currentRT.format.toValue() );
+		_hashBulder.addInt32( _currentRT.sampleCount.toValue() );
+		_hashBulder.addInt32( _currentRT.sampleQuality );
+		var db = _currentDepth != null ? @:privateAccess _currentDepth.b.r : null;
+		if (db != null) {
+			_hashBulder.addInt8(1);
+			_hashBulder.addInt32(db.format.toValue());
+		}
 
-		var cmatidx = _materialMap.get(xx);
+		if (_curBuffer != null) {
+			if (_curBuffer.flags.has(RawFormat)) {
+				_hashBulder.addInt8(0);
+			} else {
+				throw "Unsupported current buffer";
+			}
+		} else if (_curMultiBuffer != null) {
+			_hashBulder.addInt8(1);
+			_hashBulder.addInt16(_curMultiBuffer.buffer.buffer.stride);
+		} else
+			throw "no buffer specified to bind pipeline";
+
+
+		var hv = _hashBulder.getValue();
+		var cmatidx = _materialMap.get(hv);
+
+		// Get pipeline combination
 		var cmat = _materialInternalMap.get(cmatidx);
+		debugTrace('RENDER PIPELINE Signature  xx.h ${hv.high} | xx.l ${hv.low} pipeid ${cmatidx}');
+		var shaderFragTextureCount = _curShader.fragment.textures == null ? 0 : _curShader.fragment.textures.length;
+		debugTrace('RENDER PIPELINE texture count ${shaderFragTextureCount} vs ${_fragmentTextures.length}');
 
 		if (cmat == null) {
-			debugTrace('Signature  xx.h ${xx.high} | xx.l ${xx.low}');
 			cmat = new CompiledMaterial();
 			cmat._id = _matID++;
-			cmat._hash = xx;
+			cmat._hash = hv;
 			cmat._shader = _curShader;
 			cmat._pass = _currentPass;
-			debugTrace('Adding material for pass ${_currentPass.name} with id ${cmat._id} and hash ${cmat._hash.high}|${cmat._hash.low}');
-			_materialMap.set( xx, cmat._id );
+
+			if (_curBuffer != null) {
+				if (_curBuffer.flags.has(RawFormat)) {
+					cmat._layout = _curShader.naturalLayout;
+					cmat._stride = _curShader.naturalLayout.getstrides(0);
+				} else {
+					throw "Unsupported current buffer";
+				}
+			} else if (_curMultiBuffer != null) {
+				// there can be a stride mistmatch here
+				cmat._layout = buildLayoutFromMultiBuffer( _curShader, _curMultiBuffer);
+				cmat._stride = cmat._layout.getstrides(0);
+			} else
+				throw "no buffer specified to bind pipeline";
+
+
+			debugTrace('RENDER PIPELINE  Adding material for pass ${_currentPass.name} with id ${cmat._id} and hash ${cmat._hash.high}|${cmat._hash.low}');
+			_materialMap.set( hv, cmat._id );
 			_materialInternalMap.set(cmat._id, cmat);
 
 			var pdesc = new forge.Native.PipelineDesc();
@@ -1371,7 +1478,8 @@ struct spvDescriptorSetBuffer0
 			gdesc.pBlendState = _currentState.blend();
 			gdesc.depthStencilFormat =_currentDepth != null ? @:privateAccess _currentDepth.b.r.format : TinyImageFormat_UNDEFINED;
 			//gdesc.pColorFormats = &rt.mFormat;
-			gdesc.pVertexLayout = _curShader.layout;
+			
+			gdesc.pVertexLayout = cmat._layout;
 			gdesc.pRootSignature = _curShader.rootSig;
 			gdesc.pShaderProgram = _curShader.forgeShader;
 			gdesc.pRasterizerState = _currentState.raster();
@@ -1386,7 +1494,7 @@ struct spvDescriptorSetBuffer0
 
 		if (_currentPipeline != cmat) {
 			_currentPipeline = cmat;
-			debugTrace("RENDER CALLSTACK changing binding to another existing pipeline");
+			debugTrace("RENDER CALLSTACK PIPELINE changing binding to another existing pipeline " + _currentPass.name);
 			_currentCmd.bindPipeline( _currentPipeline._pipeline );			
 		}
 	}
@@ -1589,13 +1697,14 @@ struct spvDescriptorSetBuffer0
 		_curBuffer = null;
 	}
 
-	public  function bindMultiBuffers() {
+	public function bindMultiBuffers() {
 		debugTrace('RENDER CALLSTACK bindMultiBuffers ${_curShader.attribs.length}');
 		if (_curMultiBuffer == null) throw "Multibuffers are null";
 		var buffers = _curMultiBuffer;
 		var mb = buffers.buffer.buffer;
 		//trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
 		_bufferBinder.reset();
+		var strideCount = 0;
 		for (a in _curShader.attribs) {
 			var bb = buffers.buffer;
 			var vb = @:privateAccess mb.vbuf;
@@ -1603,7 +1712,7 @@ struct spvDescriptorSetBuffer0
 			//debugTrace('FILTER prebinding buffer b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} si ${a.size} bbvc ${bb.vertices} mbstr ${mb.stride} mbsi ${mb.size} bo ${buffers.offset} - ${_curShader.inputs.names[a.index]}' );
 			//_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
 
-			trace ('STRIDE mb.stride is ${mb.stride}');
+			strideCount += a.size;
 			_bufferBinder.add( b, mb.stride * 4, buffers.offset * 4);
 			
 			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
@@ -1611,6 +1720,10 @@ struct spvDescriptorSetBuffer0
 			// updateDivisor(a);
 			buffers = buffers.next;
 		}
+		trace ('RENDER STRIDE shader stride ${strideCount * 4} vs pipe ${_currentPipeline._stride} vs buffer ${mb.stride * 4}');
+
+		if (_currentPipeline._stride  != mb.stride * 4) throw "Shader - buffer stride mistmatch";
+
 		//debugTrace('Binding vertex buffer');
 		_currentCmd.bindVertexBuffer(_bufferBinder);
 
@@ -1695,6 +1808,7 @@ struct spvDescriptorSetBuffer0
 
 
 		if( v.flags.has(RawFormat) ) {
+			// Use the shader binding
 			for( a in _curShader.attribs ) {
 				debugTrace('STRIDE selectBuffer binding ${a.index} strid ${m.stride} offset ${a.offset}');
 			
@@ -1965,7 +2079,7 @@ struct spvDescriptorSetBuffer0
 		if (_currentPass != null) {
 			selectMaterial( _currentPass);
 		}
-		
+
 		//currentTargetResources[0] = null;
 
 		/*

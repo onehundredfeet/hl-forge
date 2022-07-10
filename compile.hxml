@@ -4,6 +4,6 @@
 -lib hl-forge
 --class-path example
 --hl bin/main.hl
---main Shadows
+--main Base3D
 -D heaps_forge
 -D heaps_no_gl

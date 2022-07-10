@@ -6,6 +6,7 @@
 #include <string>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
+#include <xxhash.h>
 #ifndef SDL_MAJOR_VERSION
 #	error "SDL2 SDK not found in hl/include/sdl/"
 #endif
@@ -34,6 +35,43 @@ class ForgeSDLWindow {
         void present(Queue *pGraphicsQueue, SwapChain *pSwapChain, int swapchainImageIndex, Semaphore * pRenderCompleteSemaphore);
 };
 
+class HashBuilder {
+    private:
+        XXH64_state_t *_state;
+    public:
+        HashBuilder() {
+            _state = XXH64_createState();
+        }
+        ~HashBuilder() {
+            XXH64_freeState(_state);
+        }
+
+        void reset(int64_t seed) {
+            XXH64_reset(_state, seed);
+        }
+        void addInt8( int v ) {
+            int8_t x = (int8_t)v;
+            XXH64_update(_state, &x, sizeof(int8_t));
+        }
+        void addInt16( int v ){
+            int16_t x = (int16_t)v;
+            XXH64_update(_state, &x, sizeof(int16_t));
+        }
+        void addInt32( int v ){
+            int32_t x = (int32_t)v;
+            XXH64_update(_state, &x, sizeof(int32_t));
+        }
+        void addInt64( int64_t v ){
+            XXH64_update(_state, &v, sizeof(int64_t));
+        }
+        void addBytes( uint8_t *b, int offset, int length ) {
+            XXH64_update(_state, &b[offset], length );
+        }
+        int64 getValue() {
+            return XXH64_digest(_state);
+        }
+};
+
 class RootSignatureFactory {
     public:
         RootSignatureFactory();
@@ -54,6 +92,9 @@ class StateBuilder {
             memset( this, 0, sizeof(StateBuilder));
         }
         
+        void addToHash(HashBuilder *hb) {
+            hb->addBytes((uint8_t *)this, 0, sizeof(StateBuilder));
+        }
         uint64_t getSignature(int shaderID, RenderTarget *rt, RenderTarget *depth);
 
         DepthStateDesc _depth;
@@ -221,66 +262,76 @@ class DescriptorDataBuilder {
         void bind(Cmd *cmd, int index, DescriptorSet *set ) {
             cmdBindDescriptorSet(cmd, index, set  );
         }
-        /*
-        // Prepare descriptor sets
-		DescriptorData params[6] = {};
-		params[0].pName = "RightText";
-		params[0].ppTextures = &pSkyBoxTextures[0];
-		params[1].pName = "LeftText";
-		params[1].ppTextures = &pSkyBoxTextures[1];
-		params[2].pName = "TopText";
-		params[2].ppTextures = &pSkyBoxTextures[2];
-		params[3].pName = "BotText";
-		params[3].ppTextures = &pSkyBoxTextures[3];
-		params[4].pName = "FrontText";
-		params[4].ppTextures = &pSkyBoxTextures[4];
-		params[5].pName = "BackText";
-		params[5].ppTextures = &pSkyBoxTextures[5];
-		updateDescriptorSet(pRenderer, 0, pDescriptorSetTexture, 6, params);
-*/
-    
-
 };
 
+
+
+// SDL interface
+SDL_Window *forge_sdl_get_window(void *ptr);
+SDL_MetalView forge_create_metal_view(SDL_Window *);
+
+// Swap Chain
+RenderTarget *forge_swap_chain_get_render_target(SwapChain *, int );
+inline bool isVSync( SwapChain *sc) {
+    return sc->mEnableVsync != 0;
+}
+
+// Renderer
 Renderer *createRenderer(const char *name);
 void destroyRenderer( Renderer * );
 Queue* createQueue(Renderer *renderer);
-SDL_Window *forge_sdl_get_window(void *ptr);
-void forge_sdl_buffer_load_desc_set_index_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
-void forge_sdl_buffer_load_desc_set_vertex_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
-void forge_cmd_unbind(Cmd *);
 DescriptorSet *forge_renderer_create_descriptor_set( Renderer *, RootSignature *, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex);
-Buffer*forge_sdl_buffer_load( BufferLoadDesc *bld, SyncToken *token);
-Texture*forge_texture_load(TextureLoadDesc *desc, SyncToken *token);
-Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, SyncToken *token );
-void forge_sdl_texture_upload(Texture *, void *data, int dataSize);
-void forge_cmd_push_constant(Cmd *cmd, RootSignature *rs, int index, void *data);
-void forge_blend_state_desc_set_rt( BlendStateDesc *, BlendStateTargets rt, bool enabled);
-VertexAttrib *forge_vertex_layout_get_attrib( VertexLayout *, int idx);
-void forge_vertex_attrib_set_semantic( VertexAttrib *, const char *name );
-void forge_texture_set_file_name(TextureLoadDesc *desc, const char *path);
-void forge_render_target_bind(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
-void forge_render_target_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
-void forge_render_target_bind_and_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
-void forge_sdl_buffer_update(Buffer *buffer, void *data);
-void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int size, int soffset);
 RenderTarget *forge_sdl_create_render_target(Renderer *, RenderTargetDesc *);
 CmdPool * forge_sdl_renderer_create_cmd_pool( Renderer *, Queue * );
 Cmd * forge_sdl_renderer_create_cmd( Renderer *, CmdPool * );
 Fence * forge_sdl_renderer_create_fence( Renderer * );
 Semaphore * forge_sdl_renderer_create_semaphore( Renderer * );
-SDL_MetalView forge_create_metal_view(SDL_Window *);
 void forge_init_loader( Renderer * );
 void forge_renderer_wait_fence( Renderer *, Fence *);
-RenderTarget *forge_swap_chain_get_render_target(SwapChain *, int );
-void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence);
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile);
 RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Shader *shader);
 RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSignatureFactory *);
-inline bool isVSync( SwapChain *sc) {
-    return sc->mEnableVsync != 0;
-}
 
+// Queue
+void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence);
+
+//Buffer Load
+void forge_sdl_buffer_load_desc_set_index_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
+void forge_sdl_buffer_load_desc_set_vertex_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
+Buffer*forge_sdl_buffer_load( BufferLoadDesc *bld, SyncToken *token);
+
+//Buffer
+void forge_sdl_buffer_update(Buffer *buffer, void *data);
+void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int size, int soffset);
+
+// Cmd
+void forge_cmd_unbind(Cmd *);
+void forge_cmd_push_constant(Cmd *cmd, RootSignature *rs, int index, void *data);
+void forge_render_target_bind(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
+void forge_render_target_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
+void forge_render_target_bind_and_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
 void forge_cmd_wait_for_render(Cmd *cmd, RenderTarget *pRenderTarget);
 void forge_cmd_wait_for_present(Cmd *cmd, RenderTarget *pRenderTarget);
+
+//Texture Load
+Texture*forge_texture_load(TextureLoadDesc *desc, SyncToken *token);
+void forge_texture_set_file_name(TextureLoadDesc *desc, const char *path);
+
+//Texture Desc
+Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, SyncToken *token );
+
+//Texture
+void forge_sdl_texture_upload(Texture *, void *data, int dataSize);
+
+//Blend State
+void forge_blend_state_desc_set_rt( BlendStateDesc *, BlendStateTargets rt, bool enabled);
+
+//Vertex Layout
+VertexAttrib *forge_vertex_layout_get_attrib( VertexLayout *, int idx);
+
+// Vertex Attrib
+void forge_vertex_attrib_set_semantic( VertexAttrib *, const char *name );
+
+
+
 #endif

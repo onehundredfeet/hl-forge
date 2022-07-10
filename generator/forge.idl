@@ -520,6 +520,17 @@ interface ColorMask {
 //static const int DS_NONE = -1;
 //static const int RS_NONE = -1;
 
+interface HashBuilder {
+	void HashBuilder();
+	void reset(int64 seed);
+	void addInt8( int v );
+	void addInt16( int v );
+	void addInt32( int v );
+	void addInt64( int64 v );
+	void addBytes( bytes b, int offset, int length );
+
+	int64 getValue();
+};
 
 [NoDelete]
 interface BlendStateDesc {
@@ -586,8 +597,10 @@ interface StateBuilder {
 	[Const] DepthStateDesc depth();
 	[Const] RasterizerStateDesc raster();
 
-	int64 getSignature(int shaderID, RenderTarget rt, RenderTarget depth);
+	void addToHash(HashBuilder hash);
 };
+
+
 
 enum VertexAttribRate
 {
@@ -683,6 +696,8 @@ interface BufferBinder {
 	void reset();
 	int add(Buffer buf, int stride, int offset);
 };
+
+
 
 [NoDelete]
 interface Cmd {
