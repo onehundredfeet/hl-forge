@@ -264,6 +264,31 @@ class DescriptorDataBuilder {
         }
 };
 
+class ResourceBarrierBuilder {
+    private:
+        std::vector<RenderTargetBarrier> _rtBarriers;
+        std::vector<BufferBarrier> _buffBarriers;
+        std::vector<TextureBarrier> _texBarriers;
+
+    public:
+        int addRTBarrier( RenderTarget * rt, ResourceState src, ResourceState dst) {
+            _rtBarriers.push_back( { rt, src, dst } );
+            return _rtBarriers.size() - 1;
+        }
+        
+        void insert( Cmd *cmd) {
+            RenderTargetBarrier *rtbp= nullptr;
+            BufferBarrier *bbp= nullptr;
+            TextureBarrier *tbp= nullptr;
+            if (_rtBarriers.size()) rtbp = &_rtBarriers[0];
+            if (_buffBarriers.size()) bbp = &_buffBarriers[0];
+            if (_texBarriers.size()) tbp = &_texBarriers[0];
+
+            cmdResourceBarrier(cmd, _buffBarriers.size(), bbp, _texBarriers.size(), tbp, _rtBarriers.size(), rtbp);
+        }
+
+
+};
 
 
 // SDL interface
@@ -312,6 +337,7 @@ void forge_render_target_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *dep
 void forge_render_target_bind_and_clear(Cmd *cmd, RenderTarget *mainRT, RenderTarget *depthStencil);
 void forge_cmd_wait_for_render(Cmd *cmd, RenderTarget *pRenderTarget);
 void forge_cmd_wait_for_present(Cmd *cmd, RenderTarget *pRenderTarget);
+void forge_cmd_insert_barrier(Cmd *cmd, ResourceBarrierBuilder *barrier);
 
 //Texture Load
 Texture*forge_texture_load(TextureLoadDesc *desc, SyncToken *token);
@@ -322,6 +348,9 @@ Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, Sync
 
 //Texture
 void forge_sdl_texture_upload(Texture *, void *data, int dataSize);
+
+// Render Target
+Texture *forge_render_target_get_texture( RenderTarget *rt);
 
 //Blend State
 void forge_blend_state_desc_set_rt( BlendStateDesc *, BlendStateTargets rt, bool enabled);

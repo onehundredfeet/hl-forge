@@ -101,6 +101,27 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _hdr = false;
 	var _maxCompressedTexturesSupport = 3; // arbitrary atm
 	var _currentFrame = 0;
+	var _sc:forge.Native.SwapChain;
+	var _defaultDepth : h3d.mat.DepthBuffer;
+	var _frameIndex = 0;
+	var _frameBegun = false;
+	var _currentRT:RenderTarget;
+	var _currentSem:forge.Native.Semaphore;
+	var _currentFence:forge.Native.Fence;
+	var _currentCmd:forge.Native.Cmd;
+	var _vertConstantBuffer = new Array<Float>();
+	var _fragConstantBuffer = new Array<Float>();
+	var _vertConstantSize = 0;
+	var _fragConstantSize = 0;
+	var _currentSwapIndex = 0;
+
+	var _vertexTextures = new Array<h3d.mat.Texture>();
+	var _fragmentTextures = new Array<h3d.mat.Texture>();
+	var _swapRenderTargets = new Array<RenderTarget>();
+
+//	var defaultDepthInst : h3d.mat.DepthBuffer;
+
+	var count = 0;
 
 	public function new() {
 		//		window = @:privateAccess dx.Window.windows[0];
@@ -155,11 +176,24 @@ class ForgeDriver extends h3d.impl.Driver {
 		return true;
 	}
 
-	var _sc:forge.Native.SwapChain;
+
 
 	function attach() {
 		if (_sc == null) {
 			_sc = _forgeSDLWin.createSwapChain(_renderer, _queue, _width, _height, _swap_count, _hdr);
+			for(i in 0..._swap_count) {
+				var rt = _sc.getRenderTarget(i);
+				var inBarrier = new forge.Native.ResourceBarrierBuilder();
+				inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_RENDER_TARGET);
+				var outBarrier = new forge.Native.ResourceBarrierBuilder();
+				outBarrier.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_SHADER_RESOURCE);
+				var begin = new forge.Native.ResourceBarrierBuilder();
+				begin.addRTBarrier(rt, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET);
+				var present = new forge.Native.ResourceBarrierBuilder();
+				present.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_PRESENT);
+	
+				_swapRenderTargets.push({rt:rt,inBarrier:inBarrier, outBarrier:outBarrier, begin:begin, present:present });
+			}
 			if (_sc == null) {
 				throw "Swapchain is null";
 			}
@@ -241,10 +275,6 @@ class ForgeDriver extends h3d.impl.Driver {
 		attach();
 	}
 
-	var _defaultDepth : h3d.mat.DepthBuffer;
-//	var defaultDepthInst : h3d.mat.DepthBuffer;
-
-	var count = 0;
 
 	override function getDefaultDepthBuffer():h3d.mat.DepthBuffer {
 		debugTrace('Getting default depth buffer ${_width}  ${_height}');
@@ -420,52 +450,59 @@ class ForgeDriver extends h3d.impl.Driver {
 	public override function allocTexture(t:h3d.mat.Texture):Texture {
 		debugTrace('RENDER ALLOC Allocating ${t} texture width ${t.width} height ${t.height}');
 
-		var ftd = new forge.Native.TextureDesc();
-
-		var mips = 1;
-		if( t.flags.has(MipMapped) )
-			mips = t.mipLevels;
-
-		var rt = t.flags.has(Target);
-		var isCube = t.flags.has(Cube);
-		var isArray = t.flags.has(IsArray);
-
-		if (mips != 1) throw "Unimplemented mip support";
-		if (isArray != false) throw "Unimplemented isArray support";
-
-		ftd.width = t.width;
-		ftd.height = t.height;
 		
-		if( isArray )
-			ftd.arraySize = t.layerCount;
-		else 
-			ftd.arraySize = 1;
-//		ftd.arraySize = 1;
-		ftd.depth = 1;
-		ftd.mipLevels = mips;
-		ftd.sampleCount = SAMPLE_COUNT_1;
-		ftd.startState = RESOURCE_STATE_COMMON;
-		ftd.flags = TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT;
-
-		ftd.format = switch (t.format) {
+		var rt = t.flags.has(Target);
+		var flt = null;
+		var internalFormat : forge.Native.TinyImageFormat = switch (t.format) {
 			case RGBA: TinyImageFormat_R8G8B8A8_UNORM;
 			case SRGB: TinyImageFormat_R8G8B8A8_SRGB;
 			case RGBA16F: TinyImageFormat_R16G16B16A16_SFLOAT;
 			case R16F: debugTrace('Warning This is very likely a render target w ${t.width} h ${t.height}'); TinyImageFormat_R16_SFLOAT;
 			default: throw "Unsupported texture format " + t.format;
-		}
-		//		trace ('Format is ${ftd.format}');
-		var flt = ftd.load(t.name, null);
+		};
 
-		if (flt == null)
-			throw "invalid texture";
-		forge.Native.Globals.waitForAllResourceLoads();
+		if (rt) {
+
+		} else {
+			var ftd = new forge.Native.TextureDesc();
+			var mips = 1;
+			if( t.flags.has(MipMapped) )
+				mips = t.mipLevels;
+
+			var isCube = t.flags.has(Cube);
+			var isArray = t.flags.has(IsArray);
+
+			if (mips != 1) throw "Unimplemented mip support";
+			if (isArray != false) throw "Unimplemented isArray support";
+
+			ftd.width = t.width;
+			ftd.height = t.height;
+			
+			if( isArray )
+				ftd.arraySize = t.layerCount;
+			else 
+				ftd.arraySize = 1;
+	//		ftd.arraySize = 1;
+			ftd.depth = 1;
+			ftd.mipLevels = mips;
+			ftd.sampleCount = SAMPLE_COUNT_1;
+			ftd.startState = RESOURCE_STATE_COMMON;
+			ftd.flags = TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT;
+
+			ftd.format = internalFormat;
+			//		trace ('Format is ${ftd.format}');
+			flt = ftd.load(t.name, null);
+
+			if (flt == null)
+				throw "invalid texture";
+			forge.Native.Globals.waitForAllResourceLoads();
+		}
 
 		var tt:Texture = {
 			t: flt,
 			width: t.width,
 			height: t.height,
-			internalFmt: ftd.format.toValue(),
+			internalFmt: internalFormat.toValue(),
 			bits: -1,
 			bind: 0,
 			bias: 0,
@@ -649,8 +686,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		t.flags.set(WasCleared);
 	}
 
-	var _frameIndex = 0;
-	var _frameBegun = false;
+	
 
 	public override function present() {
 //		debugTrace('Presenting');
@@ -665,18 +701,6 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		} else {}
 	}
 
-	var _currentRT:forge.Native.RenderTarget;
-	var _currentSem:forge.Native.Semaphore;
-	var _currentFence:forge.Native.Fence;
-	var _currentCmd:forge.Native.Cmd;
-	var _vertConstantBuffer = new Array<Float>();
-	var _fragConstantBuffer = new Array<Float>();
-	var _vertConstantSize = 0;
-	var _fragConstantSize = 0;
-	var _currentSwapIndex = 0;
-
-	var _vertexTextures = new Array<h3d.mat.Texture>();
-	var _fragmentTextures = new Array<h3d.mat.Texture>();
 
 	public override function begin(frame:Int) {
 		// Check for VSYNC
@@ -695,7 +719,9 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		 */
 
 		_currentSwapIndex = _renderer.acquireNextImage(_sc, _ImageAcquiredSemaphore, null);
-		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
+
+		
+		_currentRT = _swapRenderTargets[_currentSwapIndex];
 		_currentDepth = _defaultDepth;
 		_currentSem = _swapCompleteSemaphores[_frameIndex];
 		_currentFence = _swapCompleteFences[_frameIndex];
@@ -708,7 +734,8 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		_currentCmd = _swapCmds[_frameIndex];
 
 		_currentCmd.begin();
-		_currentCmd.renderBarrier( _currentRT );
+		_currentCmd.insertBarrier( _currentRT.begin);
+//		_currentCmd.renderBarrier( _currentRT.rt );
 		_frameBegun = true;
 		_firstDraw = true;
 		_currentPipeline = null;
@@ -1016,7 +1043,21 @@ struct spvDescriptorSetBuffer0
 				_fragmentTextures.resize( buf.fragment.tex.length );
 
 				for (i in 0...buf.vertex.tex.length) _vertexTextures[i] = buf.vertex.tex[i];
-				for (i in 0...buf.fragment.tex.length) _fragmentTextures[i] = buf.fragment.tex[i];
+				for (i in 0...buf.fragment.tex.length) {
+					_fragmentTextures[i] = buf.fragment.tex[i];
+					var t = _fragmentTextures[i];
+
+					if (t.t.rt != null) {
+						var rtt = t.t.rt.rt.getTexture();
+						if (rtt == null) {
+							throw "Render target texture is null";
+						}
+					} else {
+						if (t.t == null) throw "Texture is null";
+						if (t.t.t == null) throw "Forge texture is null";	
+					}
+
+				}
 				
 
 			case Buffers:  
@@ -1311,7 +1352,7 @@ struct spvDescriptorSetBuffer0
 
 			layout_attr.mBinding = 0;
 			layout_attr.mLocation = a.index; 
-			layout_attr.mOffset = a.offset * 4;
+			layout_attr.mOffset = a.offset * 4; // floats to bytes
 			//layout_attr.mRate = VERTEX_ATTRIB_RATE_VERTEX;
 			layout_attr.mSemantic = a.semantic;
 			layout_attr.mSemanticNameLength = a.name.length;
@@ -1414,9 +1455,9 @@ struct spvDescriptorSetBuffer0
 		// Unique hash code for pipeline
 		_hashBulder.reset(_pipelineSeed);
 		_hashBulder.addInt32( _curShader.id );
-		_hashBulder.addInt32( _currentRT.format.toValue() );
-		_hashBulder.addInt32( _currentRT.sampleCount.toValue() );
-		_hashBulder.addInt32( _currentRT.sampleQuality );
+		_hashBulder.addInt32( _currentRT.rt.format.toValue() );
+		_hashBulder.addInt32( _currentRT.rt.sampleCount.toValue() );
+		_hashBulder.addInt32( _currentRT.rt.sampleQuality );
 		var db = _currentDepth != null ? @:privateAccess _currentDepth.b.r : null;
 		if (db != null) {
 			_hashBulder.addInt8(1);
@@ -1485,8 +1526,8 @@ struct spvDescriptorSetBuffer0
 			gdesc.pRasterizerState = _currentState.raster();
 			gdesc.mVRFoveatedRendering = false;
 			var rt = _currentRT;
-			pdesc.setRenderTargetGlobals(rt.sampleCount, rt.sampleQuality);
-			pdesc.addGraphicsRenderTarget( rt.format );
+			pdesc.setRenderTargetGlobals(rt.rt.sampleCount, rt.rt.sampleQuality);
+			pdesc.addGraphicsRenderTarget( rt.rt.format );
 			var p = _renderer.createPipeline( pdesc );
 
 			cmat._pipeline = p;
@@ -1559,8 +1600,12 @@ struct spvDescriptorSetBuffer0
 
 				for (i in 0..._fragmentTextures.length) {
 					var t = _fragmentTextures[i];
+					if (t.t == null) throw "Texture is null";
+					var ft = (t.t.rt != null) ? t.t.rt.rt.getTexture() :  t.t.t;
+					
+					if (ft == null) throw "Forge texture is null";
 
-					_textureDataBuilder.addSlotTexture(0, t.t.t);
+					_textureDataBuilder.addSlotTexture(0,ft);
 					_textureDataBuilder.addSlotSampler(1,_bilinearClamp2DSampler);
 					_textureDataBuilder.update(_renderer, 0, ds);
 				}
@@ -1865,12 +1910,14 @@ struct spvDescriptorSetBuffer0
 	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
 		debugTrace('RENDER CALLSTACK TARGET bind and clear ${_currentRT} and ${_currentDepth}');
 		// 
-		_currentCmd.bindAndclear(_currentRT,_currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
+		_currentCmd.bindAndclear(_currentRT.rt,_currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
 	}
+	
 	public override function end() {
 		debugTrace('RENDER CALLSTACK TARGET end');
 		_currentCmd.unbindRenderTarget();
-		_currentCmd.presentBarrier( _currentRT );
+		_currentCmd.insertBarrier( _currentRT.present );
+//		_currentCmd.presentBarrier( _currentRT );
 		_currentRT = null;
 		_currentDepth = null;
 		_currentCmd.end();
@@ -1933,6 +1980,9 @@ struct spvDescriptorSetBuffer0
 	function setRenderTargetsInternal( textures:Array<h3d.mat.Texture>, layer : Int, mipLevel : Int) {
 		debugTrace('RENDER TARGET CALLSTACK setRenderTargetsInternal');
 
+		_currentCmd.unbindRenderTarget();
+		_currentCmd.insertBarrier(_currentRT.outBarrier);
+
 		if (textures.length > 1) throw "Multiple render targets are unsupported";
 
 		var tex = textures[0];
@@ -1959,7 +2009,14 @@ struct spvDescriptorSetBuffer0
 //			renderTargetDesc.nativeHandle = itex.t.
 	//		renderTargetDesc.flags = forge.Native.TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT.toValue();
 	//		renderTargetDesc.name = "Shadow Map Render Target";
-			itex.rt = _renderer.createRenderTarget( renderTargetDesc );
+
+			var rt =  _renderer.createRenderTarget( renderTargetDesc );
+			var inBarrier = new forge.Native.ResourceBarrierBuilder();
+			inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_RENDER_TARGET );
+			var outBarrier = new forge.Native.ResourceBarrierBuilder();
+			outBarrier.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_SHADER_RESOURCE);
+
+			itex.rt = {rt: rt, inBarrier: inBarrier, outBarrier: outBarrier, begin:null, present:null };
 		} else {
 			debugTrace('RENDER TARGET  setting render target to existing ${tex} w ${tex.width} h ${tex.height}');
 		}
@@ -1973,8 +2030,9 @@ struct spvDescriptorSetBuffer0
 
 		_currentDepth = @:privateAccess (tex.depthBuffer == null ? null : tex.depthBuffer);
 		debugTrace('RENDER TARGET  setting depth buffer target to existing ${_currentDepth} ${_currentDepth != null ? _currentDepth.width : null} ${_currentDepth != null ? _currentDepth.height : null}');
-		_currentCmd.bind(_currentRT, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
-
+		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
+		_currentCmd.insertBarrier(_currentRT.inBarrier);
+		
 		if (_currentPass != null) {
 			selectMaterial( _currentPass);
 		}
@@ -2068,13 +2126,17 @@ struct spvDescriptorSetBuffer0
 	function setDefaultRenderTarget() {
 		debugTrace('RENDER CALLSTACK TARGET setDefaultRenderTarget');
 		
+		_currentCmd.unbindRenderTarget();
+		_currentCmd.insertBarrier( _currentRT.outBarrier );
 		_currentDepth = _defaultDepth;
 		_targetsCount = 1;
 		_curTexture = null;
-		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
-		_currentTargets[0] = _currentRT;
+//		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
+		_currentRT = _swapRenderTargets[_currentSwapIndex];
+		_currentTargets[0] = _currentRT.rt;
 
-		_currentCmd.bind(_currentRT, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
+		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null);
+		_currentCmd.insertBarrier( _currentRT.inBarrier );
 
 		if (_currentPass != null) {
 			selectMaterial( _currentPass);
@@ -2110,6 +2172,11 @@ struct spvDescriptorSetBuffer0
 		debugTrace('RENDER CALLSTACK TARGET setRenderTargets');
 
 		setRenderTargetsInternal(textures, 0, 0);
+	}
+
+	public override function capturePixels(tex:h3d.mat.Texture, layer:Int, mipLevel:Int, ?region:h2d.col.IBounds):hxd.Pixels {
+		throw "Next functionality to work on - Can't capture pixels on this platform";
+		return null;
 	}
 	/*
 		function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
@@ -2327,10 +2394,7 @@ struct spvDescriptorSetBuffer0
 		throw "Not implemented";
 	}
 
-	public override function capturePixels(tex:h3d.mat.Texture, layer:Int, mipLevel:Int, ?region:h2d.col.IBounds):hxd.Pixels {
-		throw "Can't capture pixels on this platform";
-		return null;
-	}
+
 
 	public override function getDriverName(details:Bool) {
 		throw "Not implemented";

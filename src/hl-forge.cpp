@@ -1,7 +1,7 @@
 
 #include <iostream>
 #include <sstream>
-#include <xxhash.h>
+
 
 #include "hl-forge-shaders.h"
 
@@ -426,6 +426,23 @@ void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int
     endUpdateResource(&desc, NULL);
 }
 
+/*
+RenderTargetBarrier barriers[] = { { pRenderTarget, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET },
+                                { pRenderTargetShadowMap, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_DEPTH_WRITE } };
+cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 2, barriers);
+
+cmdBindRenderTargets(cmd, 0, NULL, NULL, NULL, NULL, NULL, -1, -1);
+
+RenderTargetBarrier shadowTexBarrier = { pRenderTargetShadowMap, RESOURCE_STATE_DEPTH_WRITE, RESOURCE_STATE_SHADER_RESOURCE };
+cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, &shadowTexBarrier);
+
+
+*/
+
+void forge_cmd_insert_barrier(Cmd *cmd, ResourceBarrierBuilder *barrier) {
+    barrier->insert(cmd);
+}
+
 void forge_cmd_wait_for_render(Cmd *cmd, RenderTarget *pRenderTarget) {
     RenderTargetBarrier barriers[] =    // wait for resource transition
     {
@@ -656,6 +673,11 @@ RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Sha
 RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSignatureFactory *desc) {
     return desc->create(pRenderer );
 }
+
+Texture *forge_render_target_get_texture( RenderTarget *rt) {
+    return rt->pTexture;
+}
+
 ////
 
 static XXH64_state_t *_state;

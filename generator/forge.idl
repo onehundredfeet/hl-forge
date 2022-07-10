@@ -649,6 +649,7 @@ interface RenderTarget {
 	[Internal="mSampleQuality"] attribute uint sampleQuality;
 	/// Internal image format
 	[Internal="mFormat"] attribute TinyImageFormat format;
+	[CObject, Const, Internal="forge_render_target_get_texture"] Texture getTexture();
 };
 
 [NoDelete]
@@ -697,7 +698,11 @@ interface BufferBinder {
 	int add(Buffer buf, int stride, int offset);
 };
 
-
+interface ResourceBarrierBuilder {
+	void ResourceBarrierBuilder();
+	int addRTBarrier( RenderTarget rt, ResourceState src, ResourceState dst);        
+	void insert( Cmd cmd);
+};
 
 [NoDelete]
 interface Cmd {
@@ -714,8 +719,9 @@ interface Cmd {
 	[CObject,  Internal="cmdDrawIndexed"] void drawIndexed( int vertCount, uint first_index, uint first_vertex);
 	[CObject, Internal="cmdBindPipeline"] void bindPipeline( Pipeline pipeline );
 	[CObject, Internal="cmdBindDescriptorSet"] void bindDescriptorSet(int index, DescriptorSet set);
-	[CObject,Internal="forge_cmd_wait_for_render"] void renderBarrier( RenderTarget rt );
-	[CObject,Internal="forge_cmd_wait_for_present"] void presentBarrier( RenderTarget rt );
+//	[CObject,Internal="forge_cmd_wait_for_render"] void renderBarrier( RenderTarget rt );
+//	[CObject,Internal="forge_cmd_wait_for_present"] void presentBarrier( RenderTarget rt );
+	[CObject,Internal="forge_cmd_insert_barrier"] void insertBarrier( ResourceBarrierBuilder barrier );
 };
 
 

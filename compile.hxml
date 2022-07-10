@@ -2,8 +2,9 @@
 -lib hl-idl
 -lib heaps
 -lib hl-forge
+-lib domkit
 --class-path example
 --hl bin/main.hl
---main Base3D
+--main Shadows
 -D heaps_forge
 -D heaps_no_gl

@@ -608,6 +608,11 @@ HL_PRIM void HL_NAME(BufferBinder_delete)( _ref(BufferBinder)* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, BufferBinder_delete, _IDL);
+static void finalize_ResourceBarrierBuilder( _ref(ResourceBarrierBuilder)* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(ResourceBarrierBuilder_delete)( _ref(ResourceBarrierBuilder)* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, ResourceBarrierBuilder_delete, _IDL);
 static void finalize_Map64Int( _ref(Map64Int)* _this ) { free_ref(_this ); }
 HL_PRIM void HL_NAME(Map64Int_delete)( _ref(Map64Int)* _this ) {
 	free_ref(_this );
@@ -1206,6 +1211,11 @@ HL_PRIM int HL_NAME(RenderTarget_set_format)( _ref(RenderTarget)* _this, int val
 }
 DEFINE_PRIM(_I32,RenderTarget_set_format,_IDL _I32);
 
+HL_PRIM HL_CONST _ref(Texture)* HL_NAME(RenderTarget_getTexture0)(_ref(RenderTarget)* _this) {
+	return alloc_ref_const((forge_render_target_get_texture( _unref(_this) )),Texture);
+}
+DEFINE_PRIM(_IDL, RenderTarget_getTexture0, _IDL);
+
 HL_PRIM HL_CONST _ref(Shader)* HL_NAME(GraphicsPipelineDesc_get_pShaderProgram)( _ref(GraphicsPipelineDesc)* _this ) {
 	return alloc_ref_const(_unref(_this)->pShaderProgram,Shader);
 }
@@ -1402,6 +1412,21 @@ HL_PRIM int HL_NAME(BufferBinder_add3)(_ref(BufferBinder)* _this, _ref(Buffer)* 
 }
 DEFINE_PRIM(_I32, BufferBinder_add3, _IDL _IDL _I32 _I32);
 
+HL_PRIM _ref(ResourceBarrierBuilder)* HL_NAME(ResourceBarrierBuilder_new0)() {
+	return alloc_ref((new ResourceBarrierBuilder()),ResourceBarrierBuilder);
+}
+DEFINE_PRIM(_IDL, ResourceBarrierBuilder_new0,);
+
+HL_PRIM int HL_NAME(ResourceBarrierBuilder_addRTBarrier3)(_ref(ResourceBarrierBuilder)* _this, _ref(RenderTarget)* rt, int src, int dst) {
+	return (_unref(_this)->addRTBarrier(_unref_ptr_safe(rt), ResourceState__values[src], ResourceState__values[dst]));
+}
+DEFINE_PRIM(_I32, ResourceBarrierBuilder_addRTBarrier3, _IDL _IDL _I32 _I32);
+
+HL_PRIM void HL_NAME(ResourceBarrierBuilder_insert1)(_ref(ResourceBarrierBuilder)* _this, _ref(Cmd)* cmd) {
+	(_unref(_this)->insert(_unref_ptr_safe(cmd)));
+}
+DEFINE_PRIM(_VOID, ResourceBarrierBuilder_insert1, _IDL _IDL);
+
 HL_PRIM void HL_NAME(Cmd_bindAndclear2)(_ref(Cmd)* _this, _ref(RenderTarget)* rt, _ref(RenderTarget)* depthstencil) {
 	(forge_render_target_bind_and_clear( _unref(_this) , _unref_ptr_safe(rt), _unref_ptr_safe(depthstencil)));
 }
@@ -1462,15 +1487,10 @@ HL_PRIM void HL_NAME(Cmd_bindDescriptorSet2)(_ref(Cmd)* _this, int index, _ref(D
 }
 DEFINE_PRIM(_VOID, Cmd_bindDescriptorSet2, _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(Cmd_renderBarrier1)(_ref(Cmd)* _this, _ref(RenderTarget)* rt) {
-	(forge_cmd_wait_for_render( _unref(_this) , _unref_ptr_safe(rt)));
+HL_PRIM void HL_NAME(Cmd_insertBarrier1)(_ref(Cmd)* _this, _ref(ResourceBarrierBuilder)* barrier) {
+	(forge_cmd_insert_barrier( _unref(_this) , _unref_ptr_safe(barrier)));
 }
-DEFINE_PRIM(_VOID, Cmd_renderBarrier1, _IDL _IDL);
-
-HL_PRIM void HL_NAME(Cmd_presentBarrier1)(_ref(Cmd)* _this, _ref(RenderTarget)* rt) {
-	(forge_cmd_wait_for_present( _unref(_this) , _unref_ptr_safe(rt)));
-}
-DEFINE_PRIM(_VOID, Cmd_presentBarrier1, _IDL _IDL);
+DEFINE_PRIM(_VOID, Cmd_insertBarrier1, _IDL _IDL);
 
 HL_PRIM _ref(Map64Int)* HL_NAME(Map64Int_new0)() {
 	return alloc_ref((new Map64Int()),Map64Int);
