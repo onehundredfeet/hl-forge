@@ -30,6 +30,7 @@ private class CompiledShader {
 	public var samplerIndex:DescriptorIndex;
 	public var textureSlot: Int;
 	public var samplerSlot: Int;
+	public var md5 : String;
 //	public var textureDataBuilder:forge.Native.DescriptorDataBuilder;
 //	public var samplerDataBuilder:forge.Native.DescriptorDataBuilder;
 
@@ -793,6 +794,8 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		p.forgeShader = fgShader;
 		p.vertex = new CompiledShader(fgShader, true, shader.vertex);
 		p.fragment = new CompiledShader(fgShader, false, shader.fragment);
+		p.vertex.md5 = vert_md5;
+		p.fragment.md5 = frag_md5;
 
 		debugTrace('RENDER Shader texture count vert ${shader.vertex.texturesCount}');
 		debugTrace('RENDER Shader texture count frag ${shader.fragment.texturesCount}');
@@ -987,7 +990,7 @@ struct spvDescriptorSetBuffer0
 			case Globals:// trace ('Ignoring globals'); // do nothing as it was all done by the globals
 				if( _curShader.vertex.globalsLength > 0) {
 					if (buf.vertex.globals == null) throw "Vertex Globals are expected on this shader";
-					if (_curShader.vertex.globalsLength != buf.vertex.globals.length) throw 'vertex Globals mismatch ${_curShader.vertex.globalsLength} vs ${buf.vertex.globals.length}';
+					if (_curShader.vertex.globalsLength > buf.vertex.globals.length) throw 'vertex Globals mismatch ${_curShader.vertex.globalsLength} vs ${buf.vertex.globals.length}';
 					
 					var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
 					tmpBuff.blit(0, hl.Bytes.getArray(buf.vertex.globals.toData()), 0,  _curShader.vertex.globalsLength * 4);
@@ -996,7 +999,7 @@ struct spvDescriptorSetBuffer0
 				if( _curShader.fragment.globalsLength > 0) {
 
 					if (buf.fragment.globals == null) throw "Fragment Globals are expected on this shader";
-					if (_curShader.fragment.globalsLength != buf.fragment.globals.length) throw 'fragment Globals mismatch ${_curShader.fragment.globalsLength} vs ${buf.fragment.globals.length}';
+					if (_curShader.fragment.globalsLength > buf.fragment.globals.length) throw 'fragment Globals mismatch ${_curShader.fragment.globalsLength} vs ${buf.fragment.globals.length}';
 					
 					var tmpBuff = hl.Bytes.getArray(_fragConstantBuffer);
 					tmpBuff.blit(0, hl.Bytes.getArray(buf.fragment.globals.toData()), 0,  _curShader.fragment.globalsLength * 4);
@@ -1008,7 +1011,7 @@ struct spvDescriptorSetBuffer0
 			case Params:  //trace ('Upload Globals & Params'); 
 			if( _curShader.vertex.paramsLength > 0) {
 				if (buf.vertex.params == null) throw "Vertex Params are expected on this shader";
-				if (_curShader.vertex.paramsLength != buf.vertex.params.length) throw 'Params mismatch ${_curShader.vertex.paramsLength} vs ${buf.vertex.params.length}';
+				if (_curShader.vertex.paramsLength > buf.vertex.params.length) throw 'Vertex Params mismatch ${_curShader.vertex.paramsLength} vs ${buf.vertex.params.length}  in ${_curShader.vertex.md5}';
 				
 				var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
 				var offset = _curShader.vertex.globalsLength * 4;
@@ -1018,7 +1021,7 @@ struct spvDescriptorSetBuffer0
 			if( _curShader.fragment.paramsLength > 0) {
 
 				if (buf.fragment.params == null) throw "Fragment Params are expected on this shader";
-				if (_curShader.fragment.paramsLength != buf.fragment.params.length) throw 'fragment params mismatch ${_curShader.fragment.paramsLength} vs ${buf.vertex.params.length}';
+				if (_curShader.fragment.paramsLength > buf.fragment.params.length) throw 'fragment params mismatch ${_curShader.fragment.paramsLength} vs ${buf.vertex.params.length}';
 				
 				var tmpBuff = hl.Bytes.getArray(_fragConstantBuffer);
 				var offset = _curShader.fragment.globalsLength * 4;

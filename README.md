@@ -24,7 +24,7 @@ Tested Samples
 - Lights (Fails - Unimplemented mip support)
 - Mask (Fails - Unimplemented setRenderZone)
 - Pbr (Fails - Unimplemented mip support)
-- Quaternion (Runs - Box gets distorted when other objects are added - transforms?)
+- Quaternion (Runs)
 - Shadows (Runs)
 - Skin (Fails - unknown vertex attribute weights)
 - Stencil (Fails - Below)
