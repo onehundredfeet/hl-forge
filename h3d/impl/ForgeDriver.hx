@@ -259,8 +259,10 @@ class ForgeDriver extends h3d.impl.Driver {
 				false;
 			case HardwareAccelerated: true;
 			case AllocDepthBuffer: true;
+			case MultipleRenderTargets:false;
+			case Wireframe:false;
 			default:
-				true;
+				false;
 		};
 	}
 
@@ -467,7 +469,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			case RGBA: TinyImageFormat_R8G8B8A8_UNORM;
 			case SRGB: TinyImageFormat_R8G8B8A8_SRGB;
 			case RGBA16F: TinyImageFormat_R16G16B16A16_SFLOAT;
-			case R16F: debugTrace('Warning This is very likely a render target w ${t.width} h ${t.height}'); TinyImageFormat_R16_SFLOAT;
+			case R16F: debugTrace('WARNING This is very likely a render target w ${t.width} h ${t.height}'); TinyImageFormat_R16_SFLOAT;
 			default: throw "Unsupported texture format " + t.format;
 		};
 
@@ -657,7 +659,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 	*/
 	public override function uploadVertexBuffer(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:hxd.FloatBuffer, bufPos:Int) {
-		var stride:Int = v.stride;
+		
 		/*
 		void glBufferSubData( 
 			GLenum target, 
@@ -675,8 +677,9 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			gl.bindBuffer(GL.ARRAY_BUFFER, null);
 		 */
 
+		 var stride:Int = v.stride;
 		 debugTrace('RENDER STRIDE INDEX VERTEX BUFFER UPDATE updating vertex buffer start ${startVertex} vstride ${v.stride} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} floats');
-		v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4 * 0);
+		 v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4 * 0);
 	}
 
 	public override function uploadTexturePixels(t:h3d.mat.Texture, pixels:hxd.Pixels, mipLevel:Int, side:Int) {
@@ -892,15 +895,13 @@ struct spvDescriptorSetBuffer0
 		p.attribs = [];
 		p.hasAttribIndex = [];
 		var idxCount = 0;
-		var attribCount = 0;
-		var curOffset = 0;
 		var curOffsetBytes = 0;
 
 		for (v in shader.vertex.data.vars) {
 			switch (v.kind) {
 				case Input:
 					
-					var location = attribCount++;
+				
 					var name =  vertTranscoder.varNames.get(v.id);
 					if (name == null) name = v.name;
 					var a = new CompiledAttribute();
@@ -925,8 +926,8 @@ struct spvDescriptorSetBuffer0
 					a.name = name;
 					a.index = idxCount++;
 					a.divisor = 0;
-					a.offsetBytes = curOffset;
-					curOffset += a.sizeBytes;
+					a.offsetBytes = curOffsetBytes;
+					curOffsetBytes += a.sizeBytes;
 					a.semantic = switch(name) {
 						case "position": SEMANTIC_POSITION;
 						case "normal":  SEMANTIC_NORMAL;
@@ -934,6 +935,10 @@ struct spvDescriptorSetBuffer0
 						case "color":SEMANTIC_COLOR;
 						case "weights":SEMANTIC_WEIGHTS;
 						case "indexes":SEMANTIC_JOINTS;
+						case "time":SEMANTIC_UNDEFINED;
+						case "life":SEMANTIC_UNDEFINED;
+						case "init":SEMANTIC_UNDEFINED;
+						case "delta":SEMANTIC_UNDEFINED;
 						default: throw ('unknown vertex attribute ${name}');
 					}
 					if (v.qualifiers != null) {
@@ -987,6 +992,9 @@ struct spvDescriptorSetBuffer0
 			debugTrace('RENDER SHADER PARAMS length f ${fragTotalLength} v ${_curShader.fragment.globalsLength} f ${_curShader.fragment.paramsLength}');
 		}
 
+		_fragmentTextures.resize( 0 );
+		_vertexTextures.resize( 0 );
+		
 
 		return true;
 	}
@@ -1390,7 +1398,6 @@ struct spvDescriptorSetBuffer0
 			layout_attr.mBinding = 0;
 			layout_attr.mLocation = a.index; 
 			layout_attr.mOffset = a.offsetBytes;
-			//layout_attr.mRate = VERTEX_ATTRIB_RATE_VERTEX;
 			layout_attr.mSemantic = a.semantic;
 			layout_attr.mSemanticNameLength = a.name.length;
 			layout_attr.setSemanticName( a.name );
@@ -1429,7 +1436,7 @@ var offset = 8;
 		var vl = new forge.Native.VertexLayout();
 		vl.attribCount = 0;
 
-		var offset = 8;
+		var offsetBytes = 8 * 4; // floats * sizeof(float)
 
 		for (a in s.attribs) {
 			var location = vl.attribCount++;
@@ -1450,9 +1457,9 @@ var offset = 8;
 					if( m.stride < 8 ) throw "Buffer is missing UV data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
 					bytePos = 6 * 4;
 				case s:
-					bytePos = offset;
-					offset += a.sizeBytes;
-					if( offset > m.stride ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+					bytePos = offsetBytes;
+					offsetBytes += a.sizeBytes;
+					if( offsetBytes > (m.stride * 4)) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
 
 			}
 
@@ -1674,8 +1681,13 @@ var offset = 8;
 
 		var shaderFragTextureCount = _curShader.fragment.textures == null ? 0 : _curShader.fragment.textures.length;
 
+		if (shaderFragTextureCount > _fragmentTextures.length) {
+			throw('Not enough textures for shader, provided  ${_fragmentTextures.length} but needs ${shaderFragTextureCount}');
+		}
+
+
 		if (shaderFragTextureCount != _fragmentTextures.length) {
-			debugTrace('RENDER Warning shader texture count ${shaderFragTextureCount} doesn\'t match provided texture count ${_fragmentTextures.length}');
+			debugTrace('RENDER WARNING shader texture count ${shaderFragTextureCount} doesn\'t match provided texture count ${_fragmentTextures.length}');
 		}
 		if (shaderFragTextureCount > 0) {
 	//		if (_curShader.vertex.textures.length == 0) return;
@@ -1922,9 +1934,9 @@ var offset = 8;
 	}
 
 	public override function selectBuffer(v:Buffer) {
-		debugTrace('RENDER CALLSTACK selectBuffer');
 		_curBuffer = v;
 		_curMultiBuffer = null;
+		debugTrace('RENDER CALLSTACK selectBuffer raw: ${v != null ? v.flags.has(RawFormat) : false}');
 	}
 
 	public  function bindBuffer() {
@@ -1976,7 +1988,6 @@ var offset = 8;
 			}
 			_currentCmd.bindVertexBuffer(_bufferBinder);
 		} else {
-			debugTrace('STRIDE selectBuffer RAW NOT REMINDER THIS MAY BE BUGGY [RC]');
 
 			var offsetBytes = 8 * 4; // 8 floats * 4 bytes a piece
 			var strideCheck = 0;
@@ -1993,7 +2004,7 @@ var offset = 8;
 					if( m.stride < 8 ) throw "Buffer is missing UV data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
 					posBytes = 6 * 4;
 				case s:
-					debugTrace('STRIDE WARNING unrecognized buffer ${s}');
+					debugTrace('RENDER STRIDE WARNING unrecognized buffer ${s}');
 					posBytes = offsetBytes;
 					offsetBytes += a.sizeBytes;
 					if( offsetBytes > m.stride * 4 ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
@@ -2003,8 +2014,11 @@ var offset = 8;
 
 				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 				//updateDivisor(a);
-				debugTrace('STRIDE BUFFER type is ${a.type } size is ${a.sizeBytes} bytes vs stride ${m.stride}');
+				debugTrace('STRIDE BUFFER ${_curShader.inputs.names[i]} type is ${a.type } size is ${a.sizeBytes} bytes vs stride ${m.stride} floats (${m.stride * 4} bytes)');
 				_bufferBinder.add( b, m.stride * 4, posBytes);
+			}
+			if (offsetBytes != m.stride * 4) {
+				debugTrace('RENDER WARNING stride byte mistmatch ${offsetBytes} vs ${m.stride * 4} attrib len ${_curShader.attribs.length}');
 			}
 			_currentCmd.bindVertexBuffer(_bufferBinder);
 //			throw ("unsupported");
@@ -2314,9 +2328,42 @@ var offset = 8;
 	}
 
 	public override function uploadVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-		throw "Next functionality to work on - Not implemented uploadVertexBytes";
+		debugTrace('RENDER STRIDE UPLOAD  uploadVertexBytes start ${startVertex} vstride ${v.stride} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} floats');
+
+		/*
+		var stride : Int = v.stride;
+		gl.bindBuffer(GL.ARRAY_BUFFER, v.b);
+		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * 4, streamData(buf.getData(),bufPos * 4,vertexCount * stride * 4), bufPos * 4 * STREAM_POS, vertexCount * stride * 4);
+		gl.bindBuffer(GL.ARRAY_BUFFER, null);
+		*/
+
+		/*
+		 var stride:Int = v.stride;
+
+		*/
+		var stride:Int = v.stride;
+		v.b.updateRegion(buf, startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4 * 0);
 	}
 
+	public override function uploadIndexBytes(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
+		var bits = i.is32 ? 2 : 1;
+		i.b.updateRegion(buf, startIndice << bits, indiceCount << bits, bufPos << bits);
+
+		/*
+			var bits = i.is32 ? 2 : 1;
+			gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, i.b);
+			gl.bufferSubData(GL.ELEMENT_ARRAY_BUFFER, startIndice << bits, streamData(buf.getData(),bufPos << bits, indiceCount << bits), (bufPos << bits) * STREAM_POS, indiceCount << bits);
+			gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
+			curIndexBuffer = null;
+		*/
+		/*
+				var bits = i.is32 ? 2 : 1;
+		debugTrace('RENDER UPDATE INDEX updating index buffer | start ${startIndice} count ${indiceCount} is32 ${i.is32} buf pos ${bufPos}');
+		i.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startIndice << bits, indiceCount << bits, bufPos << bits);
+
+		*/
+	}
+	
 	/*
 		function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
 			switch( which ) {
@@ -2579,9 +2626,7 @@ var offset = 8;
 		throw "Not implemented";
 	}
 
-	public override function uploadIndexBytes(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-		throw "Not implemented";
-	}
+
 
 
 
