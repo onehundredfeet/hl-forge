@@ -19,8 +19,10 @@ private typedef ForgeShader = forge.Native.Shader;
 private class CompiledShader {
 	public var s:ForgeShader;
 	public var vertex:Bool;
-	public var globalsIndex:DescriptorIndex;
+	public var constantsIndex:DescriptorIndex;
 	public var params:DescriptorIndex;
+	public var globalsLength:Int;
+	public var paramsLength:Int;
 	public var textures:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
 	public var buffers:Array<Int>;
 	public var shader:hxsl.RuntimeShader.RuntimeShaderData;
@@ -111,8 +113,6 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _currentCmd:forge.Native.Cmd;
 	var _vertConstantBuffer = new Array<Float>();
 	var _fragConstantBuffer = new Array<Float>();
-	var _vertConstantSize = 0;
-	var _fragConstantSize = 0;
 	var _currentSwapIndex = 0;
 
 	var _vertexTextures = new Array<h3d.mat.Texture>();
@@ -852,9 +852,13 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 		// get inputs
 		p.vertex.params = rootSig.getDescriptorIndexFromName( "_vertrootconstants");
-		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName( "_vertrootconstants");
+		p.vertex.constantsIndex = rootSig.getDescriptorIndexFromName( "_vertrootconstants");
+		p.vertex.globalsLength = shader.vertex.globalsSize * 4; // vectors to floats
+		p.vertex.paramsLength = shader.vertex.paramsSize * 4; // vectors to floats
 		p.fragment.params = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
-		p.fragment.globalsIndex = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
+		p.fragment.constantsIndex = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
+		p.fragment.globalsLength = shader.fragment.globalsSize * 4; // vectors to floats
+		p.fragment.paramsLength = shader.fragment.paramsSize * 4; // vectors to floats
 //		p.fragment.textures
 /*
 struct spvDescriptorSetBuffer0
@@ -870,7 +874,7 @@ struct spvDescriptorSetBuffer0
 		var textureSampIndex = p.fragment.samplerIndex;
 		// spvDescriptorSetBuffer0 = -1
 		debugTrace('RENDER tdi ${textureDescIndex} tsi ${textureSampIndex}'); 
-		debugTrace('PARAMS Indices vg ${p.vertex.globalsIndex} vp ${p.vertex.params} fg ${p.fragment.globalsIndex} fp ${p.fragment.params}');
+		debugTrace('PARAMS Indices vg ${p.vertex.constantsIndex} vp ${p.vertex.params} fg ${p.fragment.constantsIndex} fp ${p.fragment.params}');
 
 		var attribNames = [];
 		p.attribs = [];
@@ -922,6 +926,7 @@ struct spvDescriptorSetBuffer0
 
 		p.inputs = InputNames.get(attribNames);
 		p.naturalLayout = buildLayoutFromShader(p);
+
 		return p;
 	}
 
@@ -945,8 +950,15 @@ struct spvDescriptorSetBuffer0
 		_curShader = p;
 
 		if (_curShader != null) {
+			var vertTotalLength = _curShader.vertex.globalsLength + _curShader.vertex.paramsLength;
+			var fragTotalLength = _curShader.fragment.globalsLength + _curShader.fragment.paramsLength;
+			//_vertConstantBuffer is in units of floats
+			//total length should also be in floats, but may be in vectors
+			if (_vertConstantBuffer.length < vertTotalLength) _vertConstantBuffer.resize(vertTotalLength);
+			if (_fragConstantBuffer.length < fragTotalLength) _fragConstantBuffer.resize(fragTotalLength);
 
-//			debugTrace('RENDER CALLSTACK selecting ${_curShader.}');
+			debugTrace('RENDER SHADER PARAMS length v ${vertTotalLength} v ${_curShader.vertex.globalsLength} f ${_curShader.vertex.paramsLength}');
+			debugTrace('RENDER SHADER PARAMS length f ${fragTotalLength} v ${_curShader.fragment.globalsLength} f ${_curShader.fragment.paramsLength}');
 		}
 
 
@@ -973,68 +985,44 @@ struct spvDescriptorSetBuffer0
 
 		switch (which) {
 			case Globals:// trace ('Ignoring globals'); // do nothing as it was all done by the globals
-			case Params:  //trace ('Upload Globals & Params'); 
-			_vertConstantSize = 0;
-			_fragConstantSize = 0;
-			if(( buf.vertex.globals != null || buf.vertex.params != null) && _curShader.vertex.globalsIndex != -1) {
-				var max = (buf.vertex.globals != null ? buf.vertex.globals.length : 0) + (buf.vertex.params != null ? buf.vertex.params.length : 0);
-				if (_vertConstantBuffer.length < max) _vertConstantBuffer.resize(max);
-				var total = 0;
-				var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
-
-				if (buf.vertex.globals != null && buf.vertex.globals.length > 0) {
-					var l = buf.vertex.globals.length * 4;
-					tmpBuff.blit(total, hl.Bytes.getArray(buf.vertex.globals.toData()), 0, buf.vertex.globals.length * 4);
-					total += buf.vertex.globals.length * 4;
+				if( _curShader.vertex.globalsLength > 0) {
+					if (buf.vertex.globals == null) throw "Vertex Globals are expected on this shader";
+					if (_curShader.vertex.globalsLength != buf.vertex.globals.length) throw 'vertex Globals mismatch ${_curShader.vertex.globalsLength} vs ${buf.vertex.globals.length}';
+					
+					var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
+					tmpBuff.blit(0, hl.Bytes.getArray(buf.vertex.globals.toData()), 0,  _curShader.vertex.globalsLength * 4);
 				}
 
-				if(buf.vertex.params != null && buf.vertex.params.length > 0) {
-					tmpBuff.blit(total, hl.Bytes.getArray(buf.vertex.params.toData()), 0, buf.vertex.params.length * 4);
-					total +=  buf.vertex.params.length;
-				}
-				if (total > 0) {					
-					var x = buf.vertex.params[0];
-					var y = buf.vertex.params[1];
-					var z = buf.vertex.params[2];
-					var w = buf.vertex.params[3];
+				if( _curShader.fragment.globalsLength > 0) {
 
+					if (buf.fragment.globals == null) throw "Fragment Globals are expected on this shader";
+					if (_curShader.fragment.globalsLength != buf.fragment.globals.length) throw 'fragment Globals mismatch ${_curShader.fragment.globalsLength} vs ${buf.fragment.globals.length}';
+					
+					var tmpBuff = hl.Bytes.getArray(_fragConstantBuffer);
+					tmpBuff.blit(0, hl.Bytes.getArray(buf.fragment.globals.toData()), 0,  _curShader.fragment.globalsLength * 4);
 				}
-				_vertConstantSize = total;
+
 				// Update buffer
 //					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
+			
+			case Params:  //trace ('Upload Globals & Params'); 
+			if( _curShader.vertex.paramsLength > 0) {
+				if (buf.vertex.params == null) throw "Vertex Params are expected on this shader";
+				if (_curShader.vertex.paramsLength != buf.vertex.params.length) throw 'Params mismatch ${_curShader.vertex.paramsLength} vs ${buf.vertex.params.length}';
+				
+				var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
+				var offset = _curShader.vertex.globalsLength * 4;
+				tmpBuff.blit(offset, hl.Bytes.getArray(buf.vertex.params.toData()), 0,  _curShader.vertex.paramsLength * 4);
 			}
-			if (( buf.fragment.globals != null || buf.fragment.params != null) && _curShader.fragment.globalsIndex != -1) {
-				//compute total in floats
-				var max = (buf.fragment.globals != null ? buf.fragment.globals.length : 0) + (buf.fragment.params != null ? buf.fragment.params.length : 0);
-				if (_fragConstantBuffer.length < max) _fragConstantBuffer.resize(max);
+
+			if( _curShader.fragment.paramsLength > 0) {
+
+				if (buf.fragment.params == null) throw "Fragment Params are expected on this shader";
+				if (_curShader.fragment.paramsLength != buf.fragment.params.length) throw 'fragment params mismatch ${_curShader.fragment.paramsLength} vs ${buf.vertex.params.length}';
 				
 				var tmpBuff = hl.Bytes.getArray(_fragConstantBuffer);
-				var total = 0;
-
-				if (buf.fragment.globals != null && buf.fragment.globals.length > 0) {
-					var l = buf.fragment.globals.length * 4;
-					tmpBuff.blit(total, hl.Bytes.getArray(buf.fragment.globals.toData()), 0, buf.fragment.globals.length * 4);
-					total += buf.fragment.globals.length * 4;
-				}
-
-				if(buf.fragment.params != null && buf.fragment.params.length > 0) {
-					tmpBuff.blit(total, hl.Bytes.getArray(buf.fragment.params.toData()), 0, buf.fragment.params.length * 4);
-					total +=  buf.fragment.params.length;
-				}
-
-
-				// Update buffer
-				if (total > 0) {	
-					/*	
-					trace ('RENDER Pushing Fragment Constants ${total}');
-					for (i in 0...total) {
-						trace ('RENDER tmp constant ${_tmpConstantBuffer[i]}');
-					}
-					*/
-
-				}
-				_fragConstantSize = total;
-//					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
+				var offset = _curShader.fragment.globalsLength * 4;
+				tmpBuff.blit(offset, hl.Bytes.getArray(buf.fragment.params.toData()), 0,  _curShader.fragment.paramsLength * 4);
 			}
 			case Textures:  
 				trace ('RENDER TEXTURES PIPELINE PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length}');
@@ -1370,6 +1358,79 @@ struct spvDescriptorSetBuffer0
 		return vl;
 	}
 
+
+/*
+var offset = 8;
+			for( i in 0...curShader.attribs.length ) {
+				var a = curShader.attribs[i];
+				var pos;
+				switch( curShader.inputs.names[i] ) {
+				case "position":
+					pos = 0;
+				case "normal":
+					if( m.stride < 6 ) throw "Buffer is missing NORMAL data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+					pos = 3;
+				case "uv":
+					if( m.stride < 8 ) throw "Buffer is missing UV data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+					pos = 6;
+				case s:
+					pos = offset;
+					offset += a.size;
+					if( offset > m.stride ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+				}
+				gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
+				updateDivisor(a);
+			}
+				
+	*/
+	function buildHeapsLayout(s:CompiledProgram, m:ManagedBuffer) : forge.Native.VertexLayout {
+		var vl = new forge.Native.VertexLayout();
+		vl.attribCount = 0;
+
+		var offset = 8;
+
+		for (a in s.attribs) {
+			var location = vl.attribCount++;
+			var layout_attr = vl.attrib(location);
+
+			layout_attr.mFormat = switch(a.size) {
+				case 1:layout_attr.mFormat = TinyImageFormat_R32_SFLOAT;
+				case 2:layout_attr.mFormat = TinyImageFormat_R32G32_SFLOAT;
+				case 3:layout_attr.mFormat = TinyImageFormat_R32G32B32_SFLOAT;
+				case 4:layout_attr.mFormat = TinyImageFormat_R32G32B32A32_SFLOAT;
+				default: throw ('Unsupported size ${a.size}');
+			}
+
+			var pos;
+			switch( a.name ) {
+				case "position":
+					pos = 0;
+				case "normal":
+					if( m.stride < 6 ) throw "Buffer is missing NORMAL data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+					pos = 3;
+				case "uv":
+					if( m.stride < 8 ) throw "Buffer is missing UV data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+					pos = 6;
+				case s:
+					pos = offset;
+					offset += a.size;
+					if( offset > m.stride ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+
+			}
+
+			layout_attr.mBinding = 0;
+			layout_attr.mLocation = a.index; 
+			layout_attr.mOffset = pos * 4; // floats to bytes
+			//layout_attr.mRate = VERTEX_ATTRIB_RATE_VERTEX;
+			layout_attr.mSemantic = a.semantic;
+			layout_attr.mSemanticNameLength = a.name.length;
+			layout_attr.setSemanticName( a.name );
+			vl.setstrides(location, m.stride * 4);
+		}
+
+		return vl;
+	}
+
 	function buildLayoutFromMultiBuffer(s :CompiledProgram, b : Buffer.BufferOffset ) : forge.Native.VertexLayout {
 		var vl = buildLayoutFromShader(s);
 		for (i in 0...vl.attribCount) {
@@ -1475,7 +1536,8 @@ struct spvDescriptorSetBuffer0
 			if (_curBuffer.flags.has(RawFormat)) {
 				_hashBulder.addInt8(0);
 			} else {
-				throw "Unsupported current buffer";
+				_hashBulder.addInt8(2);
+				_hashBulder.addInt16( _curBuffer.buffer.stride );
 			}
 		} else if (_curMultiBuffer != null) {
 			_hashBulder.addInt8(1);
@@ -1505,7 +1567,8 @@ struct spvDescriptorSetBuffer0
 					cmat._layout = _curShader.naturalLayout;
 					cmat._stride = _curShader.naturalLayout.getstrides(0);
 				} else {
-					throw "Unsupported current buffer";
+					cmat._layout = buildHeapsLayout( _curShader, _curBuffer.buffer );
+					cmat._stride = cmat._layout.getstrides(0);
 				}
 			} else if (_curMultiBuffer != null) {
 				// there can be a stride mistmatch here
@@ -1551,13 +1614,13 @@ struct spvDescriptorSetBuffer0
 		debugTrace("RENDER CALLSTACK pushParameters");
 
 //		trace ('PARAMS Pushing Vertex Constants ${_temp} floats ${total / 4} vectors: [0] = x ${x} y ${y} z ${z} w ${w}');
-		if (_vertConstantSize > 0) {
-			debugTrace('RENDER CALLSTACK pushing vertex constants ${_vertConstantSize}');
-			_currentCmd.pushConstants( _curShader.rootSig, _curShader.vertex.globalsIndex, hl.Bytes.getArray(_vertConstantBuffer)  );
+		if (_curShader.vertex.constantsIndex != -1) {
+			debugTrace('RENDER CALLSTACK CONSTANTS pushing vertex constants ${_curShader.vertex.globalsLength + _curShader.vertex.paramsLength}');
+			_currentCmd.pushConstants( _curShader.rootSig, _curShader.vertex.constantsIndex, hl.Bytes.getArray(_vertConstantBuffer)  );
 		}
-		if (_fragConstantSize > 0) {
-			debugTrace('RENDER CALLSTACK pushing fragment constants ${_fragConstantSize}');
-			_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.globalsIndex, hl.Bytes.getArray(_fragConstantBuffer) );
+		if (_curShader.fragment.constantsIndex != -1) {
+			debugTrace('RENDER CALLSTACK CONSTANTS pushing fragment constants ${_curShader.fragment.globalsLength + _curShader.fragment.paramsLength}');
+			_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.constantsIndex, hl.Bytes.getArray(_fragConstantBuffer) );
 		}
 	}
 
@@ -2214,6 +2277,11 @@ struct spvDescriptorSetBuffer0
 		throw "Next functionality to work on - Can't capture pixels on this platform";
 		return null;
 	}
+
+	public override function uploadVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
+		throw "Next functionality to work on - Not implemented uploadVertexBytes";
+	}
+
 	/*
 		function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
 			switch( which ) {
@@ -2480,9 +2548,7 @@ struct spvDescriptorSetBuffer0
 		throw "Not implemented";
 	}
 
-	public override function uploadVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-		throw "Not implemented";
-	}
+
 
 
 	public override function readVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
