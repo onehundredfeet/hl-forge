@@ -41,12 +41,21 @@ private class CompiledShader {
 	}
 }
 
+@:enum
+abstract CompiledAttributeType(Int) from Int to Int {
+	public var UNKNOWN = 0;
+	public var BYTE = 1;
+	public var FLOAT = 2;
+	public var VECTOR = 3;
+}
+
 private class CompiledAttribute {
 	public var index:Int;
-	public var type:Int;
-	public var size:Int;
+	public var type:CompiledAttributeType;
+	public var sizeBytes:Int;
+	public var count:Int;
 	public var divisor:Int;
-	public var offset:Int;
+	public var offsetBytes:Int;
 	public var name:String;
 	public var stride:Int;
 	public var semantic:forge.Native.ShaderSemantic;
@@ -885,32 +894,46 @@ struct spvDescriptorSetBuffer0
 		var idxCount = 0;
 		var attribCount = 0;
 		var curOffset = 0;
+		var curOffsetBytes = 0;
 
 		for (v in shader.vertex.data.vars) {
 			switch (v.kind) {
 				case Input:
-					var size = switch (v.type) {
-						case TVec(n, _): n;
-						case TFloat: 1;
-						default: throw "assert " + v.type;
-					}
 					
 					var location = attribCount++;
 					var name =  vertTranscoder.varNames.get(v.id);
 					if (name == null) name = v.name;
 					var a = new CompiledAttribute();
-					a.type = 0;
+					a.type = switch (v.type) {
+						case TVec(n, _): CompiledAttributeType.VECTOR;
+						case TFloat: CompiledAttributeType.FLOAT;
+						case TBytes(n): CompiledAttributeType.BYTE;
+						default: throw "assert " + v.type;
+					};
+					a.sizeBytes = switch (v.type) {
+						case TVec(n, _): n * 4;
+						case TFloat: 4;
+						case TBytes(n): n;
+						default: throw "assert " + v.type;
+					};
+					a.count = switch (v.type) {
+						case TVec(n, _): n;
+						case TFloat: 1;
+						case TBytes(n): n;
+						default: throw "assert " + v.type;
+					};
 					a.name = name;
-					a.size = size;
 					a.index = idxCount++;
 					a.divisor = 0;
-					a.offset = curOffset;
-					curOffset += size;
+					a.offsetBytes = curOffset;
+					curOffset += a.sizeBytes;
 					a.semantic = switch(name) {
 						case "position": SEMANTIC_POSITION;
 						case "normal":  SEMANTIC_NORMAL;
 						case "uv": SEMANTIC_TEXCOORD0;
 						case "color":SEMANTIC_COLOR;
+						case "weights":SEMANTIC_WEIGHTS;
+						case "indexes":SEMANTIC_JOINTS;
 						default: throw ('unknown vertex attribute ${name}');
 					}
 					if (v.qualifiers != null) {
@@ -1331,6 +1354,27 @@ struct spvDescriptorSetBuffer0
 	var _currentState = new StateBuilder();
 	var _currentPass : h3d.mat.Pass;
 
+	function getLayoutFormat(a:CompiledAttribute) : forge.Native.TinyImageFormat
+		return switch(a.type) {
+			case BYTE:
+				switch(a.count) {
+					case 1:TinyImageFormat_R8_UNORM;
+					case 2:TinyImageFormat_R8G8_UNORM;
+					case 3:TinyImageFormat_R8G8B8_UNORM;
+					case 4:TinyImageFormat_R8G8B8A8_UNORM;
+					default: throw ('Unsupported count ${a.count}');
+				}
+			case FLOAT: TinyImageFormat_R32_SFLOAT;
+			case VECTOR:switch(a.count) {
+				case 1:TinyImageFormat_R32_SFLOAT;
+				case 2:TinyImageFormat_R32G32_SFLOAT;
+				case 3:TinyImageFormat_R32G32B32_SFLOAT;
+				case 4:TinyImageFormat_R32G32B32A32_SFLOAT;
+				default: throw ('Unsupported count ${a.count}');
+			}
+			case UNKNOWN: throw "type unknown";
+		}
+	
 	function buildLayoutFromShader(s:CompiledProgram) : forge.Native.VertexLayout {
 		var vl = new forge.Native.VertexLayout();
 		vl.attribCount = 0;
@@ -1340,17 +1384,12 @@ struct spvDescriptorSetBuffer0
 			var location = vl.attribCount++;
 			var layout_attr = vl.attrib(location);
 
-			layout_attr.mFormat = switch(a.size) {
-				case 1:layout_attr.mFormat = TinyImageFormat_R32_SFLOAT;
-				case 2:layout_attr.mFormat = TinyImageFormat_R32G32_SFLOAT;
-				case 3:layout_attr.mFormat = TinyImageFormat_R32G32B32_SFLOAT;
-				case 4:layout_attr.mFormat = TinyImageFormat_R32G32B32A32_SFLOAT;
-				default: throw ('Unsupported size ${a.size}');
-			}
+			layout_attr.mFormat = getLayoutFormat(a);
+			
 
 			layout_attr.mBinding = 0;
 			layout_attr.mLocation = a.index; 
-			layout_attr.mOffset = a.offset * 4; // floats to bytes
+			layout_attr.mOffset = a.offsetBytes;
 			//layout_attr.mRate = VERTEX_ATTRIB_RATE_VERTEX;
 			layout_attr.mSemantic = a.semantic;
 			layout_attr.mSemanticNameLength = a.name.length;
@@ -1396,34 +1435,30 @@ var offset = 8;
 			var location = vl.attribCount++;
 			var layout_attr = vl.attrib(location);
 
-			layout_attr.mFormat = switch(a.size) {
-				case 1:layout_attr.mFormat = TinyImageFormat_R32_SFLOAT;
-				case 2:layout_attr.mFormat = TinyImageFormat_R32G32_SFLOAT;
-				case 3:layout_attr.mFormat = TinyImageFormat_R32G32B32_SFLOAT;
-				case 4:layout_attr.mFormat = TinyImageFormat_R32G32B32A32_SFLOAT;
-				default: throw ('Unsupported size ${a.size}');
-			}
 
-			var pos;
+			layout_attr.mFormat = getLayoutFormat(a);
+
+
+			var bytePos;
 			switch( a.name ) {
 				case "position":
-					pos = 0;
+					bytePos = 0;
 				case "normal":
 					if( m.stride < 6 ) throw "Buffer is missing NORMAL data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
-					pos = 3;
+					bytePos = 3 * 4;
 				case "uv":
 					if( m.stride < 8 ) throw "Buffer is missing UV data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
-					pos = 6;
+					bytePos = 6 * 4;
 				case s:
-					pos = offset;
-					offset += a.size;
+					bytePos = offset;
+					offset += a.sizeBytes;
 					if( offset > m.stride ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
 
 			}
 
 			layout_attr.mBinding = 0;
 			layout_attr.mLocation = a.index; 
-			layout_attr.mOffset = pos * 4; // floats to bytes
+			layout_attr.mOffset = bytePos; // floats to bytes
 			//layout_attr.mRate = VERTEX_ATTRIB_RATE_VERTEX;
 			layout_attr.mSemantic = a.semantic;
 			layout_attr.mSemanticNameLength = a.name.length;
@@ -1822,7 +1857,7 @@ var offset = 8;
 		var mb = buffers.buffer.buffer;
 		//trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
 		_bufferBinder.reset();
-		var strideCount = 0;
+		var strideCountBytes = 0;
 		for (a in _curShader.attribs) {
 			var bb = buffers.buffer;
 			var vb = @:privateAccess mb.vbuf;
@@ -1830,7 +1865,7 @@ var offset = 8;
 			//debugTrace('FILTER prebinding buffer b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} si ${a.size} bbvc ${bb.vertices} mbstr ${mb.stride} mbsi ${mb.size} bo ${buffers.offset} - ${_curShader.inputs.names[a.index]}' );
 			//_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
 
-			strideCount += a.size;
+			strideCountBytes += a.sizeBytes;
 			_bufferBinder.add( b, mb.stride * 4, buffers.offset * 4);
 			
 			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
@@ -1838,7 +1873,7 @@ var offset = 8;
 			// updateDivisor(a);
 			buffers = buffers.next;
 		}
-		trace ('RENDER STRIDE shader stride ${strideCount * 4} vs pipe ${_currentPipeline._stride} vs buffer ${mb.stride * 4}');
+		trace ('RENDER STRIDE shader stride ${strideCountBytes} vs pipe ${_currentPipeline._stride} vs buffer ${mb.stride * 4}');
 
 		if (_currentPipeline._stride  != mb.stride * 4) throw "Shader - buffer stride mistmatch";
 
@@ -1928,9 +1963,9 @@ var offset = 8;
 		if( v.flags.has(RawFormat) ) {
 			// Use the shader binding
 			for( a in _curShader.attribs ) {
-				debugTrace('STRIDE selectBuffer binding ${a.index} strid ${m.stride} offset ${a.offset}');
+				debugTrace('STRIDE selectBuffer binding ${a.index} strid ${m.stride} offset ${a.offsetBytes}');
 			
-				_bufferBinder.add( b, m.stride * 4, a.offset * 4);
+				_bufferBinder.add( b, m.stride * 4, a.offsetBytes);
 				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 
 				// m.stride * 4
@@ -1943,36 +1978,33 @@ var offset = 8;
 		} else {
 			debugTrace('STRIDE selectBuffer RAW NOT REMINDER THIS MAY BE BUGGY [RC]');
 
-			var offset = 8;
+			var offsetBytes = 8 * 4; // 8 floats * 4 bytes a piece
 			var strideCheck = 0;
 			for( i in 0..._curShader.attribs.length ) {
 				var a = _curShader.attribs[i];
-				var pos;
+				var posBytes;
 				switch( _curShader.inputs.names[i] ) {
 				case "position":
-					pos = 0; 
+					posBytes = 0; 
 				case "normal":
 					if( m.stride < 6 ) throw "Buffer is missing NORMAL data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
-					pos = 3;
+					posBytes = 3 * 4;
 				case "uv":
 					if( m.stride < 8 ) throw "Buffer is missing UV data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
-					pos = 6;
-				case "color":
-					if( m.stride < 12 ) throw "Buffer is missing color data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
-					pos = 8;
+					posBytes = 6 * 4;
 				case s:
 					debugTrace('STRIDE WARNING unrecognized buffer ${s}');
-					pos = offset;
-					offset += a.size;
-					if( offset > m.stride ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+					posBytes = offsetBytes;
+					offsetBytes += a.sizeBytes;
+					if( offsetBytes > m.stride * 4 ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
 				}
 				//m.stride * 4
 				//_bufferBinder.add( m.b, 0, pos * 4 );
 
 				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 				//updateDivisor(a);
-				debugTrace('STRIDE BUFFER type is ${a.type } size is ${a.size} vs stride ${m.stride}');
-				_bufferBinder.add( b, m.stride * 4, pos * 4);
+				debugTrace('STRIDE BUFFER type is ${a.type } size is ${a.sizeBytes} bytes vs stride ${m.stride}');
+				_bufferBinder.add( b, m.stride * 4, posBytes);
 			}
 			_currentCmd.bindVertexBuffer(_bufferBinder);
 //			throw ("unsupported");

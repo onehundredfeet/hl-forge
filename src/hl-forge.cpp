@@ -566,6 +566,28 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
 
 		ss << "vertex stage index: " << tmp->pReflection->mVertexStageIndex << std::endl;
 		ss << "frag stage index: " << tmp->pReflection->mPixelStageIndex << std::endl;
+
+		ss << "stage reflection count: " << tmp->pReflection->mStageReflectionCount << std::endl;
+		for (auto i = 0; i < tmp->pReflection->mStageReflectionCount;++i) {
+            auto &s = tmp->pReflection->mStageReflections[i];
+            ss << "\t" << i << " stage:" << s.mShaderStage << std::endl;
+            ss << "\t" << i << " variable count:" << s.mVariableCount << std::endl;
+            ss << "\t" << i << " resource count:" << s.mShaderResourceCount << std::endl;
+
+            if (s.mShaderStage == SHADER_STAGE_VERT) {
+            ss << "\t" << i << " vert input counts:" << s.mVertexInputsCount << std::endl;
+             for (auto vi = 0; vi < s.mVertexInputsCount;++vi) {
+                auto &v = s.pVertexInputs[vi];
+                ss << "\t\t" << vi << " name:" << v.name << std::endl;
+                ss << "\t\t" << vi << " name size:" << v.name_size << std::endl;
+                ss << "\t\t" << vi << " size:" << v.size << std::endl;
+            }
+
+            }
+
+           
+        }
+
 		ss << "resource count: " << tmp->pReflection->mShaderResourceCount << std::endl; 
 		for (auto i = 0; i < tmp->pReflection->mShaderResourceCount;++i) {
 			auto &r = tmp->pReflection->pShaderResources[i];
@@ -602,7 +624,6 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
 			ss << std::endl;
 			
 		}		
-		ss << "stage reflection count: " << tmp->pReflection->mStageReflectionCount << std::endl;
 		ss << "var count: " << tmp->pReflection->mVariableCount << std::endl;
 
 		for (auto i = 0; i < tmp->pReflection->mVariableCount;++i) {
