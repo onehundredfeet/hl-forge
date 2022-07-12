@@ -18,7 +18,8 @@
 #include "hl-forge-meta.h"
 #include "hl-forge.h"
 
-
+//#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...)
 
 static CpuInfo gCpu;
 
@@ -67,19 +68,19 @@ static SDL_MetalView GetWindowView(SDL_Window *window) {
 
 bool hlForgeInitialize(const char *name) {
     // init memory allocator
-    printf("Intializing memory\n");
+    DEBUG_PRINT("Intializing memory\n");
     if (!initMemAlloc(name)) {
-        printf("Failed to init memory allocator\n");
+        DEBUG_PRINT("Failed to init memory allocator\n");
         return false;
     }
 
     FileSystemInitDesc fsDesc = {};
     fsDesc.pAppName = name;
-    printf("Intializing file system\n");
+    DEBUG_PRINT("Intializing file system\n");
 
     // init file system
     if (!initFileSystem(&fsDesc)) {
-        printf("Failed to init file system\n");
+        DEBUG_PRINT("Failed to init file system\n");
         return false;
     }
 
@@ -178,13 +179,13 @@ ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
     this->window = window;
     SDL_VERSION(&wmInfo.version);
     SDL_GetWindowWMInfo(window, &wmInfo);
-    printf("SDL_Window %p\n", window);
-    printf("NSWindow %p\n", wmInfo.info.cocoa.window);
+    DEBUG_PRINT("SDL_Window %p\n", window);
+    DEBUG_PRINT("NSWindow %p\n", wmInfo.info.cocoa.window);
     void *view = getNSViewFromNSWindow(wmInfo.info.cocoa.window);
-    printf("NSVIew %p\n", view);
+    DEBUG_PRINT("NSVIew %p\n", view);
 
     if (IsMetalAvailable(&wmInfo) != 0) {
-        printf("Metal is not avaialble!!!\n");
+        DEBUG_PRINT("Metal is not avaialble!!!\n");
     }
 
     auto window_flags = SDL_GetWindowFlags(window);
@@ -257,26 +258,27 @@ SDL_Window *forge_sdl_get_window(void *ptr) {
     return static_cast<SDL_Window *>(ptr);
 }
 
+
 Buffer *forge_sdl_buffer_load(BufferLoadDesc *bld, SyncToken *token) {
-    printf("Loading buffer \n");
+    DEBUG_PRINT("Loading buffer \n");
     Buffer *tmp = nullptr;
     bld->ppBuffer = &tmp;
-    printf("adding resource %p %p\n", bld, token);
+    DEBUG_PRINT("adding resource %p %p\n", bld, token);
     addResource(bld, token);
     return tmp;
 }
 
 Texture *forge_texture_load(TextureLoadDesc *desc, SyncToken *token) {
-    printf("Loading texture \n");
+    DEBUG_PRINT("Loading texture \n");
     Texture *tmp = nullptr;
     desc->ppTexture = &tmp;
-    printf("adding texture resource %p %p\n", desc, token);
+    DEBUG_PRINT("adding texture resource %p %p\n", desc, token);
     addResource(desc, token);
     return tmp;
 }
 
 Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, SyncToken *token) {
-    printf("Creating texture %s from description %d %d\n", name, tdesc->mWidth, tdesc->mHeight);
+    DEBUG_PRINT("Creating texture %s from description %d %d\n", name, tdesc->mWidth, tdesc->mHeight);
     const char *oldName = tdesc->pName;
     tdesc->pName = name;
     tdesc->mDescriptors = DESCRIPTOR_TYPE_TEXTURE; // | DESCRIPTOR_TYPE_RW_TEXTURE;
@@ -313,7 +315,7 @@ void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarge
     loadActions.mLoadActionsColor[0] = color;
     loadActions.mLoadActionDepth = depth;
 
-    printf("RENDER CLEAR c++ BIND %f %f %f %f\n", pRenderTarget->mClearValue.r, pRenderTarget->mClearValue.g, pRenderTarget->mClearValue.b, pRenderTarget->mClearValue.a );
+//    DEBUG_PRINT("RENDER CLEAR c++ BIND %f %f %f %f\n", pRenderTarget->mClearValue.r, pRenderTarget->mClearValue.g, pRenderTarget->mClearValue.b, pRenderTarget->mClearValue.a );
 
 
      // This seems to trump the stuff below
@@ -327,7 +329,7 @@ void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarge
     loadActions.mClearColorValues[0].a = pRenderTarget->mClearValue.a;
 
 
-    printf("RENDER CLEAR c++ %f %f %f %f - %f %d\n", loadActions.mClearColorValues[0].r, loadActions.mClearColorValues[0].g, loadActions.mClearColorValues[0].b, loadActions.mClearColorValues[0].a,  loadActions.mClearDepth.depth, loadActions.mClearDepth.stencil);
+    //DEBUG_PRINT("RENDER CLEAR c++ %f %f %f %f - %f %d\n", loadActions.mClearColorValues[0].r, loadActions.mClearColorValues[0].g, loadActions.mClearColorValues[0].b, loadActions.mClearColorValues[0].a,  loadActions.mClearDepth.depth, loadActions.mClearDepth.stencil);
     cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
     cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
@@ -338,13 +340,13 @@ void forge_render_target_set_clear_colour( RenderTarget *rt, float r, float g, f
     rt->mClearValue.b = b;
     rt->mClearValue.a = a;
 
-    printf("RENDER CLEAR SET %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
+    //DEBUG_PRINT("RENDER CLEAR SET %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
 }
 void forge_render_target_set_clear_depth( RenderTarget *rt, float depth, int stencil) {
-    printf("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
+    //DEBUG_PRINT("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
     rt->mClearValue.depth = depth;
     rt->mClearValue.stencil = stencil;
-    printf("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
+    //DEBUG_PRINT("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
 }
 void forge_cmd_unbind(Cmd *cmd) {
 	cmdBindRenderTargets(cmd, 0, NULL, NULL, NULL, NULL, NULL, -1, -1);
@@ -433,7 +435,7 @@ SDL_MetalView forge_create_metal_view(SDL_Window *win) {
 
 void forge_sdl_texture_upload(Texture *tex, void *data, int dataSize) {
     TextureUpdateDesc updateDesc = {tex};
-    printf("TEXTURE upading texture %d x %d\n", tex->mWidth, tex->mHeight);
+    DEBUG_PRINT("TEXTURE upading texture %d x %d\n", tex->mWidth, tex->mHeight);
     beginUpdateResource(&updateDesc);
     memcpy(updateDesc.pMappedData, data, dataSize);
     endUpdateResource(&updateDesc, NULL);
@@ -532,7 +534,7 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     writeShaderSPV(vertFilePath + ".spv", vertCode);
     writeShaderSPV(fragFilePath + ".spv", fragCode);
 
-    printf("Getting MTL\n");
+    DEBUG_PRINT("Getting MTL\n");
     auto vertMSL = getMSLFromSPV(vertCode);
     auto fragMSL = getMSLFromSPV(fragCode);
 
@@ -541,12 +543,12 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
 
     auto bufferspot = fragMSL.find("spvDescriptorSet0 [[buffer(");
     if (bufferspot != std::string::npos) {
-        printf("RENDER modifying metal shader code at %d\n", bufferspot);
+        DEBUG_PRINT("RENDER modifying metal shader code at %d\n", bufferspot);
         bufferspot += sizeof("spvDescriptorSet0 [[buffer(") - 1;
         fragMSL = fragMSL.replace(bufferspot, 1, "UPDATE_FREQ_PER_DRAW");
     }
 
-    printf("writing MTL\n");
+    DEBUG_PRINT("writing MTL\n");
     writeShaderSource(vertFilePathMSL, vertMSL);
     writeShaderSource(fragFilePathMSL, fragMSL);
 
@@ -635,7 +637,7 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
 		std::string str = ss.str();
 		writeShaderSource(vertFilePath + ".reflect", str);
 	} else {
-		printf("-->No reflection\n");
+		DEBUG_PRINT("-->No reflection\n");
 	}
     return tmp;
 }
@@ -648,7 +650,7 @@ RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Sha
 
 
     for (auto i = 0; i < tmp->mDescriptorCount; i++) {
-        printf("\tRENDER Descriptor %d is %s\n", i, tmp->pDescriptors[i].pName);
+        DEBUG_PRINT("\tRENDER Descriptor %d is %s\n", i, tmp->pDescriptors[i].pName);
     }
     return tmp;
 }
@@ -687,7 +689,7 @@ uint64_t StateBuilder::getSignature(int shaderID, RenderTarget *rt, RenderTarget
 //    *l = (int)(hash & 0x00000000ffffffff);
   //  *h = (int)((hash >> 32) & 0x00000000ffffffff);
 
-//    printf("Signature HASH %llu\n", hash);
+//    DEBUG_PRINT("Signature HASH %llu\n", hash);
     
     //*h = y == x ? 1 : 0;
     return hash;
@@ -741,7 +743,7 @@ Shader**           ppShaders;
 
     for (auto i = 0; i < tmp->mDescriptorCount; i++) {
         DescriptorInfo &info = tmp->pDescriptors[i];
-        printf("\tRENDER Descriptor %d is %s hi %d dim %d size %d static %d type %d\n", i, info.pName, info.mHandleIndex, info.mDim, info.mSize, info.mStaticSampler, info.mType);
+        DEBUG_PRINT("\tRENDER Descriptor %d is %s hi %d dim %d size %d static %d type %d\n", i, info.pName, info.mHandleIndex, info.mDim, info.mSize, info.mStaticSampler, info.mType);
     }
 
 	return tmp;
@@ -771,7 +773,7 @@ pref<T> *_alloc_const(const T *value) {
 #define _ref(t) pref<t>
 
 HL_PRIM _ref(SDL_Window) * HL_NAME(unpackSDLWindow)(void *ptr) {
-    printf("Forge SDL Pointer is %p\n", ptr);
+    DEBUG_PRINT("Forge SDL Pointer is %p\n", ptr);
     return _alloc_const((SDL_Window *)ptr);
 }
 

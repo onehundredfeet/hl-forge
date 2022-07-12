@@ -20,19 +20,19 @@ Tested Samples
 - GraphicsDraw (Fails - Needs capturePixels)
 - Blur (Runs - Some UI is in the wrong spot)
 - Input (Runs)
-- Interactive (Fails - Warning shader texture count 1 doesn't match provided texture count 2)
+- Interactive (Runs)
 - Lights (Fails - Unimplemented mip support)
 - Mask (Fails - Unimplemented setRenderZone)
 - Pbr (Fails - Unimplemented mip support)
 - Quaternion (Runs)
 - Shadows (Runs)
-- Skin (Fails - Trying to set a Texture at index 1 but the argument buffer has a Sampler at this index)
+- Skin (Runs)
 - Stencil (Fails - Below)
 [MTLDebugRenderCommandEncoder validateCommonDrawErrors:]:5252: failed assertion `Draw Errors Validation
 MTLDepthStencilDescriptor uses frontFaceStencil but MTLRenderPassDescriptor has a nil stencilAttachment texture
 MTLDepthStencilDescriptor uses backFaceStencil but MTLRenderPassDescriptor has a nil stencilAttachment texture
 
-- World (Fails - unknown vertex attribute time)
+- World (Runs)
 
 Incomplete
 ====

@@ -86,6 +86,9 @@ class GLSLTranscoder {
 		buf.add(v);
 	}
 
+	static inline function debugTrace(s:String) {
+		//trace(s);
+	}
 
 	inline function ident( v : TVar ) {
 		add(varName(v));
@@ -730,9 +733,9 @@ class GLSLTranscoder {
             add('layout (set=0,binding=${binding}) uniform ');
 			switch(v.type) {
 				case TSampler2D: 
-					trace ('RENDER adding sampler ${v.name}');
+					debugTrace ('RENDER adding sampler ${v.name}');
 				case TArray(t, size): 
-					trace ('RENDER adding sampler array ${v.name}');
+					debugTrace ('RENDER adding sampler array ${v.name}');
 
 					t == TSampler2D;
 				default:false;

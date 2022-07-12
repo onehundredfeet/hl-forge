@@ -1230,7 +1230,6 @@ HL_PRIM HL_CONST _ref(Texture)* HL_NAME(RenderTarget_getTexture0)(_ref(RenderTar
 DEFINE_PRIM(_IDL, RenderTarget_getTexture0, _IDL);
 
 HL_PRIM void HL_NAME(RenderTarget_setClearColor4)(_ref(RenderTarget)* _this, float r, float g, float b, float a) {
-	printf("RENDER CLEAR RGBA %f %f %f %f\n", r, g, b, a);
 	(forge_render_target_set_clear_colour( _unref(_this) , r, g, b, a));
 }
 DEFINE_PRIM(_VOID, RenderTarget_setClearColor4, _IDL _F32 _F32 _F32 _F32);

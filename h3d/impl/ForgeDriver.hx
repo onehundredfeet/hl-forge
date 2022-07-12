@@ -31,6 +31,10 @@ private class CompiledShader {
 	public var textureSlot: Int;
 	public var samplerSlot: Int;
 	public var md5 : String;
+
+	public function textureCount() : Int {
+		return textures != null ? textures.length : 0;
+	}
 //	public var textureDataBuilder:forge.Native.DescriptorDataBuilder;
 //	public var samplerDataBuilder:forge.Native.DescriptorDataBuilder;
 
@@ -255,12 +259,16 @@ class ForgeDriver extends h3d.impl.Driver {
 //		debugTrace('Has Feature ${f}');
 		// copied from DX driver
 		return switch (f) {
-			case Queries, BottomLeftCoords:
-				false;
+			case StandardDerivatives: true;
+			case Queries: false;
+			case BottomLeftCoords:false;
 			case HardwareAccelerated: true;
 			case AllocDepthBuffer: true;
 			case MultipleRenderTargets:false;
 			case Wireframe:false;
+			case SRGBTextures:true;
+			case ShaderModel3:true;
+			case InstancedRendering:false;
 			default:
 				false;
 		};
@@ -427,7 +435,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var buff = desc.load(null);
 
-		trace ('STRIDE FILTER - Allocating vertex buffer ${m.size} with stride ${m.stride} total bytecount  ${byteCount}');
+		debugTrace ('STRIDE FILTER - Allocating vertex buffer ${m.size} with stride ${m.stride} total bytecount  ${byteCount}');
 		return {b: buff, stride: m.stride #if multidriver, driver: this #end};
 	}
 
@@ -933,8 +941,8 @@ struct spvDescriptorSetBuffer0
 						case "normal":  SEMANTIC_NORMAL;
 						case "uv": SEMANTIC_TEXCOORD0;
 						case "color":SEMANTIC_COLOR;
-						case "weights":SEMANTIC_WEIGHTS;
-						case "indexes":SEMANTIC_JOINTS;
+						case "weights":SEMANTIC_UNDEFINED;
+						case "indexes":SEMANTIC_UNDEFINED;
 						case "time":SEMANTIC_UNDEFINED;
 						case "life":SEMANTIC_UNDEFINED;
 						case "init":SEMANTIC_UNDEFINED;
@@ -990,11 +998,12 @@ struct spvDescriptorSetBuffer0
 
 			debugTrace('RENDER SHADER PARAMS length v ${vertTotalLength} v ${_curShader.vertex.globalsLength} f ${_curShader.vertex.paramsLength}');
 			debugTrace('RENDER SHADER PARAMS length f ${fragTotalLength} v ${_curShader.fragment.globalsLength} f ${_curShader.fragment.paramsLength}');
-		}
 
-		_fragmentTextures.resize( 0 );
-		_vertexTextures.resize( 0 );
-		
+
+			_vertexTextures.resize( _curShader.vertex.textureCount() );
+			_fragmentTextures.resize( _curShader.fragment.textureCount() );
+		}
+	
 
 		return true;
 	}
@@ -1059,13 +1068,16 @@ struct spvDescriptorSetBuffer0
 				tmpBuff.blit(offset, hl.Bytes.getArray(buf.fragment.params.toData()), 0,  _curShader.fragment.paramsLength * 4);
 			}
 			case Textures:  
-				trace ('RENDER TEXTURES PIPELINE PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length}');
+				debugTrace ('RENDER TEXTURES PIPELINE PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length}');
 				
-				_vertexTextures.resize( buf.vertex.tex.length );
-				_fragmentTextures.resize( buf.fragment.tex.length );
 
-				for (i in 0...buf.vertex.tex.length) _vertexTextures[i] = buf.vertex.tex[i];
-				for (i in 0...buf.fragment.tex.length) {
+				if (buf.vertex.tex.length < _vertexTextures.length) throw "Not enough vertex textures";
+				if (buf.fragment.tex.length < _fragmentTextures.length) throw "Not enough vertex textures";
+
+				for (i in 0..._vertexTextures.length) {
+					_vertexTextures[i] = buf.vertex.tex[i];
+				}
+				for (i in 0..._fragmentTextures.length) {
 					_fragmentTextures[i] = buf.fragment.tex[i];
 					var t = _fragmentTextures[i];
 					t.lastFrame = _currentFrame;
@@ -1090,7 +1102,7 @@ struct spvDescriptorSetBuffer0
 				
 
 			case Buffers:  
-				trace ('RENDER BUFFERS Upload Buffers v ${buf.vertex.buffers} f ${buf.fragment.buffers}'); 
+				debugTrace ('RENDER BUFFERS Upload Buffers v ${buf.vertex.buffers} f ${buf.fragment.buffers}'); 
 
 			if( _curShader.vertex.buffers != null ) {
 				throw ("Not supported");
@@ -1365,11 +1377,12 @@ struct spvDescriptorSetBuffer0
 	function getLayoutFormat(a:CompiledAttribute) : forge.Native.TinyImageFormat
 		return switch(a.type) {
 			case BYTE:
+				debugTrace('RENDER STRIDE attribute ${a.name} has bytes with ${a.count} length');
 				switch(a.count) {
-					case 1:TinyImageFormat_R8_UNORM;
-					case 2:TinyImageFormat_R8G8_UNORM;
-					case 3:TinyImageFormat_R8G8B8_UNORM;
-					case 4:TinyImageFormat_R8G8B8A8_UNORM;
+					case 1:TinyImageFormat_R8_SINT;
+					case 2:TinyImageFormat_R8G8_SINT;
+					case 3:TinyImageFormat_R8G8B8_SINT;
+					case 4:TinyImageFormat_R8G8B8A8_SINT;
 					default: throw ('Unsupported count ${a.count}');
 				}
 			case FLOAT: TinyImageFormat_R32_SFLOAT;
@@ -1597,7 +1610,7 @@ var offset = 8;
 		// Get pipeline combination
 		var cmat = _materialInternalMap.get(cmatidx);
 		debugTrace('RENDER PIPELINE Signature  xx.h ${hv.high} | xx.l ${hv.low} pipeid ${cmatidx}');
-		var shaderFragTextureCount = _curShader.fragment.textures == null ? 0 : _curShader.fragment.textures.length;
+		var shaderFragTextureCount = _curShader.fragment.textureCount();//.textures == null ? 0 : _curShader.fragment.textures.length;
 		debugTrace('RENDER PIPELINE texture count ${shaderFragTextureCount} vs ${_fragmentTextures.length}');
 
 		if (cmat == null) {
@@ -1679,7 +1692,7 @@ var offset = 8;
 //			return;
 //		}
 
-		var shaderFragTextureCount = _curShader.fragment.textures == null ? 0 : _curShader.fragment.textures.length;
+		var shaderFragTextureCount = _curShader.fragment.textureCount();
 
 		if (shaderFragTextureCount > _fragmentTextures.length) {
 			throw('Not enough textures for shader, provided  ${_fragmentTextures.length} but needs ${shaderFragTextureCount}');
@@ -1699,7 +1712,7 @@ var offset = 8;
 			crcInt(crc, _currentPipeline._hash.low);
 			crcInt(crc, _currentPipeline._hash.high);
 
-			for (i in 0..._fragmentTextures.length) {
+			for (i in 0...shaderFragTextureCount) {
 				crcInt(crc, _fragmentTextures[i].id);
 			}
 			
@@ -1718,7 +1731,7 @@ var offset = 8;
 					_textureDataBuilder.clearSlotData(1);
 				}
 
-				for (i in 0..._fragmentTextures.length) {
+				for (i in 0...shaderFragTextureCount) {
 					var t = _fragmentTextures[i];
 					if (t.t == null) throw "Texture is null";
 					var ft = (t.t.rt != null) ? t.t.rt.rt.getTexture() :  t.t.t;
@@ -1885,7 +1898,7 @@ var offset = 8;
 			// updateDivisor(a);
 			buffers = buffers.next;
 		}
-		trace ('RENDER STRIDE shader stride ${strideCountBytes} vs pipe ${_currentPipeline._stride} vs buffer ${mb.stride * 4}');
+		debugTrace ('RENDER STRIDE shader stride ${strideCountBytes} vs pipe ${_currentPipeline._stride} vs buffer ${mb.stride * 4}');
 
 		if (_currentPipeline._stride  != mb.stride * 4) throw "Shader - buffer stride mistmatch";
 
@@ -2290,6 +2303,7 @@ var offset = 8;
 			selectMaterial( _currentPass);
 		}
 
+
 		//currentTargetResources[0] = null;
 
 		/*
@@ -2643,7 +2657,7 @@ var offset = 8;
 		Returns true if we could copy the texture, false otherwise (not supported by driver or mismatch in size/format)
 	**/
 	public override function copyTexture(from:h3d.mat.Texture, to:h3d.mat.Texture) {
-		throw "Not implemented";
+		// [RC] Copy texture
 		return false;
 	}
 
