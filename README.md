@@ -13,15 +13,15 @@ Tested Samples
 - Base3D (Runs)
 - Bounds (Runs with some flickering when mouse is moving)
 - Collide Check (Runs)
-- Cube Texture (Fails - Needs generateMipMaps)
+- Cube Texture (Run - Black screen)
 - Cursor (Runs)
-- Filters (Fails - Needs copyTexture)
+- Filters (Runs)
 - GPU Particles (Runs)
 - GraphicsDraw (Fails - Needs capturePixels)
 - Blur (Runs - Some UI is in the wrong spot)
 - Input (Runs)
 - Interactive (Runs)
-- Lights (Fails - Unimplemented mip support)
+- Lights (Fails - Can't capture pixels on this platform)
 - Mask (Fails - Unimplemented setRenderZone)
 - Pbr (Fails - Unimplemented mip support)
 - Quaternion (Runs)
@@ -38,12 +38,12 @@ Incomplete
 ====
 - Auto generate mipmaps
 - Capture pixels / copy texture
-- Skinned rendereing
-- Fix Unsupported texture format RGBA32F
 - Viewport resizing
 - Check sRGB configuration on render target & texture load
 - Support sub render zone
 - Stecil support
+- Fix Z-fighting
+- Texture Filtering check
 
 Completed
 ========
@@ -64,4 +64,6 @@ Completed
 - Fixed setRenderTarget
 - Fixed Unsupported texture format R16F (Likely a render target)
 - Fixed shadows
+- Skinned rendereing
+- Fix Unsupported texture format RGBA32F
 

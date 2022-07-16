@@ -10,7 +10,7 @@
 #include <OS/Logging/Log.h>
 #include <Renderer/IResourceLoader.h>
 #include <Renderer/IShaderReflection.h>
-
+#include <basis_universal/basisu_enc.h>
 
 #define HL_NAME(x) forge_##x
 #include <hl.h>
@@ -281,7 +281,7 @@ Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, Sync
     DEBUG_PRINT("Creating texture %s from description %d %d\n", name, tdesc->mWidth, tdesc->mHeight);
     const char *oldName = tdesc->pName;
     tdesc->pName = name;
-    tdesc->mDescriptors = DESCRIPTOR_TYPE_TEXTURE; // | DESCRIPTOR_TYPE_RW_TEXTURE;
+//    tdesc->mDescriptors = DESCRIPTOR_TYPE_TEXTURE | DESCRIPTOR_TYPE_RW_TEXTURE;
 
     TextureLoadDesc defaultLoadDesc = {};
     defaultLoadDesc.pDesc = tdesc;
@@ -359,6 +359,7 @@ void forge_renderer_wait_fence(Renderer *pRenderer, Fence *pFence) {
         waitForFences(pRenderer, 1, &pFence);
 }
 
+
 RenderTarget *forge_swap_chain_get_render_target(SwapChain *pSwapChain, int swapchainImageIndex) {
     return pSwapChain->ppRenderTargets[swapchainImageIndex];
 }
@@ -435,12 +436,38 @@ SDL_MetalView forge_create_metal_view(SDL_Window *win) {
 
 void forge_sdl_texture_upload(Texture *tex, void *data, int dataSize) {
     TextureUpdateDesc updateDesc = {tex};
-    DEBUG_PRINT("TEXTURE upading texture %d x %d\n", tex->mWidth, tex->mHeight);
+    updateDesc.mArrayLayer
+    DEBUG_PRINT("TEXTURE upading texture width %d height %d\n", tex->mWidth, tex->mHeight);
     beginUpdateResource(&updateDesc);
     memcpy(updateDesc.pMappedData, data, dataSize);
     endUpdateResource(&updateDesc, NULL);
 }
 
+void forge_texture_upload_mip(Texture *tex, int mip, void *data, int dataSize) {
+    forge_texture_upload_layer_mip(tex, 0, mip, data, dataSize);
+}
+
+void forge_texture_upload_layer_mip(Texture *tex, int layer, int mip, void *data, int dataSize) {
+    TextureUpdateDesc updateDesc = {tex};
+
+    updateDesc.mMipLevel = mip;
+    updateDesc.mArrayLayer = layer;
+
+    DEBUG_PRINT("TEXTURE upading texture layer %d width %d height %d mip %d\n", layer, tex->mWidth, tex->mHeight, mip);
+    beginUpdateResource(&updateDesc);
+    memcpy(updateDesc.pMappedData, data, dataSize);
+    endUpdateResource(&updateDesc, NULL);
+}
+
+
+
+Shader *forge_load_compute_shader_file(Renderer *pRenderer, const char *fileName ) {
+    ShaderLoadDesc GenerateMipShaderDesc = {};
+    GenerateMipShaderDesc.mStages[0] = { fileName, NULL, 0, NULL, SHADER_STAGE_LOAD_FLAG_ENABLE_VR_MULTIVIEW };
+    Shader *tmp = nullptr;
+    addShader(pRenderer, &GenerateMipShaderDesc, &tmp);
+    return tmp;
+}
 
 CmdPool *forge_sdl_renderer_create_cmd_pool(Renderer *pRenderer, Queue *pGraphicsQueue) {
     CmdPool *tmp;
@@ -471,11 +498,11 @@ Semaphore *forge_sdl_renderer_create_semaphore(Renderer *pRenderer) {
 void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence) {
     QueueSubmitDesc submitDesc = {};
     submitDesc.mCmdCount = 1;
-    submitDesc.mSignalSemaphoreCount = 1;
-    submitDesc.mWaitSemaphoreCount = 1;
+    submitDesc.mSignalSemaphoreCount = signalSemphor == nullptr ? 0 : 1;
+    submitDesc.mWaitSemaphoreCount = wait == nullptr ? 0 : 1;
     submitDesc.ppCmds = &cmd;
-    submitDesc.ppSignalSemaphores = &signalSemphor;
-    submitDesc.ppWaitSemaphores = &wait;
+    submitDesc.ppSignalSemaphores = signalSemphor == nullptr ? nullptr : &signalSemphor;
+    submitDesc.ppWaitSemaphores = wait == nullptr ? nullptr : &wait;
     submitDesc.pSignalFence = signalFence;
     queueSubmit(queue, &submitDesc);
 }

@@ -170,10 +170,17 @@ class HlForgePipelineDesc : public PipelineDesc {
     HlForgePipelineDesc() {
         mGraphicsDesc = {};
     }
-    inline GraphicsPipelineDesc *graphicsPipeline(  ) {
+    inline GraphicsPipelineDesc *graphicsPipeline() {
         this->mType = PIPELINE_TYPE_GRAPHICS;
         return &this->mGraphicsDesc;
     }
+
+     inline ComputePipelineDesc *computePipeline() {
+        this->mType = PIPELINE_TYPE_COMPUTE;
+        return &this->mComputeDesc;
+    }
+    
+
     void setName( const char *name) {
         _name = name;
         this->pName = _name.c_str();
@@ -200,13 +207,21 @@ class HlForgePipelineDesc : public PipelineDesc {
     std::string _name;
 };
 
+enum DescriptorSlotMode {
+    DBM_TEXTURES,
+    DBM_SAMPLERS
+};
+
 class DescriptorDataBuilder {
 //    DescriptorSet *_set;
 //    int _index;
+
+
             std::vector<std::string> _names;
-            std::vector<DescriptorType> _types;
             std::vector<std::vector<void *> *> _dataPointers;
             std::vector<DescriptorData> _data;
+            std::vector<int> _uavMipSlices;
+            std::vector<DescriptorSlotMode> _modes;
     public:
         DescriptorDataBuilder( ) {
         }
@@ -221,41 +236,44 @@ class DescriptorDataBuilder {
             _dataPointers.clear();
             _names.clear();
             _data.clear();
+            _uavMipSlices.clear();
         }
 
         void clearSlotData( int slot ) {
             _dataPointers[slot]->clear();
         }
 
-        int addSlot(const std::string &name, DescriptorType type) {
+        int addSlot(const std::string &name, DescriptorSlotMode type) {
             _names.push_back(name);            
             _dataPointers.push_back(::new std::vector<void *>());
-            _types.push_back(type);
+            _modes.push_back(type);
             DescriptorData d = {};
             _data.push_back(d);
+            _uavMipSlices.push_back(0);
             return _names.size() - 1;
         }
         void addSlotData( int slot, void * data) {
             _dataPointers[slot]->push_back(data);
         }
+        void setSlotUAVMipSlice( int slot, int idx ) {
+            _data[slot].mUAVMipSlice = idx;
+        }
 
         void update(Renderer *pRenderer, int index, DescriptorSet *set) {
             for(auto i = 0; i < _names.size(); i++) {
                 _data[i].pName = _names[i].c_str();
-                switch(_types[i]) {
-                    case DescriptorType::DESCRIPTOR_TYPE_TEXTURE:
+                switch(_modes[i] ) {
+                    case DBM_TEXTURES:
                     _data[i].ppTextures = (Texture **)(&(*_dataPointers[i])[0]);
                     break;
-                    case DescriptorType::DESCRIPTOR_TYPE_SAMPLER:
+                    case DBM_SAMPLERS:
                     _data[i].ppSamplers = (Sampler **)(&(*_dataPointers[i])[0]);
                     break;
-                    default:
-                    _data[i].mCount = 0;
-                    continue;
-
+                    default:break;
                 }
                 _data[i].mCount = _dataPointers[i]->size();
             }
+            
             updateDescriptorSet(pRenderer, index, set, _names.size(), &_data[0]);
         }
 
@@ -316,6 +334,7 @@ void forge_renderer_wait_fence( Renderer *, Fence *);
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile);
 RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Shader *shader);
 RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSignatureFactory *);
+Shader *forge_load_compute_shader_file(Renderer *pRenderer, const char *fileName );
 
 // Queue
 void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence);
@@ -340,6 +359,8 @@ void forge_cmd_insert_barrier(Cmd *cmd, ResourceBarrierBuilder *barrier);
 //Texture Load
 Texture*forge_texture_load(TextureLoadDesc *desc, SyncToken *token);
 void forge_texture_set_file_name(TextureLoadDesc *desc, const char *path);
+void forge_texture_upload_mip(Texture *tex, int mip, void *data, int dataSize);
+void forge_texture_upload_layer_mip(Texture *tex, int layer, int mip, void *data, int dataSize);
 
 //Texture Desc
 Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, SyncToken *token );

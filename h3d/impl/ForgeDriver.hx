@@ -44,7 +44,8 @@ private class CompiledShader {
 		this.shader = shader;
 	}
 }
-
+typedef ComputePipeline = {pipeline: forge.Native.Pipeline, rootconstant: Int, shader: forge.Native.Shader, rootsig: forge.Native.RootSignature};
+	
 @:enum
 abstract CompiledAttributeType(Int) from Int to Int {
 	public var UNKNOWN = 0;
@@ -107,6 +108,8 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _queue:forge.Native.Queue;
 	var _swapCmdPools = new Array<forge.Native.CmdPool>();
 	var _swapCmds = new Array<forge.Native.Cmd>();
+	var _tmpCmd : forge.Native.Cmd;
+	var _tmpPool : forge.Native.CmdPool;
 	var _swapCompleteFences = new Array<forge.Native.Fence>();
 	var _swapCompleteSemaphores = new Array<forge.Native.Semaphore>();
 	var _ImageAcquiredSemaphore:forge.Native.Semaphore;
@@ -178,13 +181,66 @@ class ForgeDriver extends h3d.impl.Driver {
 			_swapCompleteSemaphores.push(_renderer.createSemaphore());
 		}
 
+		_computePool = _renderer.createCommandPool(_queue);
+		_computeCmd = _renderer.createCommand(_computePool);
+		_computeFence = _renderer.createFence();
+
+		_tmpPool = _renderer.createCommandPool(_queue);
+		_tmpCmd = _renderer.createCommand(_tmpPool);
+		_currentCmd = null;
+
 		_ImageAcquiredSemaphore = _renderer.createSemaphore();
 
 		_renderer.initResourceLoaderInterface();
+
+		createDefaultResources();
+
 		attach();
 	}
+	
+	var _mipGen : ComputePipeline;
+	var _mipGenDescriptor : forge.Native.DescriptorSet;
+	var _mipGenArray : ComputePipeline;
+	var _mipGenArrayDescriptor : forge.Native.DescriptorSet;
+	var _computePool : forge.Native.CmdPool;
+	var _computeCmd : forge.Native.Cmd;
+	var _computeFence : forge.Native.Fence;
+	
+	function createComputePipeline(filename : String) : ComputePipeline {
+		var shader = _renderer.loadComputeShader(filename + ".comp");
 
+		var rootDesc = new forge.Native.RootSignatureDesc();
+		rootDesc.addShader(shader);
+		var rootSig = _renderer.createRootSig(rootDesc);
+		var rootConst = rootSig.getDescriptorIndexFromName("RootConstant");
 
+		var pipelineSettings = new forge.Native.PipelineDesc();
+		var computePipeline = pipelineSettings.computePipeline();
+		computePipeline.rootSignature = rootSig;
+		computePipeline.shaderProgram = shader;
+		var pipeline = _renderer.createPipeline(pipelineSettings);
+
+		return {pipeline: pipeline, rootconstant: rootConst, shader: shader, rootsig: rootSig};
+	}
+
+	var _mipGenParams = new Array<Int>();
+	
+	static final MAX_MIP_LEVELS = 13;
+	var _mipGenDB = new forge.Native.DescriptorDataBuilder();
+	function createDefaultResources() {
+		_mipGen = createComputePipeline("generateMips");
+		_mipGenArray = createComputePipeline("generateMipsArray");
+
+		var setDesc = new forge.Native.DescriptorSetDesc();
+		setDesc.pRootSignature = _mipGen.rootsig;
+		setDesc.updateFrequency = DESCRIPTOR_UPDATE_FREQ_PER_DRAW;
+		setDesc.maxSets = MAX_MIP_LEVELS; // 2^13 = 8192
+		_mipGenDescriptor = _renderer.addDescriptorSet( setDesc );
+		_mipGenArrayDescriptor = _renderer.addDescriptorSet( setDesc );
+		
+		_mipGenDB.addSlot("Source", DBM_TEXTURES); //?
+		_mipGenDB.addSlot("Destination", DBM_TEXTURES);
+	}
 
 	function addDepthBuffer() {
 		return true;
@@ -439,15 +495,53 @@ class ForgeDriver extends h3d.impl.Driver {
 		return {b: buff, stride: m.stride #if multidriver, driver: this #end};
 	}
 
-	function getTinyTextureFormat(t:h3d.mat.Texture) : forge.Native.TinyImageFormat{
-		return switch (t.format) {
+	function getTinyTextureFormat(f:h3d.mat.Data.TextureFormat) : forge.Native.TinyImageFormat{
+		return switch (f) {
 			case RGBA: TinyImageFormat_R8G8B8A8_UNORM;
 			case SRGB: TinyImageFormat_R8G8B8A8_SRGB;
 			case RGBA16F: TinyImageFormat_R16G16B16A16_SFLOAT;
 			case R16F:  TinyImageFormat_R16_SFLOAT;
 			case R32F:TinyImageFormat_R32_SFLOAT;
-			default: throw "Unsupported texture format " + t.format;
+			case RGBA32F: TinyImageFormat_R32G32B32A32_SFLOAT;
+			default: throw "Unsupported texture format " + f;
 		}
+	}
+
+	function getPixelFormat(f : forge.Native.TinyImageFormat) : hxd.PixelFormat{
+		return switch(f) {
+			case TinyImageFormat_R8G8B8A8_UNORM:RGBA;
+			case TinyImageFormat_R8G8B8A8_SNORM:RGBA;
+			case TinyImageFormat_R8G8B8A8_UINT:RGBA;
+			case TinyImageFormat_R8G8B8A8_SINT:RGBA;
+			
+			default:throw "Unsupported texture format " + f;
+		};
+		/*
+		enum PixelFormat {
+			ARGB;
+			BGRA;
+			RGBA;
+			RGBA16F;
+			RGBA32F;
+			R8;
+			R16F;
+			R32F;
+			RG8;
+			RG16F;
+			RG32F;
+			RGB8;
+			RGB16F;
+			RGB32F;
+			SRGB;
+			SRGB_ALPHA;
+			RGB10A2;
+			RG11B10UF; // unsigned float
+			R16U;
+			RGB16U;
+			RGBA16U;
+			S3TC( v : Int );
+		}
+		*/
 	}
 	function createShadowRT(width : Int, height : Int) {
 		var shadowPassRenderTargetDesc = new forge.Native.RenderTargetDesc();
@@ -469,7 +563,6 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 	public override function allocTexture(t:h3d.mat.Texture):Texture {
 		debugTrace('RENDER ALLOC Allocating ${t} texture width ${t.width} height ${t.height}');
-
 		
 		var rt = t.flags.has(Target);
 		var flt = null;
@@ -477,6 +570,8 @@ class ForgeDriver extends h3d.impl.Driver {
 			case RGBA: TinyImageFormat_R8G8B8A8_UNORM;
 			case SRGB: TinyImageFormat_R8G8B8A8_SRGB;
 			case RGBA16F: TinyImageFormat_R16G16B16A16_SFLOAT;
+			case RGBA32F:TinyImageFormat_R32G32B32A32_SFLOAT;
+			case R32F:TinyImageFormat_R32_SFLOAT;
 			case R16F: debugTrace('WARNING This is very likely a render target w ${t.width} h ${t.height}'); TinyImageFormat_R16_SFLOAT;
 			default: throw "Unsupported texture format " + t.format;
 		};
@@ -492,7 +587,6 @@ class ForgeDriver extends h3d.impl.Driver {
 			var isCube = t.flags.has(Cube);
 			var isArray = t.flags.has(IsArray);
 
-			if (mips != 1) throw "Unimplemented mip support";
 			if (isArray != false) throw "Unimplemented isArray support";
 
 			ftd.width = t.width;
@@ -509,6 +603,14 @@ class ForgeDriver extends h3d.impl.Driver {
 			ftd.startState = RESOURCE_STATE_COMMON;
 			ftd.flags = TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT;
 
+			if (t.flags.has(Cube))  {
+				ftd.descriptors = forge.Native.DescriptorType.DESCRIPTOR_TYPE_TEXTURE_CUBE.toValue();
+				ftd.arraySize = 6; // MUST BE 6 to describe a cube map
+			}
+			else 
+				ftd.descriptors = forge.Native.DescriptorType.DESCRIPTOR_TYPE_TEXTURE.toValue();
+
+			if( t.flags.has(MipMapped) ) ftd.descriptors = ftd.descriptors | forge.Native.DescriptorType.DESCRIPTOR_TYPE_RW_TEXTURE.toValue();
 			ftd.format = internalFormat;
 			//		trace ('Format is ${ftd.format}');
 			flt = ftd.load(t.name, null);
@@ -518,6 +620,27 @@ class ForgeDriver extends h3d.impl.Driver {
 			forge.Native.Globals.waitForAllResourceLoads();
 		}
 
+		/*
+			for(mip in 0...t.mipLevels) {
+				var w = hxd.Math.imax(1, tt.width >> mip);
+				var h = hxd.Math.imax(1, tt.height >> mip);
+				if( t.flags.has(Cube) ) {
+					for( i in 0...6 ) {
+						gl.texImage2D(CUBE_FACES[i], mip, tt.internalFmt, w, h, 0, getChannels(tt), tt.pixelFmt, null);
+						if( checkError() ) break;
+					}
+				} else if( t.flags.has(IsArray) ) {
+					gl.texImage3D(bind, mip, tt.internalFmt, w, h, t.layerCount, 0, getChannels(tt), tt.pixelFmt, null);
+					checkError();
+				} else {
+					#if js
+					if( !t.format.match(S3TC(_)) )
+					#end
+					gl.texImage2D(bind, mip, tt.internalFmt, w, h, 0, getChannels(tt), tt.pixelFmt, null);
+					checkError();
+				}
+			}
+		*/
 		var tt:Texture = {
 			t: flt,
 			width: t.width,
@@ -690,8 +813,8 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		 v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4 * 0);
 	}
 
-	public override function uploadTexturePixels(t:h3d.mat.Texture, pixels:hxd.Pixels, mipLevel:Int, side:Int) {
-		debugTrace('Uploading pixels ${pixels.width} x ${pixels.height} mip level ${mipLevel}');
+	public override function uploadTexturePixels(t:h3d.mat.Texture, pixels:hxd.Pixels, mipLevel:Int, layer:Int) {
+		debugTrace('RENDER TEXTURE UPLOAD Uploading pixels ${pixels.width} x ${pixels.height} mip level ${mipLevel} layer/side ${layer}');
 		debugTrace('----> SC IS ${_sc}');
 
 		pixels.convert(t.format);
@@ -702,7 +825,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		var ft = tt.t;
 
 		debugTrace('Uploading Sending bytes  ${dataLen}');
-		ft.upload(hl.Bytes.fromBytes(pixels.bytes), dataLen);
+		ft.uploadLayerMip(layer, mipLevel, hl.Bytes.fromBytes(pixels.bytes), dataLen);
 		debugTrace('Done Uploading');
 		t.flags.set(WasCleared);
 	}
@@ -1724,8 +1847,8 @@ var offset = 8;
 				
 				if (_textureDataBuilder == null ) {
 					_textureDataBuilder = new forge.Native.DescriptorDataBuilder();
-					_textureDataBuilder.addSlot("fragmentTextures", DESCRIPTOR_TYPE_TEXTURE);
-					_textureDataBuilder.addSlot("fragmentTexturesSmplr", DESCRIPTOR_TYPE_SAMPLER);
+					_textureDataBuilder.addSlot("fragmentTextures", DBM_TEXTURES);
+					_textureDataBuilder.addSlot("fragmentTexturesSmplr", DBM_SAMPLERS);
 				} else {
 					_textureDataBuilder.clearSlotData(0);
 					_textureDataBuilder.clearSlotData(1);
@@ -2073,7 +2196,7 @@ var offset = 8;
 		_currentDepth = null;
 		_currentCmd.end();
 		_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
-
+		_currentCmd = null;
 	}
 	
 	public override function uploadTextureBitmap(t:h3d.mat.Texture, bmp:hxd.BitmapData, mipLevel:Int, side:Int) {
@@ -2132,8 +2255,14 @@ var offset = 8;
 	function setRenderTargetsInternal( textures:Array<h3d.mat.Texture>, layer : Int, mipLevel : Int) {
 		debugTrace('RENDER TARGET CALLSTACK setRenderTargetsInternal');
 
-		_currentCmd.unbindRenderTarget();
-		_currentCmd.insertBarrier(_currentRT.outBarrier);
+		if (_currentCmd == null) {
+			_currentCmd = _tmpCmd;
+			_currentCmd.begin();
+		} else {
+			_currentCmd.unbindRenderTarget();
+			_currentCmd.insertBarrier(_currentRT.outBarrier);	
+		}
+
 
 		if (textures.length > 1) throw "Multiple render targets are unsupported";
 
@@ -2152,7 +2281,7 @@ var offset = 8;
 	//		renderTargetDesc.clearValue.stencil = 0;
 			renderTargetDesc.depth = 1;
 			renderTargetDesc.descriptors = DESCRIPTOR_TYPE_TEXTURE;
-			renderTargetDesc.format = getTinyTextureFormat(tex);
+			renderTargetDesc.format = getTinyTextureFormat(tex.format);
 			renderTargetDesc.startState = RESOURCE_STATE_SHADER_RESOURCE;
 			renderTargetDesc.height = tex.width;
 			renderTargetDesc.width = tex.height;
@@ -2336,25 +2465,71 @@ var offset = 8;
 		setRenderTargetsInternal(textures, 0, 0);
 	}
 
+	function captureSubRenderBuffer( rt: RenderTarget, pixels : hxd.Pixels, x : Int, y : Int ) {
+		if( rt == null ) throw "Can't capture null buffer";
+//		gl.getError(); // always discard
+		var buffer = @:privateAccess pixels.bytes.b;
+		/*
+		gl.readPixels(x, y, pixels.width, pixels.height, getChannels(curTarget.t), curTarget.t.pixelFmt, buffer);
+		var error = gl.getError();
+		if( error != 0 ) throw "Failed to capture pixels (error "+error+")";
+		@:privateAccess pixels.innerFormat = rt.rt.format;
+		*/
+	}
+
 	public override function capturePixels(tex:h3d.mat.Texture, layer:Int, mipLevel:Int, ?region:h2d.col.IBounds):hxd.Pixels {
-		throw "Next functionality to work on - Can't capture pixels on this platform";
-		return null;
+		var pixels : hxd.Pixels;
+		var x : Int, y : Int, w : Int, h : Int;
+		if (region != null) {
+			if (region.xMax > tex.width) region.xMax = tex.width;
+			if (region.yMax > tex.height) region.yMax = tex.height;
+			if (region.xMin < 0) region.xMin = 0;
+			if (region.yMin < 0) region.yMin = 0;
+			w = region.width;
+			h = region.height;
+			x = region.xMin;
+			y = region.yMin;
+		} else {
+			w = tex.width;
+			h = tex.height;
+			x = 0;
+			y = 0;
+		}
+
+		w >>= mipLevel;
+		h >>= mipLevel;
+		if( w == 0 ) w = 1;
+		if( h == 0 ) h = 1;
+		pixels = hxd.Pixels.alloc(w, h, tex.format);
+
+		/*
+		var old = curTarget;
+		var oldCount = numTargets;
+		var oldLayer = curTargetLayer;
+		var oldMip = curTargetMip;
+		
+		if( oldCount > 1 ) {
+			numTargets = 1;
+			for( i in 1...oldCount )
+				if( curTargets[i] == tex )
+					gl.framebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0+i,GL.TEXTURE_2D,null,0);
+		}
+		setRenderTarget(tex, layer, mipLevel);
+		captureSubRenderBuffer(pixels, x, y);
+		setRenderTarget(old, oldLayer, oldMip);
+		if( oldCount > 1 ) {
+			for( i in 1...oldCount )
+				if( curTargets[i] == tex )
+					gl.framebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0+i,GL.TEXTURE_2D,tex.t.t,0);
+			setDrawBuffers(oldCount);
+			numTargets = oldCount;
+		}
+		*/
+		return pixels;
 	}
 
 	public override function uploadVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
 		debugTrace('RENDER STRIDE UPLOAD  uploadVertexBytes start ${startVertex} vstride ${v.stride} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} floats');
-
-		/*
-		var stride : Int = v.stride;
-		gl.bindBuffer(GL.ARRAY_BUFFER, v.b);
-		gl.bufferSubData(GL.ARRAY_BUFFER, startVertex * stride * 4, streamData(buf.getData(),bufPos * 4,vertexCount * stride * 4), bufPos * 4 * STREAM_POS, vertexCount * stride * 4);
-		gl.bindBuffer(GL.ARRAY_BUFFER, null);
-		*/
-
-		/*
-		 var stride:Int = v.stride;
-
-		*/
 		var stride:Int = v.stride;
 		v.b.updateRegion(buf, startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4 * 0);
 	}
@@ -2362,22 +2537,79 @@ var offset = 8;
 	public override function uploadIndexBytes(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
 		var bits = i.is32 ? 2 : 1;
 		i.b.updateRegion(buf, startIndice << bits, indiceCount << bits, bufPos << bits);
-
-		/*
-			var bits = i.is32 ? 2 : 1;
-			gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, i.b);
-			gl.bufferSubData(GL.ELEMENT_ARRAY_BUFFER, startIndice << bits, streamData(buf.getData(),bufPos << bits, indiceCount << bits), (bufPos << bits) * STREAM_POS, indiceCount << bits);
-			gl.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, null);
-			curIndexBuffer = null;
-		*/
-		/*
-				var bits = i.is32 ? 2 : 1;
-		debugTrace('RENDER UPDATE INDEX updating index buffer | start ${startIndice} count ${indiceCount} is32 ${i.is32} buf pos ${bufPos}');
-		i.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startIndice << bits, indiceCount << bits, bufPos << bits);
-
-		*/
 	}
 	
+	public override function generateMipMaps(source:h3d.mat.Texture) {
+		var mipLevels = 0;
+		var mipSizeX = 1 << Std.int(Math.ceil(Math.log(source.width) / Math.log(2)));
+		var mipSizeY = 1 << Std.int(Math.ceil(Math.log(source.height) / Math.log(2)));
+
+		for (i in 0...MAX_MIP_LEVELS)
+		{
+			if (mipSizeX >> i < 1) { mipLevels = i; break; }
+			if (mipSizeY >> i < 1) { mipLevels = i; break; }
+		}
+		if (mipLevels <= 1) return;
+
+		_renderer.resetCmdPool(_computePool);
+
+		var cmd = _computeCmd;
+		
+		cmd.begin();
+		
+		_mipGenParams.resize( 2 );
+	
+
+
+		for (i in 1...mipLevels) {
+			_mipGenDB.clearSlotData(0);
+			_mipGenDB.clearSlotData(1);
+	
+			_mipGenDB.addSlotTexture(0, source.t.t);
+			_mipGenDB.setSlotUAVMipSlice(0, i - 1);	
+			_mipGenDB.addSlotTexture(1, source.t.t);
+			_mipGenDB.setSlotUAVMipSlice(1, i);
+	
+			_mipGenDB.update(_renderer, i - 1, _mipGenArrayDescriptor); // this is computation index not mip index
+		}
+		
+		forge.Native.Globals.waitForAllResourceLoads();
+
+		cmd.bindPipeline(_mipGenArray.pipeline);
+
+		for (i in 1...mipLevels)
+		{
+			cmd.bindDescriptorSet( i - 1, _mipGenArrayDescriptor);// this is computation index not mip index
+
+			mipSizeX >>= 1;
+			mipSizeY >>= 1;
+			_mipGenParams[0] = mipSizeX;
+			_mipGenParams[1] = mipSizeY;
+			
+			//var mipSize = { mipSizeX, mipSizeY };
+
+			cmd.pushConstants(_mipGen.rootsig, _mipGen.rootconstant, hl.Bytes.getArray(_mipGenParams));
+			/*
+			textureBarriers[0] = { pSSSR_DepthHierarchy, RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_UNORDERED_ACCESS };
+			cmd.resourceBarrier(cmd, 0, NULL, 1, textureBarriers, 0, NULL);
+			*/
+			var groupCountX  = Std.int(mipSizeX / 16);
+			var groupCountY =  Std.int(mipSizeY / 16);
+			if (groupCountX == 0)
+				groupCountX = 1;
+			if (groupCountY == 0)
+				groupCountY = 1;
+			cmd.dispatch(groupCountX, groupCountY, source.layerCount); // 2D texture, not a texture array?
+		}
+
+		cmd.end();
+
+		//slowest possible route, but oh well
+		_queue.submit(cmd, null, null, _computeFence);
+		_renderer.waitFence(_computeFence);
+	}
+
+
 	/*
 		function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
 			switch( which ) {
@@ -2576,9 +2808,6 @@ var offset = 8;
 		throw "Not implemented";
 	}
 
-	public override function generateMipMaps(texture:h3d.mat.Texture) {
-		throw "Mipmaps auto generation is not supported on this platform";
-	}
 
 	public override function getNativeShaderCode(shader:hxsl.RuntimeShader):String {
 		throw "Not implemented";

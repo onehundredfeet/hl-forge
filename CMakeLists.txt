@@ -46,6 +46,7 @@ if (NOT FORGE_LIB_DIR)
     set(FORGE_MW_SRC "${FORGE_LIB_DIR}/Middleware_3")
     set(FORGE_RDR_SRC "${FORGE_LIB_DIR}/Common_3/Renderer")
     set(FORGE_EASTL_DIR "${FORGE_TP_SRC}/EASTL")
+    set(FORGE_TP_INC ${FORGE_TP_SRC} )
 endif()
 
 
@@ -124,6 +125,7 @@ PRIVATE
 ${FORGE_INC_DIR}
 ${FORGE_LIB_INC}
 ${HL_INCLUDE_DIR}
+${FORGE_TP_INC}
 "${XXHASH_ROOT_DIR}"
 )
 

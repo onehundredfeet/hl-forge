@@ -100,8 +100,9 @@ class GLSLTranscoder {
             case  VarKind.Param: 
                 switch(v.type) {
                     case TSampler2D: varName(v);
+					case TSamplerCube: varName(v);
                     case TArray(t, size):
-                        (t == TSampler2D) ? varName(v) :(isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
+                        (t == TSampler2D || t == TSamplerCube) ? varName(v) :(isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
                     default:
                         (isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
                 }
@@ -696,7 +697,8 @@ class GLSLTranscoder {
 		var params = s.vars.filter( (x) -> x.kind == Param);
 		var buffer_params = params.filter( (x) ->  switch(x.type) {
 			case TSampler2D: false;
-			case TArray(t, size): t != TSampler2D;
+			case TSamplerCube: false;
+			case TArray(t, size): t != TSampler2D && t != TSamplerCube;
 			default:true;
 		});
 
@@ -723,7 +725,8 @@ class GLSLTranscoder {
 
         var sampler_params = params.filter( (x) ->  switch(x.type) {
             case TSampler2D: true;
-            case TArray(t, size): t == TSampler2D;
+			case TSamplerCube:true;
+            case TArray(t, size): t == TSampler2D || t == TSamplerCube;
             default:false;
         });
 
@@ -736,8 +739,8 @@ class GLSLTranscoder {
 					debugTrace ('RENDER adding sampler ${v.name}');
 				case TArray(t, size): 
 					debugTrace ('RENDER adding sampler array ${v.name}');
-
-					t == TSampler2D;
+				case TSamplerCube:
+					debugTrace ('RENDER adding cube sampler ${v.name}');
 				default:false;
 			}
 

@@ -646,6 +646,19 @@ HL_PRIM void HL_NAME(DescriptorSetDesc_delete)( _ref(DescriptorSetDesc)* _this )
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, DescriptorSetDesc_delete, _IDL);
+static DescriptorSlotMode DescriptorSlotMode__values[] = { DBM_TEXTURES,DBM_SAMPLERS };
+HL_PRIM int HL_NAME(DescriptorSlotMode_toValue0)( int idx ) {
+	return DescriptorSlotMode__values[idx];
+}
+DEFINE_PRIM(_I32, DescriptorSlotMode_toValue0, _I32);
+HL_PRIM int HL_NAME(DescriptorSlotMode_indexToValue0)( int idx ) {
+	return DescriptorSlotMode__values[idx];
+}
+DEFINE_PRIM(_I32, DescriptorSlotMode_indexToValue0, _I32);
+HL_PRIM int HL_NAME(DescriptorSlotMode_valueToIndex0)( int value ) {
+	for( int i = 0; i < 2; i++ ) if ( value == (int)DescriptorSlotMode__values[i]) return i; return -1;
+}
+DEFINE_PRIM(_I32, DescriptorSlotMode_valueToIndex0, _I32);
 static void finalize_DescriptorDataBuilder( _ref(DescriptorDataBuilder)* _this ) { free_ref(_this ); }
 HL_PRIM void HL_NAME(DescriptorDataBuilder_delete)( _ref(DescriptorDataBuilder)* _this ) {
 	free_ref(_this );
@@ -1369,6 +1382,26 @@ HL_PRIM bool HL_NAME(GraphicsPipelineDesc_set_mVRFoveatedRendering)( _ref(Graphi
 }
 DEFINE_PRIM(_BOOL,GraphicsPipelineDesc_set_mVRFoveatedRendering,_IDL _BOOL);
 
+HL_PRIM HL_CONST _ref(Shader)* HL_NAME(ComputePipelineDesc_get_shaderProgram)( _ref(ComputePipelineDesc)* _this ) {
+	return alloc_ref_const(_unref(_this)->pShaderProgram,Shader);
+}
+DEFINE_PRIM(_IDL,ComputePipelineDesc_get_shaderProgram,_IDL);
+HL_PRIM HL_CONST _ref(Shader)* HL_NAME(ComputePipelineDesc_set_shaderProgram)( _ref(ComputePipelineDesc)* _this, HL_CONST _ref(Shader)* value ) {
+	_unref(_this)->pShaderProgram = _unref_ptr_safe(value);
+	return value;
+}
+DEFINE_PRIM(_IDL,ComputePipelineDesc_set_shaderProgram,_IDL _IDL);
+
+HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(ComputePipelineDesc_get_rootSignature)( _ref(ComputePipelineDesc)* _this ) {
+	return alloc_ref_const(_unref(_this)->pRootSignature,RootSignature);
+}
+DEFINE_PRIM(_IDL,ComputePipelineDesc_get_rootSignature,_IDL);
+HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(ComputePipelineDesc_set_rootSignature)( _ref(ComputePipelineDesc)* _this, HL_CONST _ref(RootSignature)* value ) {
+	_unref(_this)->pRootSignature = _unref_ptr_safe(value);
+	return value;
+}
+DEFINE_PRIM(_IDL,ComputePipelineDesc_set_rootSignature,_IDL _IDL);
+
 HL_PRIM _ref(HlForgePipelineDesc)* HL_NAME(PipelineDesc_new0)() {
 	return alloc_ref((new HlForgePipelineDesc()),PipelineDesc);
 }
@@ -1378,6 +1411,11 @@ HL_PRIM HL_CONST _ref(GraphicsPipelineDesc)* HL_NAME(PipelineDesc_graphicsPipeli
 	return alloc_ref_const((_unref(_this)->graphicsPipeline()),GraphicsPipelineDesc);
 }
 DEFINE_PRIM(_IDL, PipelineDesc_graphicsPipeline0, _IDL);
+
+HL_PRIM HL_CONST _ref(ComputePipelineDesc)* HL_NAME(PipelineDesc_computePipeline0)(_ref(HlForgePipelineDesc)* _this) {
+	return alloc_ref_const((_unref(_this)->computePipeline()),ComputePipelineDesc);
+}
+DEFINE_PRIM(_IDL, PipelineDesc_computePipeline0, _IDL);
 
 HL_PRIM _ref(PipelineCache)* HL_NAME(PipelineDesc_get_pCache)( _ref(HlForgePipelineDesc)* _this ) {
 	return alloc_ref(_unref(_this)->pCache,PipelineCache);
@@ -1504,6 +1542,11 @@ HL_PRIM void HL_NAME(Cmd_insertBarrier1)(_ref(Cmd)* _this, _ref(ResourceBarrierB
 	(forge_cmd_insert_barrier( _unref(_this) , _unref_ptr_safe(barrier)));
 }
 DEFINE_PRIM(_VOID, Cmd_insertBarrier1, _IDL _IDL);
+
+HL_PRIM void HL_NAME(Cmd_dispatch3)(_ref(Cmd)* _this, int groupx, int groupy, int groupz) {
+	(cmdDispatch( _unref(_this) , groupx, groupy, groupz));
+}
+DEFINE_PRIM(_VOID, Cmd_dispatch3, _IDL _I32 _I32 _I32);
 
 HL_PRIM _ref(Map64Int)* HL_NAME(Map64Int_new0)() {
 	return alloc_ref((new Map64Int()),Map64Int);
@@ -1889,9 +1932,9 @@ HL_PRIM void HL_NAME(DescriptorDataBuilder_clearSlotData1)(_ref(DescriptorDataBu
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_clearSlotData1, _IDL _I32);
 
-HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlot2)(_ref(DescriptorDataBuilder)* _this, vstring * name, int type) {
+HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlot2)(_ref(DescriptorDataBuilder)* _this, vstring * name, int descriptorType) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
-	auto ___retvalue = (_unref(_this)->addSlot(name__cstr, DescriptorType__values[type]));
+	auto ___retvalue = (_unref(_this)->addSlot(name__cstr, DescriptorSlotMode__values[descriptorType]));
 	return ___retvalue;
 }
 DEFINE_PRIM(_I32, DescriptorDataBuilder_addSlot2, _IDL _STRING _I32);
@@ -1905,6 +1948,11 @@ HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotSampler2)(_ref(DescriptorDataB
 	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(sampler)));
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotSampler2, _IDL _I32 _IDL);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotUAVMipSlice2)(_ref(DescriptorDataBuilder)* _this, int slot, int idx) {
+	(_unref(_this)->setSlotUAVMipSlice(slot, idx));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_setSlotUAVMipSlice2, _IDL _I32 _I32);
 
 HL_PRIM void HL_NAME(DescriptorDataBuilder_update3)(_ref(DescriptorDataBuilder)* _this, _ref(Renderer)* renderer, int index, _ref(DescriptorSet)* set) {
 	(_unref(_this)->update(_unref_ptr_safe(renderer), index, _unref_ptr_safe(set)));
@@ -1978,6 +2026,13 @@ acquireNextImage( _unref(_this) , _unref_ptr_safe(pSwapChain), _unref_ptr_safe(p
 	return __tmpret;
 }
 DEFINE_PRIM(_I32, Renderer_acquireNextImage4, _IDL _IDL _IDL _IDL);
+
+HL_PRIM HL_CONST _ref(Shader)* HL_NAME(Renderer_loadComputeShader1)(_ref(Renderer)* _this, vstring * fileName) {
+	const char* fileName__cstr = (fileName == nullptr) ? "" : hl_to_utf8( fileName->bytes ); // Should be garbage collected
+	auto ___retvalue = alloc_ref_const((forge_load_compute_shader_file( _unref(_this) , fileName__cstr)),Shader);
+	return ___retvalue;
+}
+DEFINE_PRIM(_IDL, Renderer_loadComputeShader1, _IDL _STRING);
 
 HL_PRIM _ref(DescriptorSet)* HL_NAME(Renderer_addDescriptorSet2)(_ref(Renderer)* _this, _ref(DescriptorSetDesc)* desc) {
 	DescriptorSet* __tmpret;
@@ -2110,6 +2165,16 @@ HL_PRIM void HL_NAME(Texture_upload2)(_ref(Texture)* _this, vbyte* data, int siz
 }
 DEFINE_PRIM(_VOID, Texture_upload2, _IDL _BYTES _I32);
 
+HL_PRIM void HL_NAME(Texture_uploadMip3)(_ref(Texture)* _this, int mip, vbyte* data, int size) {
+	(forge_texture_upload_mip( _unref(_this) , mip, data, size));
+}
+DEFINE_PRIM(_VOID, Texture_uploadMip3, _IDL _I32 _BYTES _I32);
+
+HL_PRIM void HL_NAME(Texture_uploadLayerMip4)(_ref(Texture)* _this, int layer, int mip, vbyte* data, int size) {
+	(forge_texture_upload_layer_mip( _unref(_this) , layer, mip, data, size));
+}
+DEFINE_PRIM(_VOID, Texture_uploadLayerMip4, _IDL _I32 _I32 _BYTES _I32);
+
 HL_PRIM void HL_NAME(Texture_dispose0)(_ref(Texture)* _this) {
 	(removeResource( _unref(_this) ));
 }
@@ -2239,12 +2304,12 @@ HL_PRIM int HL_NAME(TextureDesc_set_startState)( _ref(TextureDesc)* _this, int v
 }
 DEFINE_PRIM(_I32,TextureDesc_set_startState,_IDL _I32);
 
-HL_PRIM int HL_NAME(TextureDesc_get_descriptors)( _ref(TextureDesc)* _this ) {
-	return HL_NAME(DescriptorType_valueToIndex0)(_unref(_this)->mDescriptors);
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_descriptors)( _ref(TextureDesc)* _this ) {
+	return _unref(_this)->mDescriptors;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_descriptors,_IDL);
-HL_PRIM int HL_NAME(TextureDesc_set_descriptors)( _ref(TextureDesc)* _this, int value ) {
-	_unref(_this)->mDescriptors = (DescriptorType)HL_NAME(DescriptorType_indexToValue0)(value);
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_descriptors)( _ref(TextureDesc)* _this, unsigned int value ) {
+	_unref(_this)->mDescriptors = (DescriptorType)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_descriptors,_IDL _I32);

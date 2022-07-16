@@ -682,6 +682,11 @@ interface GraphicsPipelineDesc {
 
 };
 
+[NoDelete]
+interface ComputePipelineDesc {
+	[Const, Internal="pShaderProgram"] attribute Shader              shaderProgram;
+	[Const, Internal="pRootSignature"] attribute RootSignature       rootSignature;
+};
 
 interface PipelineCache {
 
@@ -692,6 +697,8 @@ interface PipelineDesc {
 	void PipelineDesc();
 
 	[Const] GraphicsPipelineDesc graphicsPipeline();
+	[Const] ComputePipelineDesc computePipeline();
+
 	attribute PipelineCache pCache;
 //	void*          pPipelineExtensions;
 	attribute uint       mExtensionCount;
@@ -731,6 +738,7 @@ interface Cmd {
 //	[CObject,Internal="forge_cmd_wait_for_render"] void renderBarrier( RenderTarget rt );
 //	[CObject,Internal="forge_cmd_wait_for_present"] void presentBarrier( RenderTarget rt );
 	[CObject,Internal="forge_cmd_insert_barrier"] void insertBarrier( ResourceBarrierBuilder barrier );
+	[CObject,Internal="cmdDispatch"] void dispatch( int groupx, int groupy, int groupz );
 };
 
 
@@ -880,13 +888,19 @@ interface DescriptorSet {
 
 };
 
+enum DescriptorSlotMode {
+    "DBM_TEXTURES",
+    "DBM_SAMPLERS"
+};
+
 interface DescriptorDataBuilder {
 	void DescriptorDataBuilder();
 	void clear();
 	void clearSlotData(int index);
-	int addSlot(String name, DescriptorType type);
+	int addSlot(String name, DescriptorSlotMode descriptorType);
 	[Internal="addSlotData"] void addSlotTexture( int slot, Texture tex );
 	[Internal="addSlotData"] void addSlotSampler( int slot, Sampler sampler );
+	void setSlotUAVMipSlice( int slot, int idx );
 	void update(Renderer renderer, int index, DescriptorSet set);
 	void bind(Cmd cmd, int index, DescriptorSet set);	
 };
@@ -915,6 +929,7 @@ interface Renderer {
 	[CObject, Internal="forge_sdl_renderer_create_semaphore", Const] Semaphore createSemaphore();
 	[CObject] uint acquireNextImage(SwapChain pSwapChain, Semaphore pImageAcquiredSemaphore, Fence fence, [Return] uint swapIndex);
 
+	[CObject, Internal="forge_load_compute_shader_file", Const] Shader loadComputeShader( String fileName );
 
 	[CObject, Const] DescriptorSet addDescriptorSet( DescriptorSetDesc desc, [Return] DescriptorSet set ); 
 	[CObject, Const, Internal="forge_renderer_create_descriptor_set"] DescriptorSet createDescriptorSet( RootSignature sig, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex ); 
@@ -982,6 +997,10 @@ interface BufferLoadDesc {
 [NoDelete]
 interface Texture {
 	[CObject, Internal="forge_sdl_texture_upload"] void upload(bytes data, int size);
+	[CObject, Internal="forge_texture_upload_mip"] void uploadMip(int mip, bytes data, int size);
+	[CObject, Internal="forge_texture_upload_layer_mip"] void uploadLayerMip(int layer, int mip, bytes data, int size);
+
+	
 	[CObject, Internal="removeResource"]  void dispose();
 
 };
@@ -1018,7 +1037,7 @@ interface TextureDesc {
 	/// What state will the texture get created in
 	[Internal="mStartState"] attribute ResourceState startState;
 	/// Descriptor creation
-	[Internal="mDescriptors"] attribute DescriptorType descriptors;
+	[Internal="mDescriptors", SetCast="DescriptorType"] attribute uint descriptors;
 	/// Number of GPUs to share this texture
 	[Internal="mSharedNodeIndexCount"] attribute uint sharedNodeIndexCount;
 	/// GPU which will own this texture
