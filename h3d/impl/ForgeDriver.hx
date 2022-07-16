@@ -16,6 +16,7 @@ private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
 private typedef ForgeShader = forge.Native.Shader;
 
+
 private class CompiledShader {
 	public var s:ForgeShader;
 	public var vertex:Bool;
