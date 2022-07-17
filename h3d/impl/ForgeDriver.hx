@@ -12,10 +12,10 @@ import forge.Native.BlendStateTargets as BlendStateTargets;
 import forge.Native.ColorMask as ColorMask;
 import forge.Native.StateBuilder as StateBuilder;
 
+
 private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
 private typedef ForgeShader = forge.Native.Shader;
-
 
 private class CompiledShader {
 	public var s:ForgeShader;

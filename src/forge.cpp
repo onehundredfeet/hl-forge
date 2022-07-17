@@ -2158,6 +2158,21 @@ HL_PRIM void HL_NAME(Buffer_dispose0)(_ref(Buffer)* _this) {
 }
 DEFINE_PRIM(_VOID, Buffer_dispose0, _IDL);
 
+HL_PRIM vbyte* HL_NAME(Buffer_getCpuAddress0)(_ref(Buffer)* _this) {
+	return (forge_buffer_get_cpu_address( _unref(_this) ));
+}
+DEFINE_PRIM(_BYTES, Buffer_getCpuAddress0, _IDL);
+
+HL_PRIM unsigned int HL_NAME(Buffer_get_size)( _ref(Buffer)* _this ) {
+	return _unref(_this)->mSize;
+}
+DEFINE_PRIM(_I32,Buffer_get_size,_IDL);
+HL_PRIM unsigned int HL_NAME(Buffer_set_size)( _ref(Buffer)* _this, unsigned int value ) {
+	_unref(_this)->mSize = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,Buffer_set_size,_IDL _I32);
+
 HL_PRIM _ref(BufferLoadDesc)* HL_NAME(BufferLoadDesc_new0)() {
 	auto ___retvalue = alloc_ref((new BufferLoadDesc()),BufferLoadDesc);
 	*(___retvalue->value) = {};
