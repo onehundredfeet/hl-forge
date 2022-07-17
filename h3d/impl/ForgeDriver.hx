@@ -997,7 +997,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			for (i in 0...shader.fragment.texturesCount) {
 				
 				switch(tt.type) {
-					case TSampler2D:
+					case TSampler2D, TChannel(_):
 						var xx = {u:p.fragment.textureIndex, t:tt.type, mode:0};
 						p.fragment.textures.push(xx);
 
