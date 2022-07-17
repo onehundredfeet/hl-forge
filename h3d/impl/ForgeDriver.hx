@@ -25,10 +25,13 @@ private class CompiledShader {
 	public var globalsLength:Int;
 	public var paramsLength:Int;
 	public var textures:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
+	public var texturesCubes:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
 	public var buffers:Array<Int>;
 	public var shader:hxsl.RuntimeShader.RuntimeShaderData;
 	public var textureIndex:DescriptorIndex;
+	public var textureCubeIndex:DescriptorIndex;
 	public var samplerIndex:DescriptorIndex;
+	public var samplerCubeIndex:DescriptorIndex;
 	public var textureSlot: Int;
 	public var samplerSlot: Int;
 	public var md5 : String;
@@ -36,6 +39,10 @@ private class CompiledShader {
 	public function textureCount() : Int {
 		return textures != null ? textures.length : 0;
 	}
+	public function textureCubeCount() : Int {
+		return texturesCubes != null ? texturesCubes.length : 0;
+	}
+
 //	public var textureDataBuilder:forge.Native.DescriptorDataBuilder;
 //	public var samplerDataBuilder:forge.Native.DescriptorDataBuilder;
 
@@ -135,6 +142,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	var _vertexTextures = new Array<h3d.mat.Texture>();
 	var _fragmentTextures = new Array<h3d.mat.Texture>();
+	var _fragmentTextureCubes = new Array<h3d.mat.Texture>();
 	var _swapRenderTargets = new Array<RenderTarget>();
 
 //	var defaultDepthInst : h3d.mat.DepthBuffer;
@@ -942,7 +950,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		p.fragment.md5 = frag_md5;
 
 		debugTrace('RENDER Shader texture count vert ${shader.vertex.texturesCount}');
-		debugTrace('RENDER Shader texture count frag ${shader.fragment.texturesCount}');
+		debugTrace('RENDER TEXTURE Shader texture count frag ${shader.fragment.texturesCount}');
 
 		var rootDesc = new forge.Native.RootSignatureDesc();
 
@@ -953,11 +961,11 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		
 		forge.Native.Globals.waitForAllResourceLoads();
 
-		if (shader.fragment.texturesCount > 0) {
+		if (shader.fragment.texturesCount > 0 ) {
 			if (_bilinearClamp2DSampler == null) {
 				var samplerDesc = new forge.Native.SamplerDesc();
-				samplerDesc.mMinFilter = FILTER_NEAREST;
-				samplerDesc.mMagFilter = FILTER_NEAREST;
+				samplerDesc.mMinFilter = FILTER_LINEAR;
+				samplerDesc.mMagFilter = FILTER_LINEAR;
 				samplerDesc.mAddressU = ADDRESS_MODE_CLAMP_TO_EDGE;
 				samplerDesc.mAddressV = ADDRESS_MODE_CLAMP_TO_EDGE;
 				samplerDesc.mAddressW = ADDRESS_MODE_CLAMP_TO_EDGE;	
@@ -972,26 +980,53 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 			var tt = shader.fragment.textures;
 			
-			debugTrace('RENDER texture name ${tt.name} index ${tt.index} instance ${tt.instance} pos ${tt.pos} type ${tt.type} next ${tt.next}');
+			debugTrace('RENDER TEXTURE name ${tt.name} index ${tt.index} instance ${tt.instance} pos ${tt.pos} type ${tt.type} next ${tt.next}');
 
-
+			
 
 			//var ds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
 			//p.fragment.textureDS = ds;
 
-			p.fragment.textureIndex = rootSig.getDescriptorIndexFromName( "fragmentTextures");
-			p.fragment.samplerIndex = rootSig.getDescriptorIndexFromName( "fragmentTexturesSmplr");
-
+			
 			
 			//var sds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
 			//p.fragment.samplerDS = sds;
 
 			p.fragment.textures = new Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>();
+			p.fragment.texturesCubes = new Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>();
 			for (i in 0...shader.fragment.texturesCount) {
-				var xx = {u:p.fragment.textureIndex, t:tt.type, mode:0};
-				p.fragment.textures.push(xx);
+				
+				switch(tt.type) {
+					case TSampler2D:
+						var xx = {u:p.fragment.textureIndex, t:tt.type, mode:0};
+						p.fragment.textures.push(xx);
+
+						debugTrace('RENDER TEXTURE Added 2D texture');
+					case TSamplerCube:
+						var xx = {u:p.fragment.textureCubeIndex, t:tt.type, mode:0};
+						p.fragment.texturesCubes.push(xx);
+						debugTrace('RENDER TEXTURE Added Cube texture');
+					default: throw 'Not a supported texture type ${tt.type}';
+				}
+				
 				tt = tt.next;
 			}
+
+			if (p.fragment.textureCount() > 0) {
+				p.fragment.textureIndex = rootSig.getDescriptorIndexFromName( "fragmentTextures");
+				p.fragment.samplerIndex = rootSig.getDescriptorIndexFromName( "fragmentTexturesSmplr");
+			} else {
+				p.fragment.textureIndex = -1;
+				p.fragment.samplerIndex = -1;
+			}
+			if (p.fragment.textureCubeCount() > 0) {
+				p.fragment.textureCubeIndex = rootSig.getDescriptorIndexFromName( "fragmentTexturesCube");					
+				p.fragment.samplerCubeIndex = rootSig.getDescriptorIndexFromName( "fragmentTexturesCubeSmplr");
+			}else {
+				p.fragment.textureCubeIndex = -1;
+				p.fragment.samplerCubeIndex = -1;
+			}
+
 
 			//rootDesc.addSampler( _bilinearClamp2DSampler, "fragmentTexturesSmplr" );
 		}
@@ -1016,11 +1051,11 @@ struct spvDescriptorSetBuffer0
 */
 		
 		// fragmentTextures = 1
-		var textureDescIndex = p.fragment.textureIndex;
+		//var textureDescIndex = p.fragment.textureIndex;
 		// fragmentTexturesSmplr = 2
-		var textureSampIndex = p.fragment.samplerIndex;
+		//var textureSampIndex = p.fragment.samplerIndex;
 		// spvDescriptorSetBuffer0 = -1
-		debugTrace('RENDER tdi ${textureDescIndex} tsi ${textureSampIndex}'); 
+		debugTrace('RENDER TEXTURE tdi ${p.fragment.textureIndex} tsi ${p.fragment.samplerIndex} tcdi ${p.fragment.textureCubeIndex} tcsi ${p.fragment.samplerCubeIndex}'); 
 		debugTrace('PARAMS Indices vg ${p.vertex.constantsIndex} vp ${p.vertex.params} fg ${p.fragment.constantsIndex} fp ${p.fragment.params}');
 
 		var attribNames = [];
@@ -1126,6 +1161,7 @@ struct spvDescriptorSetBuffer0
 
 			_vertexTextures.resize( _curShader.vertex.textureCount() );
 			_fragmentTextures.resize( _curShader.fragment.textureCount() );
+			_fragmentTextureCubes.resize( _curShader.fragment.textureCubeCount() );
 		}
 	
 
@@ -1142,8 +1178,8 @@ struct spvDescriptorSetBuffer0
 		crc.byte((x >> 16) & 0xff);
 		crc.byte((x >> 24) & 0xff);
 	}
-	var _textureDescriptorMap = new Map<Int, {mat:CompiledMaterial, tex: Array<h3d.mat.Texture>, ds : forge.Native.DescriptorSet}>();
-	var _textureDataBuilder :  forge.Native.DescriptorDataBuilder;
+	var _textureDescriptorMap = new Map<Int, {mat:CompiledMaterial, tex: Array<h3d.mat.Texture>, texCubes: Array<h3d.mat.Texture>, ds : forge.Native.DescriptorSet}>();
+	var _textureDataBuilder :  Array<forge.Native.DescriptorDataBuilder>;
 
 
 
@@ -1192,26 +1228,33 @@ struct spvDescriptorSetBuffer0
 				tmpBuff.blit(offset, hl.Bytes.getArray(buf.fragment.params.toData()), 0,  _curShader.fragment.paramsLength * 4);
 			}
 			case Textures:  
-				debugTrace ('RENDER TEXTURES PIPELINE PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length}');
+				debugTrace ('RENDER TEXTURES PIPELINE PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length} ');
 				
 
 				if (buf.vertex.tex.length < _vertexTextures.length) throw "Not enough vertex textures";
-				if (buf.fragment.tex.length < _fragmentTextures.length) throw "Not enough vertex textures";
+
+				var bufTexCount = 0;
+				var bufTexCubeCount = 0;
+
+				for(t in buf.fragment.tex) {
+					if (t.flags.has(Cube)) bufTexCubeCount++; else bufTexCount++;
+				}
+				if (bufTexCount < _fragmentTextures.length) throw "Not enough fragment textures";
+				if (bufTexCubeCount < _fragmentTextureCubes.length) throw "Not enough fragment texture cubes";
 
 				for (i in 0..._vertexTextures.length) {
 					_vertexTextures[i] = buf.vertex.tex[i];
 				}
+				var source2DIdx = 0;
 				for (i in 0..._fragmentTextures.length) {
-					_fragmentTextures[i] = buf.fragment.tex[i];
-					var t = _fragmentTextures[i];
-					t.lastFrame = _currentFrame;
-/*					var pt = _curShader.fragment.textures[i];
-
-					if( pt.u == null ) {
-						throw "Shader texture descriptor is null";
-						continue;
+					while (buf.fragment.tex[source2DIdx].flags.has(Cube)) {
+						source2DIdx++;
 					}
-					*/
+					_fragmentTextures[i] = buf.fragment.tex[source2DIdx++];
+					var t = _fragmentTextures[i];
+					
+					t.lastFrame = _currentFrame;
+
 					if (t.t.rt != null) {
 						var rtt = t.t.rt.rt.getTexture();
 						if (rtt == null) {
@@ -1221,7 +1264,26 @@ struct spvDescriptorSetBuffer0
 						if (t.t == null) throw "Texture is null";
 						if (t.t.t == null) throw "Forge texture is null";	
 					}
+				}
+				var sourceCubeIdx = 0;
+				for (i in 0..._fragmentTextureCubes.length) {
+					while (!buf.fragment.tex[sourceCubeIdx].flags.has(Cube)) {
+						sourceCubeIdx++;
+					}
+					_fragmentTextureCubes[i] = buf.fragment.tex[sourceCubeIdx++];
+					var t = _fragmentTextureCubes[i];
+					
+					t.lastFrame = _currentFrame;
 
+					if (t.t.rt != null) {
+						var rtt = t.t.rt.rt.getTexture();
+						if (rtt == null) {
+							throw "Render target texture is null";
+						}
+					} else {
+						if (t.t == null) throw "Texture is null";
+						if (t.t.t == null) throw "Forge texture is null";	
+					}
 				}
 				
 
@@ -1236,14 +1298,6 @@ struct spvDescriptorSetBuffer0
 				throw ("Not supported");
 				//debugTrace('Fragment buffers length ${ _curShader.fragment.buffers}');
 			}
-			/*
-				var start = 0;
-				if( !s.vertex && curShader.vertex.buffers != null )
-					start = curShader.vertex.buffers.length;
-				for( i in 0...s.buffers.length )
-					gl.bindBufferBase(GL.UNIFORM_BUFFER, i + start, @:privateAccess buf.buffers[i].buffer.vbuf.b);
-			}
-			*/
 
 		}
 
@@ -1735,7 +1789,8 @@ var offset = 8;
 		var cmat = _materialInternalMap.get(cmatidx);
 		debugTrace('RENDER PIPELINE Signature  xx.h ${hv.high} | xx.l ${hv.low} pipeid ${cmatidx}');
 		var shaderFragTextureCount = _curShader.fragment.textureCount();//.textures == null ? 0 : _curShader.fragment.textures.length;
-		debugTrace('RENDER PIPELINE texture count ${shaderFragTextureCount} vs ${_fragmentTextures.length}');
+		var shaderFragTextureCubeCount = _curShader.fragment.textureCubeCount();//.textures == null ? 0 : _curShader.fragment.textures.length;
+		debugTrace('RENDER PIPELINE texture count ${shaderFragTextureCount} vs ${_fragmentTextures.length} 2D | ${shaderFragTextureCubeCount} Cubes');
 
 		if (cmat == null) {
 			cmat = new CompiledMaterial();
@@ -1806,6 +1861,14 @@ var offset = 8;
 		}
 	}
 
+
+	static inline final TBDT_2D = 0x1;
+	static inline final  TBDT_CUBE = 0x2;
+	static inline final  TBDT_2D_AND_CUBE = TBDT_2D | TBDT_CUBE;
+	static inline final TBDT_2D_IDX = 0;
+	static inline final  TBDT_CUBE_IDX = 1;
+	static inline final  TBDT_2D_AND_CUBE_IDX = 2;
+
 	function bindTextures() {
 		debugTrace("RENDER CALLSTACK bindTextures");
 		if (_currentPipeline == null) throw "Can't bind textures on null pipeline";
@@ -1817,8 +1880,13 @@ var offset = 8;
 //		}
 
 		var shaderFragTextureCount = _curShader.fragment.textureCount();
+		var shaderFragTextureCubeCount = _curShader.fragment.textureCubeCount();
+
 
 		if (shaderFragTextureCount > _fragmentTextures.length) {
+			throw('Not enough textures for shader, provided  ${_fragmentTextures.length} but needs ${shaderFragTextureCount}');
+		}
+		if (shaderFragTextureCubeCount > _fragmentTextureCubes.length) {
 			throw('Not enough textures for shader, provided  ${_fragmentTextures.length} but needs ${shaderFragTextureCount}');
 		}
 
@@ -1826,9 +1894,22 @@ var offset = 8;
 		if (shaderFragTextureCount != _fragmentTextures.length) {
 			debugTrace('RENDER WARNING shader texture count ${shaderFragTextureCount} doesn\'t match provided texture count ${_fragmentTextures.length}');
 		}
-		if (shaderFragTextureCount > 0) {
+		if (shaderFragTextureCubeCount != _fragmentTextureCubes.length) {
+			debugTrace('RENDER WARNING shader texture cube count ${shaderFragTextureCount} doesn\'t match provided texture cube count ${_fragmentTextures.length}');
+		}
+		if (shaderFragTextureCount > 0 || shaderFragTextureCubeCount > 0) {
 	//		if (_curShader.vertex.textures.length == 0) return;
 			var fragmentSeed = 0x3917437;
+
+			var textureMode = 0;
+			if (shaderFragTextureCount > 0) textureMode |= TBDT_2D;
+			if (shaderFragTextureCubeCount > 0) textureMode |= TBDT_CUBE;
+			var textureModeIdx = switch(textureMode) {
+				case TBDT_2D: TBDT_2D_IDX;
+				case TBDT_CUBE: TBDT_CUBE_IDX;
+				case TBDT_2D_AND_CUBE: TBDT_2D_AND_CUBE_IDX;
+				default:throw("Unrecognized texture mode");				
+			}
 
 			var crc = new Crc32();
 
@@ -1836,8 +1917,13 @@ var offset = 8;
 			crcInt(crc, _currentPipeline._hash.low);
 			crcInt(crc, _currentPipeline._hash.high);
 
+			crcInt(crc, shaderFragTextureCount);
 			for (i in 0...shaderFragTextureCount) {
 				crcInt(crc, _fragmentTextures[i].id);
+			}
+			crcInt(crc, shaderFragTextureCubeCount);
+			for (i in 0...shaderFragTextureCubeCount) {
+				crcInt(crc, _fragmentTextureCubes[i].id);
 			}
 			
 			var tds = _textureDescriptorMap.get(crc.get());
@@ -1847,13 +1933,49 @@ var offset = 8;
 				var ds = _renderer.createDescriptorSet(_curShader.rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 2, 0);
 				
 				if (_textureDataBuilder == null ) {
-					_textureDataBuilder = new forge.Native.DescriptorDataBuilder();
-					_textureDataBuilder.addSlot("fragmentTextures", DBM_TEXTURES);
-					_textureDataBuilder.addSlot("fragmentTexturesSmplr", DBM_SAMPLERS);
+					_textureDataBuilder = new Array<forge.Native.DescriptorDataBuilder>();
+	
+					for (i in 0...3) {
+						var textureMode = switch(i) {
+							case TBDT_2D_IDX: TBDT_2D;
+							case TBDT_CUBE_IDX: TBDT_CUBE;
+							case TBDT_2D_AND_CUBE_IDX: TBDT_2D_AND_CUBE;
+							default:throw("Unrecognized texture mode");
+						}
+						//2D Case
+						var cdb = new forge.Native.DescriptorDataBuilder();
+
+						if (textureMode & TBDT_2D != 0) {
+							cdb.addSlot("fragmentTextures", DBM_TEXTURES);
+							cdb.addSlot("fragmentTexturesSmplr", DBM_SAMPLERS);
+						}
+
+						if (textureMode & TBDT_CUBE != 0) {
+							cdb.addSlot("fragmentTexturesCube", DBM_TEXTURES);
+							cdb.addSlot("fragmentTexturesCubeSmplr", DBM_SAMPLERS);
+						}
+						_textureDataBuilder.push(cdb);
+					}
 				} else {
-					_textureDataBuilder.clearSlotData(0);
-					_textureDataBuilder.clearSlotData(1);
+					//Needs to be a better way to do this
+					switch(textureMode) {
+						case TBDT_2D: 
+							_textureDataBuilder[TBDT_2D_IDX].clearSlotData(0);
+							_textureDataBuilder[TBDT_2D_IDX].clearSlotData(1);
+						case TBDT_CUBE:
+							_textureDataBuilder[TBDT_CUBE_IDX].clearSlotData(0);
+							_textureDataBuilder[TBDT_CUBE_IDX].clearSlotData(1);
+						case TBDT_2D_AND_CUBE:
+							_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(0);
+							_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(1);
+							_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(2);
+							_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(3);
+						default:throw("Unrecognized texture mode");				
+					}
+
 				}
+
+				var tdb = _textureDataBuilder[textureModeIdx];
 
 				for (i in 0...shaderFragTextureCount) {
 					var t = _fragmentTextures[i];
@@ -1862,17 +1984,31 @@ var offset = 8;
 					
 					if (ft == null) throw "Forge texture is null";
 
-					_textureDataBuilder.addSlotTexture(0,ft);
-					_textureDataBuilder.addSlotSampler(1,_bilinearClamp2DSampler);
-					_textureDataBuilder.update(_renderer, 0, ds);
+					tdb.addSlotTexture(0,ft);
+					tdb.addSlotSampler(1,_bilinearClamp2DSampler);
 				}
 
-				tds = {mat:_currentPipeline, tex:_fragmentTextures.copy(), ds:ds};
+				for (i in 0...shaderFragTextureCubeCount) {
+					var t = _fragmentTextureCubes[i];
+					if (t.t == null) throw "Texture is null";
+					var ft = (t.t.rt != null) ? t.t.rt.rt.getTexture() :  t.t.t;
+					
+					if (ft == null) throw "Forge texture is null";
+					var slot =  (textureMode & TBDT_2D != 0) ? 2 : 0;
+					tdb.addSlotTexture(slot,ft);
+					tdb.addSlotSampler(slot+1,_bilinearClamp2DSampler);
+				}
+
+
+				tdb.update(_renderer, 0, ds);
+
+				tds = {mat:_currentPipeline, tex:_fragmentTextures.copy(), texCubes: _fragmentTextureCubes.copy(), ds:ds};
 				_textureDescriptorMap.set(crc.get(), tds);
 			} else {
-				debugTrace('RENDER Reusing texture ${crc.get()}');
+				debugTrace('RENDER TEXTURE Reusing texture ${crc.get()}');
 			}
 
+			debugTrace('RENDER BINDING TEXTURE descriptor tex ${shaderFragTextureCount} texCube ${shaderFragTextureCubeCount}');
 			_currentCmd.bindDescriptorSet(0, tds.ds);
 		} else {
 			debugTrace('RENDER No textures specified in shader');
