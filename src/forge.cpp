@@ -1227,6 +1227,26 @@ HL_PRIM unsigned int HL_NAME(RenderTarget_set_sampleQuality)( _ref(RenderTarget)
 }
 DEFINE_PRIM(_I32,RenderTarget_set_sampleQuality,_IDL _I32);
 
+HL_PRIM unsigned int HL_NAME(RenderTarget_get_width)( _ref(RenderTarget)* _this ) {
+	return _unref(_this)->mWidth;
+}
+DEFINE_PRIM(_I32,RenderTarget_get_width,_IDL);
+HL_PRIM unsigned int HL_NAME(RenderTarget_set_width)( _ref(RenderTarget)* _this, unsigned int value ) {
+	_unref(_this)->mWidth = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,RenderTarget_set_width,_IDL _I32);
+
+HL_PRIM unsigned int HL_NAME(RenderTarget_get_height)( _ref(RenderTarget)* _this ) {
+	return _unref(_this)->mHeight;
+}
+DEFINE_PRIM(_I32,RenderTarget_get_height,_IDL);
+HL_PRIM unsigned int HL_NAME(RenderTarget_set_height)( _ref(RenderTarget)* _this, unsigned int value ) {
+	_unref(_this)->mHeight = (value);
+	return value;
+}
+DEFINE_PRIM(_I32,RenderTarget_set_height,_IDL _I32);
+
 HL_PRIM int HL_NAME(RenderTarget_get_format)( _ref(RenderTarget)* _this ) {
 	return HL_NAME(TinyImageFormat_valueToIndex0)(_unref(_this)->mFormat);
 }
@@ -1251,6 +1271,11 @@ HL_PRIM void HL_NAME(RenderTarget_setClearDepthNormalized2)(_ref(RenderTarget)* 
 	(forge_render_target_set_clear_depth( _unref(_this) , depth, stencil));
 }
 DEFINE_PRIM(_VOID, RenderTarget_setClearDepthNormalized2, _IDL _F32 _I32);
+
+HL_PRIM void HL_NAME(RenderTarget_capture2)(_ref(RenderTarget)* _this, _ref(Buffer)* pTransferBuffer, _ref(Semaphore)* semaphore) {
+	(forge_render_target_capture( _unref(_this) , _unref_ptr_safe(pTransferBuffer), _unref_ptr_safe(semaphore)));
+}
+DEFINE_PRIM(_VOID, RenderTarget_capture2, _IDL _IDL _IDL);
 
 HL_PRIM HL_CONST _ref(Shader)* HL_NAME(GraphicsPipelineDesc_get_pShaderProgram)( _ref(GraphicsPipelineDesc)* _this ) {
 	return alloc_ref_const(_unref(_this)->pShaderProgram,Shader);
@@ -2092,6 +2117,11 @@ HL_PRIM void HL_NAME(Renderer_toggleVSync1)(_ref(Renderer)* _this, _ref(SwapChai
 	(::toggleVSync( _unref(_this) , &_unref(sc)));
 }
 DEFINE_PRIM(_VOID, Renderer_toggleVSync1, _IDL _IDL);
+
+HL_PRIM HL_CONST _ref(Buffer)* HL_NAME(Renderer_createTransferBuffer4)(_ref(Renderer)* _this, int format, int width, int height, int nodeIndex) {
+	return alloc_ref_const((forge_create_transfer_buffer( _unref(_this) , TinyImageFormat__values[format], width, height, nodeIndex)),Buffer);
+}
+DEFINE_PRIM(_IDL, Renderer_createTransferBuffer4, _IDL _I32 _I32 _I32 _I32);
 
 HL_PRIM _ref(ForgeSDLWindow)* HL_NAME(ForgeSDLWindow_new1)(_ref(SDL_Window)* sdlWindow) {
 	return alloc_ref((new ForgeSDLWindow(_unref_ptr_safe(sdlWindow))),ForgeSDLWindow);

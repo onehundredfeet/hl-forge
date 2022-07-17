@@ -11,6 +11,12 @@
 #include <Renderer/IResourceLoader.h>
 #include <Renderer/IShaderReflection.h>
 #include <basis_universal/basisu_enc.h>
+#include <OS/Core/TextureContainers.h>
+
+#include <tinyimageformat/tinyimageformat_base.h>
+#include <tinyimageformat/tinyimageformat_apis.h>
+#include <tinyimageformat/tinyimageformat_query.h>
+#include <tinyimageformat/tinyimageformat_bits.h>
 
 #define HL_NAME(x) forge_##x
 #include <hl.h>
@@ -528,6 +534,37 @@ DescriptorSet *forge_renderer_create_descriptor_set( Renderer *pRenderer, RootSi
         nodeIndex};
 
     addDescriptorSet( pRenderer, &desc, &tmp );
+    return tmp;
+}
+
+void forge_render_target_capture(RenderTarget*rt, Buffer *pTransferBuffer, Semaphore *semaphore) {	
+    TextureCopyDesc copyDesc = {};
+    copyDesc.pTexture = rt->pTexture;
+    copyDesc.pBuffer = pTransferBuffer;
+    copyDesc.pWaitSemaphore = semaphore;
+    copyDesc.mTextureState = RESOURCE_STATE_RENDER_TARGET;
+    copyDesc.mQueueType = QUEUE_TYPE_GRAPHICS;
+    SyncToken *st = nullptr;
+    copyResource(&copyDesc, st);
+}
+
+Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int width, int height, int nodeIndex) {
+    const uint32_t rowAlignment = max(1u, rp->pActiveGpuSettings->mUploadBufferTextureRowAlignment);
+    const uint32_t blockSize = max(1u, TinyImageFormat_BitSizeOfBlock(format));
+    const uint32_t sliceAlignment = round_up(round_up(rp->pActiveGpuSettings->mUploadBufferTextureAlignment, blockSize), rowAlignment);
+
+    BufferLoadDesc bufferDesc = {};
+    bufferDesc.mDesc.mSize = util_get_surface_size(format, width, height, 1, rowAlignment, sliceAlignment, 0, 1, 0, 1);
+    bufferDesc.mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_TO_CPU;
+    bufferDesc.mDesc.mFlags = BUFFER_CREATION_FLAG_PERSISTENT_MAP_BIT;
+    bufferDesc.mDesc.mQueueType = QUEUE_TYPE_TRANSFER;
+    bufferDesc.mDesc.mNodeIndex = nodeIndex;
+
+    Buffer *tmp = nullptr;
+    bufferDesc.ppBuffer = &tmp;
+
+    addResource(&bufferDesc, NULL);
+
     return tmp;
 }
 

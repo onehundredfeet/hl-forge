@@ -335,6 +335,7 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
 RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Shader *shader);
 RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSignatureFactory *);
 Shader *forge_load_compute_shader_file(Renderer *pRenderer, const char *fileName );
+Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int width, int height, int nodeIndex);
 
 // Queue
 void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence);
@@ -343,10 +344,12 @@ void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Se
 void forge_sdl_buffer_load_desc_set_index_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
 void forge_sdl_buffer_load_desc_set_vertex_buffer( BufferLoadDesc *bld, int size, void *data, bool shared);
 Buffer*forge_sdl_buffer_load( BufferLoadDesc *bld, SyncToken *token);
-
 //Buffer
 void forge_sdl_buffer_update(Buffer *buffer, void *data);
 void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int size, int soffset);
+inline unsigned char *forge_buffer_get_cpu_address( Buffer *buffer) {
+    return (unsigned char *)(buffer->pCpuMappedAddress);
+}
 
 // Cmd
 void forge_cmd_unbind(Cmd *);
@@ -372,6 +375,7 @@ void forge_sdl_texture_upload(Texture *, void *data, int dataSize);
 Texture *forge_render_target_get_texture( RenderTarget *rt);
 void forge_render_target_set_clear_colour( RenderTarget *rt, float r, float g, float b,float a);
 void forge_render_target_set_clear_depth( RenderTarget *rt, float depth, int stencil);
+void forge_render_target_capture(RenderTarget*rt,  Buffer *pTransferBuffer, Semaphore *semaphore);
 
 //Blend State
 void forge_blend_state_desc_set_rt( BlendStateDesc *, BlendStateTargets rt, bool enabled);

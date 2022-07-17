@@ -271,7 +271,7 @@ class ForgeDriver extends h3d.impl.Driver {
 				var present = new forge.Native.ResourceBarrierBuilder();
 				present.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_PRESENT);
 	
-				_swapRenderTargets.push({rt:rt,inBarrier:inBarrier, outBarrier:outBarrier, begin:begin, present:present });
+				_swapRenderTargets.push({rt:rt,inBarrier:inBarrier, outBarrier:outBarrier, begin:begin, present:present, captureBuffer : null });
 			}
 			if (_sc == null) {
 				throw "Swapchain is null";
@@ -2434,7 +2434,7 @@ var offset = 8;
 			var outBarrier = new forge.Native.ResourceBarrierBuilder();
 			outBarrier.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_SHADER_RESOURCE);
 
-			itex.rt = {rt: rt, inBarrier: inBarrier, outBarrier: outBarrier, begin:null, present:null };
+			itex.rt = {rt: rt, inBarrier: inBarrier, outBarrier: outBarrier, begin:null, present:null , captureBuffer: null};
 		} else {
 			debugTrace('RENDER TARGET  setting render target to existing ${tex} w ${tex.width} h ${tex.height}');
 		}
@@ -2602,8 +2602,16 @@ var offset = 8;
 		setRenderTargetsInternal(textures, 0, 0);
 	}
 
+
+
 	function captureSubRenderBuffer( rt: RenderTarget, pixels : hxd.Pixels, x : Int, y : Int ) {
 		if( rt == null ) throw "Can't capture null buffer";
+
+		if (rt.captureBuffer == null) {
+			rt.captureBuffer = _renderer.createTransferBuffer( rt.rt.format,rt.rt.width, rt.rt.height, 0 );
+		}
+
+		rt.rt.capture( rt.captureBuffer, null);
 //		gl.getError(); // always discard
 		var buffer = @:privateAccess pixels.bytes.b;
 		/*
@@ -2639,6 +2647,18 @@ var offset = 8;
 		if( h == 0 ) h = 1;
 		pixels = hxd.Pixels.alloc(w, h, tex.format);
 
+		if (tex.t.rt == null) {
+			throw "Capturing pixels from non-render target is not supported";
+		} else {
+			var rt = tex.t.rt;
+			throw "Capturing pixels from a render target is not supported";
+
+			//rt.rt.capture( null, )
+//			rt.
+			// Capture render target
+		}
+
+//		tex.t.rt.rt.capture()
 		/*
 		var old = curTarget;
 		var oldCount = numTargets;
@@ -2662,6 +2682,9 @@ var offset = 8;
 			numTargets = oldCount;
 		}
 		*/
+
+		throw "Capture pixels is not supported";
+
 		return pixels;
 	}
 
