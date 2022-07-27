@@ -663,8 +663,8 @@ interface RenderTarget {
 	[CObject, Internal="forge_render_target_set_clear_colour"] void setClearColor( float r, float g, float b,float a);
 	[CObject, Internal="forge_render_target_set_clear_depth"] void setClearDepthNormalized( float depth, int stencil );
 
-	[CObject, Internal="forge_render_target_capture"] void capture(Buffer pTransferBuffer,  Semaphore semaphore);
-
+	[CObject, Internal="forge_render_target_capture"] void captureAsBuffer(Buffer pTransferBuffer,  Semaphore semaphore);
+	[CObject,Internal="forge_render_target_capture_size"] int captureSize();
 };
 
 [NoDelete]
@@ -940,11 +940,11 @@ interface Renderer {
 	[CObject, Const] DescriptorSet addDescriptorSet( DescriptorSetDesc desc, [Return] DescriptorSet set ); 
 	[CObject, Const, Internal="forge_renderer_create_descriptor_set"] DescriptorSet createDescriptorSet( RootSignature sig, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex ); 
 
-
 	[CObject, Const, Internal="addSampler"] Sampler createSampler(  SamplerDesc desc, [Return] Sampler samplers );
 	[CObject, Internal="forge_renderer_wait_fence"] void waitFence( Fence fence );
 	[CObject, Internal="forge_renderer_shader_create", Const] Shader createShader(String vertShaderPath, String fragShaderPath);
-	
+	[CObject, Internal="forge_render_target_capture_2"] bool captureAsBytes(Cmd submittableCmd, RenderTarget renderTarget, Queue queue,  ResourceState renderTargetCurrentState, bytes buffer, int bufferSize);
+
 	[CObject] void resetCmdPool( CmdPool pool );
 	[CObject,Internal="addPipeline", Const] Pipeline createPipeline( PipelineDesc desc, [Return]Pipeline pipeline);
 

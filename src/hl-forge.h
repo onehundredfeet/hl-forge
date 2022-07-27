@@ -336,6 +336,7 @@ RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Sha
 RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSignatureFactory *);
 Shader *forge_load_compute_shader_file(Renderer *pRenderer, const char *fileName );
 Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int width, int height, int nodeIndex);
+bool forge_render_target_capture_2(Renderer *pRenderer, Cmd *pCmd, RenderTarget*pRenderTarget, Queue *pQueue,  ResourceState renderTargetCurrentState, uint8_t *alloc, int bufferSize);
 
 // Queue
 void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence);
@@ -376,6 +377,7 @@ Texture *forge_render_target_get_texture( RenderTarget *rt);
 void forge_render_target_set_clear_colour( RenderTarget *rt, float r, float g, float b,float a);
 void forge_render_target_set_clear_depth( RenderTarget *rt, float depth, int stencil);
 void forge_render_target_capture(RenderTarget*rt,  Buffer *pTransferBuffer, Semaphore *semaphore);
+int forge_render_target_capture_size(RenderTarget*pRenderTarget);
 
 //Blend State
 void forge_blend_state_desc_set_rt( BlendStateDesc *, BlendStateTargets rt, bool enabled);

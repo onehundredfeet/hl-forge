@@ -548,6 +548,53 @@ void forge_render_target_capture(RenderTarget*rt, Buffer *pTransferBuffer, Semap
     copyResource(&copyDesc, st);
 }
 
+void mapRenderTarget(Renderer* pRenderer, Queue* pQueue, Cmd* pCmd, RenderTarget* pRenderTarget, ResourceState currentResourceState, void* pImageData);
+
+int forge_render_target_capture_size(RenderTarget*pRenderTarget) {
+    uint16_t byteSize = TinyImageFormat_BitSizeOfBlock(pRenderTarget->mFormat) / 8;
+	uint8_t  channelCount = TinyImageFormat_ChannelCount(pRenderTarget->mFormat);
+
+    return pRenderTarget->mWidth * pRenderTarget->mHeight * byteSize;
+}
+bool forge_render_target_capture_2(Renderer *pRenderer, Cmd *pCmd, RenderTarget*pRenderTarget, Queue *pQueue,  ResourceState renderTargetCurrentState, uint8_t *alloc, int bufferSize) {
+    printf("CAPTURE alloc buffer is %p of size %d\n", alloc, bufferSize);
+	// Wait for queue to finish rendering.
+	waitQueueIdle(pQueue);
+
+	// Allocate temp space
+	uint16_t byteSize = TinyImageFormat_BitSizeOfBlock(pRenderTarget->mFormat) / 8;
+	uint8_t  channelCount = TinyImageFormat_ChannelCount(pRenderTarget->mFormat);
+    if (bufferSize != pRenderTarget->mWidth * pRenderTarget->mHeight * byteSize) return false;
+//	void*    alloc = tf_malloc(pRenderTarget->mWidth * pRenderTarget->mHeight * byteSize);
+//	resetCmdPool(pRenderer, pCmdPool);
+
+	// Generate image data buffer.
+	mapRenderTarget(pRenderer, pQueue, pCmd, pRenderTarget, renderTargetCurrentState, alloc);
+
+	// Flip the BGRA to RGBA
+	const bool flipRedBlueChannel = pRenderTarget->mFormat != TinyImageFormat_R8G8B8A8_UNORM;
+	if (flipRedBlueChannel)
+	{
+		int8_t* imageData = ((int8_t*)alloc);
+
+		for (uint32_t h = 0; h < pRenderTarget->mHeight; ++h)
+		{
+			for (uint32_t w = 0; w < pRenderTarget->mWidth; ++w)
+			{
+				uint32_t pixelIndex = (h * pRenderTarget->mWidth + w) * channelCount;
+				int8_t*  pixel = imageData + pixelIndex;
+
+				// Swap blue and red.
+				int8_t r = pixel[0];
+				pixel[0] = pixel[2];
+				pixel[2] = r;
+			}
+		}
+	}
+
+    return true;
+
+}
 Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int width, int height, int nodeIndex) {
     const uint32_t rowAlignment = max(1u, rp->pActiveGpuSettings->mUploadBufferTextureRowAlignment);
     const uint32_t blockSize = max(1u, TinyImageFormat_BitSizeOfBlock(format));

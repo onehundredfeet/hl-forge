@@ -12,10 +12,10 @@ import forge.Native.BlendStateTargets as BlendStateTargets;
 import forge.Native.ColorMask as ColorMask;
 import forge.Native.StateBuilder as StateBuilder;
 
-
 private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
 private typedef ForgeShader = forge.Native.Shader;
+
 
 private class CompiledShader {
 	public var s:ForgeShader;
@@ -105,7 +105,7 @@ private class CompiledMaterial {
 }
 
 inline function debugTrace(s : String) {
-	trace("DEBUG " + s);
+	//trace("DEBUG " + s);
 }
 
 @:access(h3d.impl.Shader)
@@ -194,6 +194,9 @@ class ForgeDriver extends h3d.impl.Driver {
 		_computeCmd = _renderer.createCommand(_computePool);
 		_computeFence = _renderer.createFence();
 
+		_capturePool = _renderer.createCommandPool(_queue);
+		_captureCmd = _renderer.createCommand(_capturePool);
+
 		_tmpPool = _renderer.createCommandPool(_queue);
 		_tmpCmd = _renderer.createCommand(_tmpPool);
 		_currentCmd = null;
@@ -214,7 +217,9 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _computePool : forge.Native.CmdPool;
 	var _computeCmd : forge.Native.Cmd;
 	var _computeFence : forge.Native.Fence;
-	
+	var _capturePool : forge.Native.CmdPool;
+	var _captureCmd : forge.Native.Cmd;
+
 	function createComputePipeline(filename : String) : ComputePipeline {
 		var shader = _renderer.loadComputeShader(filename + ".comp");
 
@@ -2604,16 +2609,40 @@ var offset = 8;
 
 
 
-	function captureSubRenderBuffer( rt: RenderTarget, pixels : hxd.Pixels, x : Int, y : Int ) {
+	var _captureBuffer : haxe.io.Bytes;
+
+	function captureSubRenderBuffer( rt: RenderTarget, pixels : hxd.Pixels, x : Int, y : Int, w : Int, h : Int ) {
 		if( rt == null ) throw "Can't capture null buffer";
 
-		if (rt.captureBuffer == null) {
-			rt.captureBuffer = _renderer.createTransferBuffer( rt.rt.format,rt.rt.width, rt.rt.height, 0 );
+		_renderer.resetCmdPool(_capturePool);
+
+		
+		var size = rt.rt.captureSize();
+		trace('CAPTURE Capturing buffer of size ${size} from w ${w} h ${h} at x ${x} y ${y} of format ${pixels.format}');
+		if (_captureBuffer == null || size > _captureBuffer.length) {
+			_captureBuffer = haxe.io.Bytes.alloc( size );
+		}
+		var outBuffer = @:privateAccess pixels.bytes.b;
+		var outLen = pixels.bytes.length;
+		var tmpBuffer = hl.Bytes.fromBytes(_captureBuffer);
+
+
+		trace('CAPTURE TMP BUFFER IS ${tmpBuffer} : ${StringTools.hex(tmpBuffer.address().high)}${StringTools.hex(tmpBuffer.address().low)}');
+		if (!_renderer.captureAsBytes(_captureCmd, rt.rt, _queue, forge.Native.ResourceState.RESOURCE_STATE_PRESENT, hl.Bytes.fromBytes(_captureBuffer), size)) {
+			throw "Capture Failed";
+		}
+		var rt_w = rt.rt.width;
+
+		trace('CAPTURE blitting rows of length ${w}  into an image of ${rt_w} at x ${x} y ${y}');
+
+		if (outLen < w * h * 4) throw 'output buffer isn\'t big enough ${outLen} vs ${w * h * 4}';
+
+		for (i in 0...h) {
+			outBuffer.blit( i * w * 4, tmpBuffer, ((i + y) * rt_w + x) * 4, w * 4);
 		}
 
-		rt.rt.capture( rt.captureBuffer, null);
-//		gl.getError(); // always discard
-		var buffer = @:privateAccess pixels.bytes.b;
+
+
 		/*
 		gl.readPixels(x, y, pixels.width, pixels.height, getChannels(curTarget.t), curTarget.t.pixelFmt, buffer);
 		var error = gl.getError();
@@ -2623,6 +2652,10 @@ var offset = 8;
 	}
 
 	public override function capturePixels(tex:h3d.mat.Texture, layer:Int, mipLevel:Int, ?region:h2d.col.IBounds):hxd.Pixels {
+		if (mipLevel != 0) throw "Capturing mip levels is unsupported";
+		if (layer != 0) throw "Capturing layers is unsupported";
+		
+		debugTrace('RENDER TEXTURE CAPTURE TARGET t ${tex} l ${layer} m ${mipLevel} r ${region}'); 
 		var pixels : hxd.Pixels;
 		var x : Int, y : Int, w : Int, h : Int;
 		if (region != null) {
@@ -2651,7 +2684,12 @@ var offset = 8;
 			throw "Capturing pixels from non-render target is not supported";
 		} else {
 			var rt = tex.t.rt;
-			throw "Capturing pixels from a render target is not supported";
+			@:privateAccess var b = pixels.bytes.b;
+			for (i in 0...pixels.bytes.length) {
+				b[i] = 255;
+			}
+
+			captureSubRenderBuffer(rt, pixels, x, y, w, h);
 
 			//rt.rt.capture( null, )
 //			rt.
@@ -2683,7 +2721,6 @@ var offset = 8;
 		}
 		*/
 
-		throw "Capture pixels is not supported";
 
 		return pixels;
 	}

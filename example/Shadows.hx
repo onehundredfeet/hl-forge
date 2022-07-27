@@ -10,6 +10,7 @@ class Shadows extends SampleApp {
 	override function init() {
 		super.init();
 
+		
 		var floor = new h3d.prim.Cube(10, 10, 0.1);
 		floor.addNormals();
 		floor.translate( -5, -5, 0);
@@ -38,10 +39,10 @@ class Shadows extends SampleApp {
 		dir.enableSpecular = true;
 
 		shadow = s3d.renderer.getPass(h3d.pass.DefaultShadowMap);
-		addSlider("Power", function() return shadow.power, function(p) shadow.power = p, 0, 100);
-		addSlider("Radius", function() return shadow.blur.radius, function(r) shadow.blur.radius = r, 0, 20);
-		addSlider("Quality", function() return shadow.blur.quality, function(r) shadow.blur.quality = r);
-		addSlider("Bias", function() return shadow.bias, function(r) shadow.bias = r, 0, 0.1);
+		//addSlider("Power", function() return shadow.power, function(p) shadow.power = p, 0, 100);
+		//addSlider("Radius", function() return shadow.blur.radius, function(r) shadow.blur.radius = r, 0, 20);
+		//addSlider("Quality", function() return shadow.blur.quality, function(r) shadow.blur.quality = r);
+		//addSlider("Bias", function() return shadow.bias, function(r) shadow.bias = r, 0, 0.1);
 
 		s3d.camera.pos.set(12, 12, 6);
 		new h3d.scene.CameraController(s3d).loadFromCamera();

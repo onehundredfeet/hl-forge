@@ -1272,10 +1272,15 @@ HL_PRIM void HL_NAME(RenderTarget_setClearDepthNormalized2)(_ref(RenderTarget)* 
 }
 DEFINE_PRIM(_VOID, RenderTarget_setClearDepthNormalized2, _IDL _F32 _I32);
 
-HL_PRIM void HL_NAME(RenderTarget_capture2)(_ref(RenderTarget)* _this, _ref(Buffer)* pTransferBuffer, _ref(Semaphore)* semaphore) {
+HL_PRIM void HL_NAME(RenderTarget_captureAsBuffer2)(_ref(RenderTarget)* _this, _ref(Buffer)* pTransferBuffer, _ref(Semaphore)* semaphore) {
 	(forge_render_target_capture( _unref(_this) , _unref_ptr_safe(pTransferBuffer), _unref_ptr_safe(semaphore)));
 }
-DEFINE_PRIM(_VOID, RenderTarget_capture2, _IDL _IDL _IDL);
+DEFINE_PRIM(_VOID, RenderTarget_captureAsBuffer2, _IDL _IDL _IDL);
+
+HL_PRIM int HL_NAME(RenderTarget_captureSize0)(_ref(RenderTarget)* _this) {
+	return (forge_render_target_capture_size( _unref(_this) ));
+}
+DEFINE_PRIM(_I32, RenderTarget_captureSize0, _IDL);
 
 HL_PRIM HL_CONST _ref(Shader)* HL_NAME(GraphicsPipelineDesc_get_pShaderProgram)( _ref(GraphicsPipelineDesc)* _this ) {
 	return alloc_ref_const(_unref(_this)->pShaderProgram,Shader);
@@ -2090,6 +2095,11 @@ HL_PRIM HL_CONST _ref(Shader)* HL_NAME(Renderer_createShader2)(_ref(Renderer)* _
 	return ___retvalue;
 }
 DEFINE_PRIM(_IDL, Renderer_createShader2, _IDL _STRING _STRING);
+
+HL_PRIM bool HL_NAME(Renderer_captureAsBytes6)(_ref(Renderer)* _this, _ref(Cmd)* submittableCmd, _ref(RenderTarget)* renderTarget, _ref(Queue)* queue, int renderTargetCurrentState, vbyte* buffer, int bufferSize) {
+	return (forge_render_target_capture_2( _unref(_this) , _unref_ptr_safe(submittableCmd), _unref_ptr_safe(renderTarget), _unref_ptr_safe(queue), ResourceState__values[renderTargetCurrentState], buffer, bufferSize));
+}
+DEFINE_PRIM(_BOOL, Renderer_captureAsBytes6, _IDL _IDL _IDL _IDL _I32 _BYTES _I32);
 
 HL_PRIM void HL_NAME(Renderer_resetCmdPool1)(_ref(Renderer)* _this, _ref(CmdPool)* pool) {
 	(resetCmdPool( _unref(_this) , _unref_ptr_safe(pool)));

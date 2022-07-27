@@ -59,6 +59,7 @@ set( FORGE_OS_SRCS
     ${FORGE_OS_SRC}/FileSystem/UnixFileSystem.cpp
     ${FORGE_OS_SRC}/FileSystem/SystemRun.cpp
     ${FORGE_OS_SRC}/MemoryTracking/MemoryTracking.c
+    ${FORGE_OS_SRC}/Core/Screenshot.cpp
 )
 
 set ( FORGE_MW_SRCS
@@ -107,7 +108,8 @@ ${FORGE_EASTL_SRCS}
 ${XXHASH_ROOT_DIR}/xxhash.c
 )
 
-set_source_files_properties(${FORGE_RENDERER_SRCS} ${FORGE_MW_SRCS} src/forge.cpp src/hl-forge.cpp PROPERTIES COMPILE_FLAGS "-x objective-c++")
+set_source_files_properties(${FORGE_RENDERER_SRCS} ${FORGE_MW_SRCS} ${FORGE_OS_SRCS} src/forge.cpp src/hl-forge.cpp PROPERTIES COMPILE_FLAGS "-x objective-c++")
+
 
 set_target_properties(forge.hdll
 PROPERTIES
