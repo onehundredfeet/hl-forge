@@ -1,0 +1,13 @@
+{
+    "name"         :  "hl-forge",
+    "url"          :  "https://github.com/onehundredfeet/hl-forge",
+    "license"      :  "MIT",
+    "tags"         :  [""],
+    "description"  :  "Quick assertions and traces with macros",
+    "version"      :  "0.1.0",
+    "classPath"    :  "lib",
+    "releasenote"  :  "Initial work",
+    "contributors" :  ["onehundredfeet"],
+    "dependencies" :  {}
+}
+
