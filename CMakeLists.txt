@@ -108,7 +108,7 @@ ${FORGE_EASTL_SRCS}
 ${XXHASH_ROOT_DIR}/xxhash.c
 )
 
-set_source_files_properties(${FORGE_RENDERER_SRCS} ${FORGE_MW_SRCS} ${FORGE_OS_SRCS} src/forge.cpp src/hl-forge.cpp PROPERTIES COMPILE_FLAGS "-x objective-c++")
+set_source_files_properties(${FORGE_RENDERER_SRCS} ${FORGE_MW_SRCS} ${FORGE_OS_SRCS} src/forge.cpp src/hl-forge.cpp PROPERTIES COMPILE_FLAGS "-x objective-c++ -std=c++17")
 
 
 set_target_properties(forge.hdll

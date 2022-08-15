@@ -7,3 +7,4 @@ build.xcode
 shadercache
 log
 example/res/.tmp
+build.debug
