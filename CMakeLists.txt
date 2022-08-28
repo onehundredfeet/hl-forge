@@ -95,7 +95,6 @@ set(FORGE_EASTL_SRCS
 )
 
 add_library(forge.hdll SHARED
-src/hl-idl-helpers.cpp
 src/forge.cpp
 src/hl-forge.cpp
 src/hl-forge-shaders.cpp

@@ -922,7 +922,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	var _programIds = 0;
 	var _bilinearClamp2DSampler : forge.Native.Sampler;
 
-	function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
+	public function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
 		var vertTranscoder = new forge.GLSLTranscoder();
 		var fragTranscoder = new forge.GLSLTranscoder();
 

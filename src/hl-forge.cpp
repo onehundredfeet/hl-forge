@@ -615,6 +615,13 @@ Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int w
     return tmp;
 }
 
+std::string forge_translate_glsl_metal( const char *source, const char *filepath, bool fragment ) {
+    auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
+    auto spirvASM = compile_file_to_assembly(filepath, HLFG_SHADER_VERTEX, source, false);
+    auto spvCode = assemble_to_spv(spirvASM);
+     return getMSLFromSPV(spvCode);
+}
+
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile) {
     auto vertSrc = getShaderSource(vertFile);
     auto fragSrc = getShaderSource(fragFile);
@@ -624,8 +631,11 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
         return nullptr;
     }
 
-    auto vertSpirvAsm = compile_file_to_assembly(vertFile, HLFG_SHADER_VERTEX, vertSrc, false);
-    auto fragSpirvAsm = compile_file_to_assembly(fragFile, HLFG_SHADER_FRAGMENT, fragSrc, false);
+    auto vertMSL = forge_translate_glsl_metal( vertSrc.c_str(), vertFile, false );
+    auto fragMSL = forge_translate_glsl_metal( fragSrc.c_str(), fragFile, true );
+    
+//    auto vertSpirvAsm = compile_file_to_assembly(vertFile, HLFG_SHADER_VERTEX, vertSrc, false);
+  //  auto fragSpirvAsm = compile_file_to_assembly(fragFile, HLFG_SHADER_FRAGMENT, fragSrc, false);
 
     std::string vertFilePathOriginal(vertFile);
     std::string fragFilePathOriginal(fragFile);
@@ -636,18 +646,18 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     auto vertFilePathSpirv = vertFilePath + ".spirvasm";
     auto fragFilePathSpirv = fragFilePath + ".spirvasm";
 
-    writeShaderSource(vertFilePathSpirv, vertSpirvAsm);
-    writeShaderSource(fragFilePathSpirv, fragSpirvAsm);
+//    writeShaderSource(vertFilePathSpirv, vertSpirvAsm);
+  //  writeShaderSource(fragFilePathSpirv, fragSpirvAsm);
 
-    auto vertCode = assemble_to_spv(vertSpirvAsm);
-    auto fragCode = assemble_to_spv(fragSpirvAsm);
+//    auto vertCode = assemble_to_spv(vertSpirvAsm);
+  //  auto fragCode = assemble_to_spv(fragSpirvAsm);
 
-    writeShaderSPV(vertFilePath + ".spv", vertCode);
-    writeShaderSPV(fragFilePath + ".spv", fragCode);
+    //writeShaderSPV(vertFilePath + ".spv", vertCode);
+    //writeShaderSPV(fragFilePath + ".spv", fragCode);
 
     DEBUG_PRINT("Getting MTL\n");
-    auto vertMSL = getMSLFromSPV(vertCode);
-    auto fragMSL = getMSLFromSPV(fragCode);
+//    auto vertMSL = getMSLFromSPV(vertCode);
+//    auto fragMSL = getMSLFromSPV(fragCode);
 
     auto vertFilePathMSL = vertFilePath + ".metal";
     auto fragFilePathMSL = fragFilePath + ".metal";
@@ -753,6 +763,94 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     return tmp;
 }
 
+void hl_compile_metal_to_bin(const char* filePath, const char* outFilePath) {
+    DEBUG_PRINT("MTL COMPILE SHADER\n");
+	char intermediateFilePath[FS_MAX_PATH] = {};
+    sprintf(intermediateFilePath, "%s.air", outFilePath);
+
+	const char* xcrun = "/usr/bin/xcrun";
+	std::vector<std::string> args;
+	char tmpArgs[FS_MAX_PATH + 10]{};
+
+	// Compile the source into a temporary .air file.
+	args.push_back("-sdk");
+	args.push_back("macosx");
+	args.push_back("metal");
+	args.push_back("-frecord-sources=flat");
+	args.push_back("-c");
+	args.push_back(filePath);
+	args.push_back("-o");
+	args.push_back(intermediateFilePath);
+
+	//enable the 2 below for shader debugging on xcode
+	//args.push_back("-MO");
+	//args.push_back("-gline-tables-only");
+	args.push_back("-D");
+	args.push_back("MTL_SHADER=1");    // Add MTL_SHADER macro to differentiate structs in headers shared by app/shader code.
+
+	std::vector<const char*> cArgs;
+	for (std::string& arg : args)
+	{
+		cArgs.push_back(arg.c_str());
+	}
+
+	std::string params;
+
+	for (std::string& arg : args)
+	{
+		params += " " + arg;
+	}
+	
+	DEBUG_PRINT("Running %s %s\n", xcrun,params.c_str() );
+	
+	if (systemRun(xcrun, &cArgs[0], cArgs.size(), NULL) == 0)
+	{
+		// Create a .metallib file from the .air file.
+		args.clear();
+		sprintf(tmpArgs, "");
+		args.push_back("-sdk");
+		args.push_back("macosx");
+		args.push_back("metallib");
+		args.push_back(intermediateFilePath);
+		args.push_back("-o");
+		sprintf(
+			tmpArgs,
+			""
+			"%s"
+			"",
+			outFilePath);
+		args.push_back(tmpArgs);
+
+		cArgs.clear();
+		for (std::string& arg : args)
+		{
+			cArgs.push_back(arg.c_str());
+		}
+
+		if (systemRun(xcrun, &cArgs[0], cArgs.size(), NULL) == 0)
+		{
+			// Remove the temp .air file.
+			const char* nativePath = intermediateFilePath;
+			systemRun("rm", &nativePath, 1, NULL);
+		}
+		else
+		{
+			LOGF(eERROR, "Failed to assemble shader's %s .metallib file", outFilePath);
+		}
+	}
+	else
+	{
+		LOGF(eERROR, "Failed to compile shader %s", filePath);
+	}
+}
+/*
+// On Metal, on the other hand, we can compile from code into a MTLLibrary, but cannot save this
+// object's bytecode to disk. We instead use the xcbuild bash tool to compile the shaders.
+void mtl_compileShader(	Renderer* pRenderer, const char* fileName, const char* outFile, uint32_t macroCount, ShaderMacro* pMacros, BinaryShaderStageDesc* pOut, const char*entrypoint )
+{
+	
+}
+*/
 RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Shader *shader) {
     RootSignature *tmp;
 

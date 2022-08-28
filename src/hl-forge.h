@@ -338,6 +338,10 @@ Shader *forge_load_compute_shader_file(Renderer *pRenderer, const char *fileName
 Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int width, int height, int nodeIndex);
 bool forge_render_target_capture_2(Renderer *pRenderer, Cmd *pCmd, RenderTarget*pRenderTarget, Queue *pQueue,  ResourceState renderTargetCurrentState, uint8_t *alloc, int bufferSize);
 
+//Tools
+std::string forge_translate_glsl_metal( const char *source, const char *filepath, bool fragment );
+void hl_compile_metal_to_bin(const char* fileName, const char* outFile);
+
 // Queue
 void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence);
 

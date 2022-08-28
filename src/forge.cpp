@@ -17,14 +17,43 @@
 
 #define HL_NAME(x) forge_##x
 #include <hl.h>
-
+#include "hl-idl-helpers.hpp"
 // Need to link in helpers
-HL_API hl_type hltx_ui16;
-HL_API hl_type hltx_ui8;
+//HL_API hl_type hltx_ui16;
+//HL_API hl_type hltx_ui8;
+HL_PRIM hl_type hltx_ui16 = { HUI16 };
+HL_PRIM hl_type hltx_ui8 = { HUI8 };
 
 #define _IDL _BYTES
 #define _OPT(t) vdynamic *
 #define _GET_OPT(value,t) (value)->v.t
+
+static  hl_type *strType = nullptr;
+void hl_cache_string_type( vstring *str) {
+   strType = str->t;
+}
+
+vstring * hl_utf8_to_hlstr( const char *str) {
+    int strLen = (int)strlen( str );
+    uchar * ubuf = (uchar*)hl_gc_alloc_noptr((strLen + 1) << 1);
+    hl_from_utf8( ubuf, strLen, str );
+
+    vstring* vstr = (vstring *)hl_gc_alloc_raw(sizeof(vstring));
+
+    vstr->bytes = ubuf;
+    vstr->length = strLen;
+    vstr->t = strType;
+    return vstr;
+}
+vstring * hl_utf8_to_hlstr( const std::string &str) {
+	return hl_utf8_to_hlstr(str.c_str());
+}
+
+HL_PRIM vstring * HL_NAME(getdllversion)(vstring * haxeversion) {
+	strType = haxeversion->t;
+	return haxeversion;
+}
+DEFINE_PRIM(_STRING, getdllversion, _STRING);
 template <typename T> struct pref {
 	void (*finalize)( pref<T> * );
 	T *value;
@@ -50,63 +79,6 @@ template<typename T> void free_ref( pref<T> *r, void (*deleteFunc)(T*) ) {
 	r->value = NULL;
 	r->finalize = NULL;
 }
-
-// Float vector
-struct _hl_float2 {
-	float x;
-	float y;
-};
-
-struct _hl_float3 {
-	float x;
-	float y;
-	float z;
-};
-
-struct _hl_float4 {
-	float x;
-	float y;
-	float z;
-	float w;
-};
-
-// int vector
-struct _hl_int2 {
-	int x;
-	int y;
-};
-
-struct _hl_int3 {
-	int x;
-	int y;
-	int z;
-};
-
-struct _hl_int4 {
-	int x;
-	int y;
-	int z;
-	int w;
-};
-
-// double vector
-struct _hl_double2 {
-	double x;
-	double y;
-};
-
-struct _hl_double3 {
-	double x;
-	double y;
-	double z;
-};
-
-struct _hl_double4 {
-	double x;
-	double y;
-	double z;
-	double w;
-};
 
 inline void testvector(_hl_float3 *v) {
   printf("v: %f %f %f\n", v->x, v->y, v->z);
@@ -578,13 +550,13 @@ HL_PRIM int HL_NAME(LoadActionType_valueToIndex0)( int value ) {
 	for( int i = 0; i < 4; i++ ) if ( value == (int)LoadActionType__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, LoadActionType_valueToIndex0, _I32);
-static void finalize_HashBuilder( _ref(HashBuilder)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(HashBuilder_delete)( _ref(HashBuilder)* _this ) {
+static void finalize_HashBuilder( pref<HashBuilder>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(HashBuilder_delete)( pref<HashBuilder>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, HashBuilder_delete, _IDL);
-static void finalize_StateBuilder( _ref(StateBuilder)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(StateBuilder_delete)( _ref(StateBuilder)* _this ) {
+static void finalize_StateBuilder( pref<StateBuilder>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(StateBuilder_delete)( pref<StateBuilder>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, StateBuilder_delete, _IDL);
@@ -601,48 +573,48 @@ HL_PRIM int HL_NAME(VertexAttribRate_valueToIndex0)( int value ) {
 	for( int i = 0; i < 3; i++ ) if ( value == (int)VertexAttribRate__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, VertexAttribRate_valueToIndex0, _I32);
-static void finalize_VertexLayout( _ref(VertexLayout)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(VertexLayout_delete)( _ref(VertexLayout)* _this ) {
+static void finalize_VertexLayout( pref<VertexLayout>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(VertexLayout_delete)( pref<VertexLayout>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, VertexLayout_delete, _IDL);
-static void finalize_PipelineCache( _ref(PipelineCache)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(PipelineCache_delete)( _ref(PipelineCache)* _this ) {
+static void finalize_PipelineCache( pref<PipelineCache>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(PipelineCache_delete)( pref<PipelineCache>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, PipelineCache_delete, _IDL);
-static void finalize_PipelineDesc( _ref(HlForgePipelineDesc)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(PipelineDesc_delete)( _ref(HlForgePipelineDesc)* _this ) {
+static void finalize_PipelineDesc( pref<HlForgePipelineDesc>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(PipelineDesc_delete)( pref<HlForgePipelineDesc>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, PipelineDesc_delete, _IDL);
-static void finalize_BufferBinder( _ref(BufferBinder)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(BufferBinder_delete)( _ref(BufferBinder)* _this ) {
+static void finalize_BufferBinder( pref<BufferBinder>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(BufferBinder_delete)( pref<BufferBinder>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, BufferBinder_delete, _IDL);
-static void finalize_ResourceBarrierBuilder( _ref(ResourceBarrierBuilder)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(ResourceBarrierBuilder_delete)( _ref(ResourceBarrierBuilder)* _this ) {
+static void finalize_ResourceBarrierBuilder( pref<ResourceBarrierBuilder>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(ResourceBarrierBuilder_delete)( pref<ResourceBarrierBuilder>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, ResourceBarrierBuilder_delete, _IDL);
-static void finalize_Map64Int( _ref(Map64Int)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(Map64Int_delete)( _ref(Map64Int)* _this ) {
+static void finalize_Map64Int( pref<Map64Int>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(Map64Int_delete)( pref<Map64Int>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, Map64Int_delete, _IDL);
-static void finalize_RenderTargetDesc( _ref(RenderTargetDesc)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(RenderTargetDesc_delete)( _ref(RenderTargetDesc)* _this ) {
+static void finalize_RenderTargetDesc( pref<RenderTargetDesc>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(RenderTargetDesc_delete)( pref<RenderTargetDesc>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, RenderTargetDesc_delete, _IDL);
-static void finalize_SamplerDesc( _ref(SamplerDesc)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(SamplerDesc_delete)( _ref(SamplerDesc)* _this ) {
+static void finalize_SamplerDesc( pref<SamplerDesc>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(SamplerDesc_delete)( pref<SamplerDesc>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, SamplerDesc_delete, _IDL);
-static void finalize_DescriptorSetDesc( _ref(DescriptorSetDesc)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(DescriptorSetDesc_delete)( _ref(DescriptorSetDesc)* _this ) {
+static void finalize_DescriptorSetDesc( pref<DescriptorSetDesc>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(DescriptorSetDesc_delete)( pref<DescriptorSetDesc>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, DescriptorSetDesc_delete, _IDL);
@@ -659,537 +631,537 @@ HL_PRIM int HL_NAME(DescriptorSlotMode_valueToIndex0)( int value ) {
 	for( int i = 0; i < 2; i++ ) if ( value == (int)DescriptorSlotMode__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, DescriptorSlotMode_valueToIndex0, _I32);
-static void finalize_DescriptorDataBuilder( _ref(DescriptorDataBuilder)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(DescriptorDataBuilder_delete)( _ref(DescriptorDataBuilder)* _this ) {
+static void finalize_DescriptorDataBuilder( pref<DescriptorDataBuilder>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(DescriptorDataBuilder_delete)( pref<DescriptorDataBuilder>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_delete, _IDL);
-static void finalize_RootSignatureDesc( _ref(RootSignatureFactory)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(RootSignatureDesc_delete)( _ref(RootSignatureFactory)* _this ) {
+static void finalize_RootSignatureDesc( pref<RootSignatureFactory>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(RootSignatureDesc_delete)( pref<RootSignatureFactory>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, RootSignatureDesc_delete, _IDL);
-static void finalize_ForgeSDLWindow( _ref(ForgeSDLWindow)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(ForgeSDLWindow_delete)( _ref(ForgeSDLWindow)* _this ) {
+static void finalize_ForgeSDLWindow( pref<ForgeSDLWindow>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(ForgeSDLWindow_delete)( pref<ForgeSDLWindow>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, ForgeSDLWindow_delete, _IDL);
-static void finalize_SyncToken( _ref(SyncToken)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(SyncToken_delete)( _ref(SyncToken)* _this ) {
+static void finalize_SyncToken( pref<SyncToken>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(SyncToken_delete)( pref<SyncToken>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, SyncToken_delete, _IDL);
-static void finalize_BufferLoadDesc( _ref(BufferLoadDesc)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(BufferLoadDesc_delete)( _ref(BufferLoadDesc)* _this ) {
+static void finalize_BufferLoadDesc( pref<BufferLoadDesc>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(BufferLoadDesc_delete)( pref<BufferLoadDesc>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, BufferLoadDesc_delete, _IDL);
-static void finalize_TextureDesc( _ref(TextureDesc)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(TextureDesc_delete)( _ref(TextureDesc)* _this ) {
+static void finalize_TextureDesc( pref<TextureDesc>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(TextureDesc_delete)( pref<TextureDesc>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, TextureDesc_delete, _IDL);
-static void finalize_TextureLoadDesc( _ref(TextureLoadDesc)* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(TextureLoadDesc_delete)( _ref(TextureLoadDesc)* _this ) {
+static void finalize_TextureLoadDesc( pref<TextureLoadDesc>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(TextureLoadDesc_delete)( pref<TextureLoadDesc>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, TextureLoadDesc_delete, _IDL);
-HL_PRIM _ref(HashBuilder)* HL_NAME(HashBuilder_new0)() {
+HL_PRIM pref<HashBuilder>* HL_NAME(HashBuilder_new0)() {
 	return alloc_ref((new HashBuilder()),HashBuilder);
 }
 DEFINE_PRIM(_IDL, HashBuilder_new0,);
 
-HL_PRIM void HL_NAME(HashBuilder_reset1)(_ref(HashBuilder)* _this, int64_t seed) {
+HL_PRIM void HL_NAME(HashBuilder_reset1)(pref<HashBuilder>* _this, int64_t seed) {
 	(_unref(_this)->reset(seed));
 }
 DEFINE_PRIM(_VOID, HashBuilder_reset1, _IDL _I64);
 
-HL_PRIM void HL_NAME(HashBuilder_addInt81)(_ref(HashBuilder)* _this, int v) {
+HL_PRIM void HL_NAME(HashBuilder_addInt81)(pref<HashBuilder>* _this, int v) {
 	(_unref(_this)->addInt8(v));
 }
 DEFINE_PRIM(_VOID, HashBuilder_addInt81, _IDL _I32);
 
-HL_PRIM void HL_NAME(HashBuilder_addInt161)(_ref(HashBuilder)* _this, int v) {
+HL_PRIM void HL_NAME(HashBuilder_addInt161)(pref<HashBuilder>* _this, int v) {
 	(_unref(_this)->addInt16(v));
 }
 DEFINE_PRIM(_VOID, HashBuilder_addInt161, _IDL _I32);
 
-HL_PRIM void HL_NAME(HashBuilder_addInt321)(_ref(HashBuilder)* _this, int v) {
+HL_PRIM void HL_NAME(HashBuilder_addInt321)(pref<HashBuilder>* _this, int v) {
 	(_unref(_this)->addInt32(v));
 }
 DEFINE_PRIM(_VOID, HashBuilder_addInt321, _IDL _I32);
 
-HL_PRIM void HL_NAME(HashBuilder_addInt641)(_ref(HashBuilder)* _this, int64_t v) {
+HL_PRIM void HL_NAME(HashBuilder_addInt641)(pref<HashBuilder>* _this, int64_t v) {
 	(_unref(_this)->addInt64(v));
 }
 DEFINE_PRIM(_VOID, HashBuilder_addInt641, _IDL _I64);
 
-HL_PRIM void HL_NAME(HashBuilder_addBytes3)(_ref(HashBuilder)* _this, vbyte* b, int offset, int length) {
+HL_PRIM void HL_NAME(HashBuilder_addBytes3)(pref<HashBuilder>* _this, vbyte* b, int offset, int length) {
 	(_unref(_this)->addBytes(b, offset, length));
 }
 DEFINE_PRIM(_VOID, HashBuilder_addBytes3, _IDL _BYTES _I32 _I32);
 
-HL_PRIM int64_t HL_NAME(HashBuilder_getValue0)(_ref(HashBuilder)* _this) {
+HL_PRIM int64_t HL_NAME(HashBuilder_getValue0)(pref<HashBuilder>* _this) {
 	return (_unref(_this)->getValue());
 }
 DEFINE_PRIM(_I64, HashBuilder_getValue0, _IDL);
 
-HL_PRIM int HL_NAME(BlendStateDesc_get_SrcFactors)( _ref(BlendStateDesc)* _this, int index ) {
+HL_PRIM int HL_NAME(BlendStateDesc_get_SrcFactors)( pref<BlendStateDesc>* _this, int index ) {
 	return _unref(_this)->mSrcFactors[index];
 }
 DEFINE_PRIM(_I32,BlendStateDesc_get_SrcFactors,_IDL _I32);
-HL_PRIM int HL_NAME(BlendStateDesc_set_SrcFactors)( _ref(BlendStateDesc)* _this, int index, int value ) {
+HL_PRIM int HL_NAME(BlendStateDesc_set_SrcFactors)( pref<BlendStateDesc>* _this, int index, int value ) {
 	_unref(_this)->mSrcFactors[index] = (BlendConstant)(BlendConstant__values[value]);
 	return value;
 }
 DEFINE_PRIM(_I32,BlendStateDesc_set_SrcFactors,_IDL _I32 _I32); // Array setter
 
-HL_PRIM int HL_NAME(BlendStateDesc_get_DstFactors)( _ref(BlendStateDesc)* _this, int index ) {
+HL_PRIM int HL_NAME(BlendStateDesc_get_DstFactors)( pref<BlendStateDesc>* _this, int index ) {
 	return _unref(_this)->mDstFactors[index];
 }
 DEFINE_PRIM(_I32,BlendStateDesc_get_DstFactors,_IDL _I32);
-HL_PRIM int HL_NAME(BlendStateDesc_set_DstFactors)( _ref(BlendStateDesc)* _this, int index, int value ) {
+HL_PRIM int HL_NAME(BlendStateDesc_set_DstFactors)( pref<BlendStateDesc>* _this, int index, int value ) {
 	_unref(_this)->mDstFactors[index] = (BlendConstant)(BlendConstant__values[value]);
 	return value;
 }
 DEFINE_PRIM(_I32,BlendStateDesc_set_DstFactors,_IDL _I32 _I32); // Array setter
 
-HL_PRIM int HL_NAME(BlendStateDesc_get_SrcAlphaFactors)( _ref(BlendStateDesc)* _this, int index ) {
+HL_PRIM int HL_NAME(BlendStateDesc_get_SrcAlphaFactors)( pref<BlendStateDesc>* _this, int index ) {
 	return _unref(_this)->mSrcAlphaFactors[index];
 }
 DEFINE_PRIM(_I32,BlendStateDesc_get_SrcAlphaFactors,_IDL _I32);
-HL_PRIM int HL_NAME(BlendStateDesc_set_SrcAlphaFactors)( _ref(BlendStateDesc)* _this, int index, int value ) {
+HL_PRIM int HL_NAME(BlendStateDesc_set_SrcAlphaFactors)( pref<BlendStateDesc>* _this, int index, int value ) {
 	_unref(_this)->mSrcAlphaFactors[index] = (BlendConstant)(BlendConstant__values[value]);
 	return value;
 }
 DEFINE_PRIM(_I32,BlendStateDesc_set_SrcAlphaFactors,_IDL _I32 _I32); // Array setter
 
-HL_PRIM int HL_NAME(BlendStateDesc_get_DstAlphaFactors)( _ref(BlendStateDesc)* _this, int index ) {
+HL_PRIM int HL_NAME(BlendStateDesc_get_DstAlphaFactors)( pref<BlendStateDesc>* _this, int index ) {
 	return _unref(_this)->mDstAlphaFactors[index];
 }
 DEFINE_PRIM(_I32,BlendStateDesc_get_DstAlphaFactors,_IDL _I32);
-HL_PRIM int HL_NAME(BlendStateDesc_set_DstAlphaFactors)( _ref(BlendStateDesc)* _this, int index, int value ) {
+HL_PRIM int HL_NAME(BlendStateDesc_set_DstAlphaFactors)( pref<BlendStateDesc>* _this, int index, int value ) {
 	_unref(_this)->mDstAlphaFactors[index] = (BlendConstant)(BlendConstant__values[value]);
 	return value;
 }
 DEFINE_PRIM(_I32,BlendStateDesc_set_DstAlphaFactors,_IDL _I32 _I32); // Array setter
 
-HL_PRIM int HL_NAME(BlendStateDesc_get_BlendModes)( _ref(BlendStateDesc)* _this, int index ) {
+HL_PRIM int HL_NAME(BlendStateDesc_get_BlendModes)( pref<BlendStateDesc>* _this, int index ) {
 	return _unref(_this)->mBlendModes[index];
 }
 DEFINE_PRIM(_I32,BlendStateDesc_get_BlendModes,_IDL _I32);
-HL_PRIM int HL_NAME(BlendStateDesc_set_BlendModes)( _ref(BlendStateDesc)* _this, int index, int value ) {
+HL_PRIM int HL_NAME(BlendStateDesc_set_BlendModes)( pref<BlendStateDesc>* _this, int index, int value ) {
 	_unref(_this)->mBlendModes[index] = (BlendMode)(BlendMode__values[value]);
 	return value;
 }
 DEFINE_PRIM(_I32,BlendStateDesc_set_BlendModes,_IDL _I32 _I32); // Array setter
 
-HL_PRIM int HL_NAME(BlendStateDesc_get_BlendAlphaModes)( _ref(BlendStateDesc)* _this, int index ) {
+HL_PRIM int HL_NAME(BlendStateDesc_get_BlendAlphaModes)( pref<BlendStateDesc>* _this, int index ) {
 	return _unref(_this)->mBlendAlphaModes[index];
 }
 DEFINE_PRIM(_I32,BlendStateDesc_get_BlendAlphaModes,_IDL _I32);
-HL_PRIM int HL_NAME(BlendStateDesc_set_BlendAlphaModes)( _ref(BlendStateDesc)* _this, int index, int value ) {
+HL_PRIM int HL_NAME(BlendStateDesc_set_BlendAlphaModes)( pref<BlendStateDesc>* _this, int index, int value ) {
 	_unref(_this)->mBlendAlphaModes[index] = (BlendMode)(BlendMode__values[value]);
 	return value;
 }
 DEFINE_PRIM(_I32,BlendStateDesc_set_BlendAlphaModes,_IDL _I32 _I32); // Array setter
 
-HL_PRIM int HL_NAME(BlendStateDesc_get_Masks)( _ref(BlendStateDesc)* _this, int index ) {
+HL_PRIM int HL_NAME(BlendStateDesc_get_Masks)( pref<BlendStateDesc>* _this, int index ) {
 	return _unref(_this)->mMasks[index];
 }
 DEFINE_PRIM(_I32,BlendStateDesc_get_Masks,_IDL _I32);
-HL_PRIM int HL_NAME(BlendStateDesc_set_Masks)( _ref(BlendStateDesc)* _this, int index, int value ) {
+HL_PRIM int HL_NAME(BlendStateDesc_set_Masks)( pref<BlendStateDesc>* _this, int index, int value ) {
 	_unref(_this)->mMasks[index] = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,BlendStateDesc_set_Masks,_IDL _I32 _I32); // Array setter
 
-HL_PRIM int HL_NAME(BlendStateDesc_get_renderTargetMask)( _ref(BlendStateDesc)* _this ) {
+HL_PRIM int HL_NAME(BlendStateDesc_get_renderTargetMask)( pref<BlendStateDesc>* _this ) {
 	return _unref(_this)->mRenderTargetMask;
 }
 DEFINE_PRIM(_I32,BlendStateDesc_get_renderTargetMask,_IDL);
-HL_PRIM int HL_NAME(BlendStateDesc_set_renderTargetMask)( _ref(BlendStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(BlendStateDesc_set_renderTargetMask)( pref<BlendStateDesc>* _this, int value ) {
 	_unref(_this)->mRenderTargetMask = (BlendStateTargets)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,BlendStateDesc_set_renderTargetMask,_IDL _I32);
 
-HL_PRIM void HL_NAME(BlendStateDesc_setRenderTarget2)(_ref(BlendStateDesc)* _this, int target, bool mask) {
+HL_PRIM void HL_NAME(BlendStateDesc_setRenderTarget2)(pref<BlendStateDesc>* _this, int target, bool mask) {
 	(forge_blend_state_desc_set_rt( _unref(_this) , BlendStateTargets__values[target], mask));
 }
 DEFINE_PRIM(_VOID, BlendStateDesc_setRenderTarget2, _IDL _I32 _BOOL);
 
-HL_PRIM bool HL_NAME(BlendStateDesc_get_alphaToCoverage)( _ref(BlendStateDesc)* _this ) {
+HL_PRIM bool HL_NAME(BlendStateDesc_get_alphaToCoverage)( pref<BlendStateDesc>* _this ) {
 	return _unref(_this)->mAlphaToCoverage;
 }
 DEFINE_PRIM(_BOOL,BlendStateDesc_get_alphaToCoverage,_IDL);
-HL_PRIM bool HL_NAME(BlendStateDesc_set_alphaToCoverage)( _ref(BlendStateDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(BlendStateDesc_set_alphaToCoverage)( pref<BlendStateDesc>* _this, bool value ) {
 	_unref(_this)->mAlphaToCoverage = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,BlendStateDesc_set_alphaToCoverage,_IDL _BOOL);
 
-HL_PRIM bool HL_NAME(BlendStateDesc_get_independentBlend)( _ref(BlendStateDesc)* _this ) {
+HL_PRIM bool HL_NAME(BlendStateDesc_get_independentBlend)( pref<BlendStateDesc>* _this ) {
 	return _unref(_this)->mIndependentBlend;
 }
 DEFINE_PRIM(_BOOL,BlendStateDesc_get_independentBlend,_IDL);
-HL_PRIM bool HL_NAME(BlendStateDesc_set_independentBlend)( _ref(BlendStateDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(BlendStateDesc_set_independentBlend)( pref<BlendStateDesc>* _this, bool value ) {
 	_unref(_this)->mIndependentBlend = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,BlendStateDesc_set_independentBlend,_IDL _BOOL);
 
-HL_PRIM bool HL_NAME(DepthStateDesc_get_depthTest)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM bool HL_NAME(DepthStateDesc_get_depthTest)( pref<DepthStateDesc>* _this ) {
 	return _unref(_this)->mDepthTest;
 }
 DEFINE_PRIM(_BOOL,DepthStateDesc_get_depthTest,_IDL);
-HL_PRIM bool HL_NAME(DepthStateDesc_set_depthTest)( _ref(DepthStateDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(DepthStateDesc_set_depthTest)( pref<DepthStateDesc>* _this, bool value ) {
 	_unref(_this)->mDepthTest = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,DepthStateDesc_set_depthTest,_IDL _BOOL);
 
-HL_PRIM bool HL_NAME(DepthStateDesc_get_depthWrite)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM bool HL_NAME(DepthStateDesc_get_depthWrite)( pref<DepthStateDesc>* _this ) {
 	return _unref(_this)->mDepthWrite;
 }
 DEFINE_PRIM(_BOOL,DepthStateDesc_get_depthWrite,_IDL);
-HL_PRIM bool HL_NAME(DepthStateDesc_set_depthWrite)( _ref(DepthStateDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(DepthStateDesc_set_depthWrite)( pref<DepthStateDesc>* _this, bool value ) {
 	_unref(_this)->mDepthWrite = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,DepthStateDesc_set_depthWrite,_IDL _BOOL);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_depthFunc)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_depthFunc)( pref<DepthStateDesc>* _this ) {
 	return HL_NAME(CompareMode_valueToIndex0)(_unref(_this)->mDepthFunc);
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_depthFunc,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_depthFunc)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_depthFunc)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mDepthFunc = (CompareMode)HL_NAME(CompareMode_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_depthFunc,_IDL _I32);
 
-HL_PRIM bool HL_NAME(DepthStateDesc_get_stencilTest)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM bool HL_NAME(DepthStateDesc_get_stencilTest)( pref<DepthStateDesc>* _this ) {
 	return _unref(_this)->mStencilTest;
 }
 DEFINE_PRIM(_BOOL,DepthStateDesc_get_stencilTest,_IDL);
-HL_PRIM bool HL_NAME(DepthStateDesc_set_stencilTest)( _ref(DepthStateDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(DepthStateDesc_set_stencilTest)( pref<DepthStateDesc>* _this, bool value ) {
 	_unref(_this)->mStencilTest = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,DepthStateDesc_set_stencilTest,_IDL _BOOL);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_stencilReadMask)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_stencilReadMask)( pref<DepthStateDesc>* _this ) {
 	return _unref(_this)->mStencilReadMask;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_stencilReadMask,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_stencilReadMask)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_stencilReadMask)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mStencilReadMask = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_stencilReadMask,_IDL _I32);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_stencilWriteMask)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_stencilWriteMask)( pref<DepthStateDesc>* _this ) {
 	return _unref(_this)->mStencilWriteMask;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_stencilWriteMask,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_stencilWriteMask)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_stencilWriteMask)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mStencilWriteMask = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_stencilWriteMask,_IDL _I32);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_stencilFrontFunc)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_stencilFrontFunc)( pref<DepthStateDesc>* _this ) {
 	return HL_NAME(CompareMode_valueToIndex0)(_unref(_this)->mStencilFrontFunc);
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_stencilFrontFunc,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_stencilFrontFunc)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_stencilFrontFunc)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mStencilFrontFunc = (CompareMode)HL_NAME(CompareMode_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_stencilFrontFunc,_IDL _I32);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_stencilFrontFail)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_stencilFrontFail)( pref<DepthStateDesc>* _this ) {
 	return HL_NAME(StencilOp_valueToIndex0)(_unref(_this)->mStencilFrontFail);
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_stencilFrontFail,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_stencilFrontFail)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_stencilFrontFail)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mStencilFrontFail = (StencilOp)HL_NAME(StencilOp_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_stencilFrontFail,_IDL _I32);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_depthFrontFail)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_depthFrontFail)( pref<DepthStateDesc>* _this ) {
 	return HL_NAME(StencilOp_valueToIndex0)(_unref(_this)->mDepthFrontFail);
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_depthFrontFail,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_depthFrontFail)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_depthFrontFail)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mDepthFrontFail = (StencilOp)HL_NAME(StencilOp_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_depthFrontFail,_IDL _I32);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_stencilFrontPass)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_stencilFrontPass)( pref<DepthStateDesc>* _this ) {
 	return HL_NAME(StencilOp_valueToIndex0)(_unref(_this)->mStencilFrontPass);
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_stencilFrontPass,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_stencilFrontPass)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_stencilFrontPass)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mStencilFrontPass = (StencilOp)HL_NAME(StencilOp_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_stencilFrontPass,_IDL _I32);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_stencilBackFunc)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_stencilBackFunc)( pref<DepthStateDesc>* _this ) {
 	return HL_NAME(CompareMode_valueToIndex0)(_unref(_this)->mStencilBackFunc);
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_stencilBackFunc,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_stencilBackFunc)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_stencilBackFunc)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mStencilBackFunc = (CompareMode)HL_NAME(CompareMode_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_stencilBackFunc,_IDL _I32);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_stencilBackFail)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_stencilBackFail)( pref<DepthStateDesc>* _this ) {
 	return HL_NAME(StencilOp_valueToIndex0)(_unref(_this)->mStencilBackFail);
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_stencilBackFail,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_stencilBackFail)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_stencilBackFail)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mStencilBackFail = (StencilOp)HL_NAME(StencilOp_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_stencilBackFail,_IDL _I32);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_depthBackFail)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_depthBackFail)( pref<DepthStateDesc>* _this ) {
 	return HL_NAME(StencilOp_valueToIndex0)(_unref(_this)->mDepthBackFail);
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_depthBackFail,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_depthBackFail)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_depthBackFail)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mDepthBackFail = (StencilOp)HL_NAME(StencilOp_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_depthBackFail,_IDL _I32);
 
-HL_PRIM int HL_NAME(DepthStateDesc_get_stencilBackPass)( _ref(DepthStateDesc)* _this ) {
+HL_PRIM int HL_NAME(DepthStateDesc_get_stencilBackPass)( pref<DepthStateDesc>* _this ) {
 	return HL_NAME(StencilOp_valueToIndex0)(_unref(_this)->mStencilBackPass);
 }
 DEFINE_PRIM(_I32,DepthStateDesc_get_stencilBackPass,_IDL);
-HL_PRIM int HL_NAME(DepthStateDesc_set_stencilBackPass)( _ref(DepthStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DepthStateDesc_set_stencilBackPass)( pref<DepthStateDesc>* _this, int value ) {
 	_unref(_this)->mStencilBackPass = (StencilOp)HL_NAME(StencilOp_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,DepthStateDesc_set_stencilBackPass,_IDL _I32);
 
-HL_PRIM int HL_NAME(RasterizerStateDesc_get_cullMode)( _ref(RasterizerStateDesc)* _this ) {
+HL_PRIM int HL_NAME(RasterizerStateDesc_get_cullMode)( pref<RasterizerStateDesc>* _this ) {
 	return HL_NAME(CullMode_valueToIndex0)(_unref(_this)->mCullMode);
 }
 DEFINE_PRIM(_I32,RasterizerStateDesc_get_cullMode,_IDL);
-HL_PRIM int HL_NAME(RasterizerStateDesc_set_cullMode)( _ref(RasterizerStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(RasterizerStateDesc_set_cullMode)( pref<RasterizerStateDesc>* _this, int value ) {
 	_unref(_this)->mCullMode = (CullMode)HL_NAME(CullMode_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,RasterizerStateDesc_set_cullMode,_IDL _I32);
 
-HL_PRIM int HL_NAME(RasterizerStateDesc_get_depthBias)( _ref(RasterizerStateDesc)* _this ) {
+HL_PRIM int HL_NAME(RasterizerStateDesc_get_depthBias)( pref<RasterizerStateDesc>* _this ) {
 	return _unref(_this)->mDepthBias;
 }
 DEFINE_PRIM(_I32,RasterizerStateDesc_get_depthBias,_IDL);
-HL_PRIM int HL_NAME(RasterizerStateDesc_set_depthBias)( _ref(RasterizerStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(RasterizerStateDesc_set_depthBias)( pref<RasterizerStateDesc>* _this, int value ) {
 	_unref(_this)->mDepthBias = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RasterizerStateDesc_set_depthBias,_IDL _I32);
 
-HL_PRIM float HL_NAME(RasterizerStateDesc_get_slopeScaledDepthBias)( _ref(RasterizerStateDesc)* _this ) {
+HL_PRIM float HL_NAME(RasterizerStateDesc_get_slopeScaledDepthBias)( pref<RasterizerStateDesc>* _this ) {
 	return _unref(_this)->mSlopeScaledDepthBias;
 }
 DEFINE_PRIM(_F32,RasterizerStateDesc_get_slopeScaledDepthBias,_IDL);
-HL_PRIM float HL_NAME(RasterizerStateDesc_set_slopeScaledDepthBias)( _ref(RasterizerStateDesc)* _this, float value ) {
+HL_PRIM float HL_NAME(RasterizerStateDesc_set_slopeScaledDepthBias)( pref<RasterizerStateDesc>* _this, float value ) {
 	_unref(_this)->mSlopeScaledDepthBias = (value);
 	return value;
 }
 DEFINE_PRIM(_F32,RasterizerStateDesc_set_slopeScaledDepthBias,_IDL _F32);
 
-HL_PRIM int HL_NAME(RasterizerStateDesc_get_fillMode)( _ref(RasterizerStateDesc)* _this ) {
+HL_PRIM int HL_NAME(RasterizerStateDesc_get_fillMode)( pref<RasterizerStateDesc>* _this ) {
 	return HL_NAME(FillMode_valueToIndex0)(_unref(_this)->mFillMode);
 }
 DEFINE_PRIM(_I32,RasterizerStateDesc_get_fillMode,_IDL);
-HL_PRIM int HL_NAME(RasterizerStateDesc_set_fillMode)( _ref(RasterizerStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(RasterizerStateDesc_set_fillMode)( pref<RasterizerStateDesc>* _this, int value ) {
 	_unref(_this)->mFillMode = (FillMode)HL_NAME(FillMode_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,RasterizerStateDesc_set_fillMode,_IDL _I32);
 
-HL_PRIM int HL_NAME(RasterizerStateDesc_get_frontFace)( _ref(RasterizerStateDesc)* _this ) {
+HL_PRIM int HL_NAME(RasterizerStateDesc_get_frontFace)( pref<RasterizerStateDesc>* _this ) {
 	return HL_NAME(FrontFace_valueToIndex0)(_unref(_this)->mFrontFace);
 }
 DEFINE_PRIM(_I32,RasterizerStateDesc_get_frontFace,_IDL);
-HL_PRIM int HL_NAME(RasterizerStateDesc_set_frontFace)( _ref(RasterizerStateDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(RasterizerStateDesc_set_frontFace)( pref<RasterizerStateDesc>* _this, int value ) {
 	_unref(_this)->mFrontFace = (FrontFace)HL_NAME(FrontFace_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,RasterizerStateDesc_set_frontFace,_IDL _I32);
 
-HL_PRIM bool HL_NAME(RasterizerStateDesc_get_multiSample)( _ref(RasterizerStateDesc)* _this ) {
+HL_PRIM bool HL_NAME(RasterizerStateDesc_get_multiSample)( pref<RasterizerStateDesc>* _this ) {
 	return _unref(_this)->mMultiSample;
 }
 DEFINE_PRIM(_BOOL,RasterizerStateDesc_get_multiSample,_IDL);
-HL_PRIM bool HL_NAME(RasterizerStateDesc_set_multiSample)( _ref(RasterizerStateDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(RasterizerStateDesc_set_multiSample)( pref<RasterizerStateDesc>* _this, bool value ) {
 	_unref(_this)->mMultiSample = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,RasterizerStateDesc_set_multiSample,_IDL _BOOL);
 
-HL_PRIM bool HL_NAME(RasterizerStateDesc_get_scissor)( _ref(RasterizerStateDesc)* _this ) {
+HL_PRIM bool HL_NAME(RasterizerStateDesc_get_scissor)( pref<RasterizerStateDesc>* _this ) {
 	return _unref(_this)->mScissor;
 }
 DEFINE_PRIM(_BOOL,RasterizerStateDesc_get_scissor,_IDL);
-HL_PRIM bool HL_NAME(RasterizerStateDesc_set_scissor)( _ref(RasterizerStateDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(RasterizerStateDesc_set_scissor)( pref<RasterizerStateDesc>* _this, bool value ) {
 	_unref(_this)->mScissor = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,RasterizerStateDesc_set_scissor,_IDL _BOOL);
 
-HL_PRIM bool HL_NAME(RasterizerStateDesc_get_depthClampEnable)( _ref(RasterizerStateDesc)* _this ) {
+HL_PRIM bool HL_NAME(RasterizerStateDesc_get_depthClampEnable)( pref<RasterizerStateDesc>* _this ) {
 	return _unref(_this)->mDepthClampEnable;
 }
 DEFINE_PRIM(_BOOL,RasterizerStateDesc_get_depthClampEnable,_IDL);
-HL_PRIM bool HL_NAME(RasterizerStateDesc_set_depthClampEnable)( _ref(RasterizerStateDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(RasterizerStateDesc_set_depthClampEnable)( pref<RasterizerStateDesc>* _this, bool value ) {
 	_unref(_this)->mDepthClampEnable = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,RasterizerStateDesc_set_depthClampEnable,_IDL _BOOL);
 
-HL_PRIM _ref(StateBuilder)* HL_NAME(StateBuilder_new0)() {
+HL_PRIM pref<StateBuilder>* HL_NAME(StateBuilder_new0)() {
 	return alloc_ref((new StateBuilder()),StateBuilder);
 }
 DEFINE_PRIM(_IDL, StateBuilder_new0,);
 
-HL_PRIM void HL_NAME(StateBuilder_reset0)(_ref(StateBuilder)* _this) {
+HL_PRIM void HL_NAME(StateBuilder_reset0)(pref<StateBuilder>* _this) {
 	(_unref(_this)->reset());
 }
 DEFINE_PRIM(_VOID, StateBuilder_reset0, _IDL);
 
-HL_PRIM HL_CONST _ref(BlendStateDesc)* HL_NAME(StateBuilder_blend0)(_ref(StateBuilder)* _this) {
+HL_PRIM HL_CONST pref<BlendStateDesc>* HL_NAME(StateBuilder_blend0)(pref<StateBuilder>* _this) {
 	return alloc_ref_const((_unref(_this)->blend()),BlendStateDesc);
 }
 DEFINE_PRIM(_IDL, StateBuilder_blend0, _IDL);
 
-HL_PRIM HL_CONST _ref(DepthStateDesc)* HL_NAME(StateBuilder_depth0)(_ref(StateBuilder)* _this) {
+HL_PRIM HL_CONST pref<DepthStateDesc>* HL_NAME(StateBuilder_depth0)(pref<StateBuilder>* _this) {
 	return alloc_ref_const((_unref(_this)->depth()),DepthStateDesc);
 }
 DEFINE_PRIM(_IDL, StateBuilder_depth0, _IDL);
 
-HL_PRIM HL_CONST _ref(RasterizerStateDesc)* HL_NAME(StateBuilder_raster0)(_ref(StateBuilder)* _this) {
+HL_PRIM HL_CONST pref<RasterizerStateDesc>* HL_NAME(StateBuilder_raster0)(pref<StateBuilder>* _this) {
 	return alloc_ref_const((_unref(_this)->raster()),RasterizerStateDesc);
 }
 DEFINE_PRIM(_IDL, StateBuilder_raster0, _IDL);
 
-HL_PRIM void HL_NAME(StateBuilder_addToHash1)(_ref(StateBuilder)* _this, _ref(HashBuilder)* hash) {
+HL_PRIM void HL_NAME(StateBuilder_addToHash1)(pref<StateBuilder>* _this, pref<HashBuilder>* hash) {
 	(_unref(_this)->addToHash(_unref_ptr_safe(hash)));
 }
 DEFINE_PRIM(_VOID, StateBuilder_addToHash1, _IDL _IDL);
 
-HL_PRIM int HL_NAME(VertexAttrib_get_mSemantic)( _ref(VertexAttrib)* _this ) {
+HL_PRIM int HL_NAME(VertexAttrib_get_mSemantic)( pref<VertexAttrib>* _this ) {
 	return HL_NAME(ShaderSemantic_valueToIndex0)(_unref(_this)->mSemantic);
 }
 DEFINE_PRIM(_I32,VertexAttrib_get_mSemantic,_IDL);
-HL_PRIM int HL_NAME(VertexAttrib_set_mSemantic)( _ref(VertexAttrib)* _this, int value ) {
+HL_PRIM int HL_NAME(VertexAttrib_set_mSemantic)( pref<VertexAttrib>* _this, int value ) {
 	_unref(_this)->mSemantic = (ShaderSemantic)HL_NAME(ShaderSemantic_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,VertexAttrib_set_mSemantic,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(VertexAttrib_get_mSemanticNameLength)( _ref(VertexAttrib)* _this ) {
+HL_PRIM unsigned int HL_NAME(VertexAttrib_get_mSemanticNameLength)( pref<VertexAttrib>* _this ) {
 	return _unref(_this)->mSemanticNameLength;
 }
 DEFINE_PRIM(_I32,VertexAttrib_get_mSemanticNameLength,_IDL);
-HL_PRIM unsigned int HL_NAME(VertexAttrib_set_mSemanticNameLength)( _ref(VertexAttrib)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(VertexAttrib_set_mSemanticNameLength)( pref<VertexAttrib>* _this, unsigned int value ) {
 	_unref(_this)->mSemanticNameLength = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,VertexAttrib_set_mSemanticNameLength,_IDL _I32);
 
-HL_PRIM void HL_NAME(VertexAttrib_setSemanticName1)(_ref(VertexAttrib)* _this, vstring * name) {
+HL_PRIM void HL_NAME(VertexAttrib_setSemanticName1)(pref<VertexAttrib>* _this, vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	(forge_vertex_attrib_set_semantic( _unref(_this) , name__cstr));
 }
 DEFINE_PRIM(_VOID, VertexAttrib_setSemanticName1, _IDL _STRING);
 
-HL_PRIM int HL_NAME(VertexAttrib_get_mFormat)( _ref(VertexAttrib)* _this ) {
+HL_PRIM int HL_NAME(VertexAttrib_get_mFormat)( pref<VertexAttrib>* _this ) {
 	return HL_NAME(TinyImageFormat_valueToIndex0)(_unref(_this)->mFormat);
 }
 DEFINE_PRIM(_I32,VertexAttrib_get_mFormat,_IDL);
-HL_PRIM int HL_NAME(VertexAttrib_set_mFormat)( _ref(VertexAttrib)* _this, int value ) {
+HL_PRIM int HL_NAME(VertexAttrib_set_mFormat)( pref<VertexAttrib>* _this, int value ) {
 	_unref(_this)->mFormat = (TinyImageFormat)HL_NAME(TinyImageFormat_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,VertexAttrib_set_mFormat,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(VertexAttrib_get_mBinding)( _ref(VertexAttrib)* _this ) {
+HL_PRIM unsigned int HL_NAME(VertexAttrib_get_mBinding)( pref<VertexAttrib>* _this ) {
 	return _unref(_this)->mBinding;
 }
 DEFINE_PRIM(_I32,VertexAttrib_get_mBinding,_IDL);
-HL_PRIM unsigned int HL_NAME(VertexAttrib_set_mBinding)( _ref(VertexAttrib)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(VertexAttrib_set_mBinding)( pref<VertexAttrib>* _this, unsigned int value ) {
 	_unref(_this)->mBinding = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,VertexAttrib_set_mBinding,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(VertexAttrib_get_mLocation)( _ref(VertexAttrib)* _this ) {
+HL_PRIM unsigned int HL_NAME(VertexAttrib_get_mLocation)( pref<VertexAttrib>* _this ) {
 	return _unref(_this)->mLocation;
 }
 DEFINE_PRIM(_I32,VertexAttrib_get_mLocation,_IDL);
-HL_PRIM unsigned int HL_NAME(VertexAttrib_set_mLocation)( _ref(VertexAttrib)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(VertexAttrib_set_mLocation)( pref<VertexAttrib>* _this, unsigned int value ) {
 	_unref(_this)->mLocation = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,VertexAttrib_set_mLocation,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(VertexAttrib_get_mOffset)( _ref(VertexAttrib)* _this ) {
+HL_PRIM unsigned int HL_NAME(VertexAttrib_get_mOffset)( pref<VertexAttrib>* _this ) {
 	return _unref(_this)->mOffset;
 }
 DEFINE_PRIM(_I32,VertexAttrib_get_mOffset,_IDL);
-HL_PRIM unsigned int HL_NAME(VertexAttrib_set_mOffset)( _ref(VertexAttrib)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(VertexAttrib_set_mOffset)( pref<VertexAttrib>* _this, unsigned int value ) {
 	_unref(_this)->mOffset = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,VertexAttrib_set_mOffset,_IDL _I32);
 
-HL_PRIM int HL_NAME(VertexAttrib_get_mRate)( _ref(VertexAttrib)* _this ) {
+HL_PRIM int HL_NAME(VertexAttrib_get_mRate)( pref<VertexAttrib>* _this ) {
 	return HL_NAME(VertexAttribRate_valueToIndex0)(_unref(_this)->mRate);
 }
 DEFINE_PRIM(_I32,VertexAttrib_get_mRate,_IDL);
-HL_PRIM int HL_NAME(VertexAttrib_set_mRate)( _ref(VertexAttrib)* _this, int value ) {
+HL_PRIM int HL_NAME(VertexAttrib_set_mRate)( pref<VertexAttrib>* _this, int value ) {
 	_unref(_this)->mRate = (VertexAttribRate)HL_NAME(VertexAttribRate_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,VertexAttrib_set_mRate,_IDL _I32);
 
-HL_PRIM _ref(VertexLayout)* HL_NAME(VertexLayout_new0)() {
+HL_PRIM pref<VertexLayout>* HL_NAME(VertexLayout_new0)() {
 	return alloc_ref((new VertexLayout()),VertexLayout);
 }
 DEFINE_PRIM(_IDL, VertexLayout_new0,);
 
-HL_PRIM unsigned int HL_NAME(VertexLayout_get_attribCount)( _ref(VertexLayout)* _this ) {
+HL_PRIM unsigned int HL_NAME(VertexLayout_get_attribCount)( pref<VertexLayout>* _this ) {
 	return _unref(_this)->mAttribCount;
 }
 DEFINE_PRIM(_I32,VertexLayout_get_attribCount,_IDL);
-HL_PRIM unsigned int HL_NAME(VertexLayout_set_attribCount)( _ref(VertexLayout)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(VertexLayout_set_attribCount)( pref<VertexLayout>* _this, unsigned int value ) {
 	_unref(_this)->mAttribCount = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,VertexLayout_set_attribCount,_IDL _I32);
 
-HL_PRIM HL_CONST _ref(VertexAttrib)* HL_NAME(VertexLayout_attrib1)(_ref(VertexLayout)* _this, int idx) {
+HL_PRIM HL_CONST pref<VertexAttrib>* HL_NAME(VertexLayout_attrib1)(pref<VertexLayout>* _this, int idx) {
 	return alloc_ref_const((forge_vertex_layout_get_attrib( _unref(_this) , idx)),VertexAttrib);
 }
 DEFINE_PRIM(_IDL, VertexLayout_attrib1, _IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(VertexLayout_get_strides)( _ref(VertexLayout)* _this, int index ) {
+HL_PRIM unsigned int HL_NAME(VertexLayout_get_strides)( pref<VertexLayout>* _this, int index ) {
 	return _unref(_this)->mStrides[index];
 }
 DEFINE_PRIM(_I32,VertexLayout_get_strides,_IDL _I32);
-HL_PRIM unsigned int HL_NAME(VertexLayout_set_strides)( _ref(VertexLayout)* _this, int index, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(VertexLayout_set_strides)( pref<VertexLayout>* _this, int index, unsigned int value ) {
 	_unref(_this)->mStrides[index] = (value);
 	return value;
 }
@@ -1198,7 +1170,7 @@ DEFINE_PRIM(_I32,VertexLayout_set_strides,_IDL _I32 _I32); // Array setter
 HL_PRIM bool HL_NAME(Globals_initialize1)(vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	auto ___retvalue = (hlForgeInitialize(name__cstr));
-	return ___retvalue;
+	return (___retvalue);
 }
 DEFINE_PRIM(_BOOL, Globals_initialize1, _STRING);
 
@@ -1207,1208 +1179,1223 @@ HL_PRIM void HL_NAME(Globals_waitForAllResourceLoads0)() {
 }
 DEFINE_PRIM(_VOID, Globals_waitForAllResourceLoads0,);
 
-HL_PRIM int HL_NAME(RenderTarget_get_sampleCount)( _ref(RenderTarget)* _this ) {
+HL_PRIM int HL_NAME(RenderTarget_get_sampleCount)( pref<RenderTarget>* _this ) {
 	return HL_NAME(SampleCount_valueToIndex0)(_unref(_this)->mSampleCount);
 }
 DEFINE_PRIM(_I32,RenderTarget_get_sampleCount,_IDL);
-HL_PRIM int HL_NAME(RenderTarget_set_sampleCount)( _ref(RenderTarget)* _this, int value ) {
+HL_PRIM int HL_NAME(RenderTarget_set_sampleCount)( pref<RenderTarget>* _this, int value ) {
 	_unref(_this)->mSampleCount = (SampleCount)HL_NAME(SampleCount_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTarget_set_sampleCount,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(RenderTarget_get_sampleQuality)( _ref(RenderTarget)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTarget_get_sampleQuality)( pref<RenderTarget>* _this ) {
 	return _unref(_this)->mSampleQuality;
 }
 DEFINE_PRIM(_I32,RenderTarget_get_sampleQuality,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTarget_set_sampleQuality)( _ref(RenderTarget)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTarget_set_sampleQuality)( pref<RenderTarget>* _this, unsigned int value ) {
 	_unref(_this)->mSampleQuality = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTarget_set_sampleQuality,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(RenderTarget_get_width)( _ref(RenderTarget)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTarget_get_width)( pref<RenderTarget>* _this ) {
 	return _unref(_this)->mWidth;
 }
 DEFINE_PRIM(_I32,RenderTarget_get_width,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTarget_set_width)( _ref(RenderTarget)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTarget_set_width)( pref<RenderTarget>* _this, unsigned int value ) {
 	_unref(_this)->mWidth = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTarget_set_width,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(RenderTarget_get_height)( _ref(RenderTarget)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTarget_get_height)( pref<RenderTarget>* _this ) {
 	return _unref(_this)->mHeight;
 }
 DEFINE_PRIM(_I32,RenderTarget_get_height,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTarget_set_height)( _ref(RenderTarget)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTarget_set_height)( pref<RenderTarget>* _this, unsigned int value ) {
 	_unref(_this)->mHeight = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTarget_set_height,_IDL _I32);
 
-HL_PRIM int HL_NAME(RenderTarget_get_format)( _ref(RenderTarget)* _this ) {
+HL_PRIM int HL_NAME(RenderTarget_get_format)( pref<RenderTarget>* _this ) {
 	return HL_NAME(TinyImageFormat_valueToIndex0)(_unref(_this)->mFormat);
 }
 DEFINE_PRIM(_I32,RenderTarget_get_format,_IDL);
-HL_PRIM int HL_NAME(RenderTarget_set_format)( _ref(RenderTarget)* _this, int value ) {
+HL_PRIM int HL_NAME(RenderTarget_set_format)( pref<RenderTarget>* _this, int value ) {
 	_unref(_this)->mFormat = (TinyImageFormat)HL_NAME(TinyImageFormat_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTarget_set_format,_IDL _I32);
 
-HL_PRIM HL_CONST _ref(Texture)* HL_NAME(RenderTarget_getTexture0)(_ref(RenderTarget)* _this) {
+HL_PRIM HL_CONST pref<Texture>* HL_NAME(RenderTarget_getTexture0)(pref<RenderTarget>* _this) {
 	return alloc_ref_const((forge_render_target_get_texture( _unref(_this) )),Texture);
 }
 DEFINE_PRIM(_IDL, RenderTarget_getTexture0, _IDL);
 
-HL_PRIM void HL_NAME(RenderTarget_setClearColor4)(_ref(RenderTarget)* _this, float r, float g, float b, float a) {
+HL_PRIM void HL_NAME(RenderTarget_setClearColor4)(pref<RenderTarget>* _this, float r, float g, float b, float a) {
 	(forge_render_target_set_clear_colour( _unref(_this) , r, g, b, a));
 }
 DEFINE_PRIM(_VOID, RenderTarget_setClearColor4, _IDL _F32 _F32 _F32 _F32);
 
-HL_PRIM void HL_NAME(RenderTarget_setClearDepthNormalized2)(_ref(RenderTarget)* _this, float depth, int stencil) {
+HL_PRIM void HL_NAME(RenderTarget_setClearDepthNormalized2)(pref<RenderTarget>* _this, float depth, int stencil) {
 	(forge_render_target_set_clear_depth( _unref(_this) , depth, stencil));
 }
 DEFINE_PRIM(_VOID, RenderTarget_setClearDepthNormalized2, _IDL _F32 _I32);
 
-HL_PRIM void HL_NAME(RenderTarget_captureAsBuffer2)(_ref(RenderTarget)* _this, _ref(Buffer)* pTransferBuffer, _ref(Semaphore)* semaphore) {
+HL_PRIM void HL_NAME(RenderTarget_captureAsBuffer2)(pref<RenderTarget>* _this, pref<Buffer>* pTransferBuffer, pref<Semaphore>* semaphore) {
 	(forge_render_target_capture( _unref(_this) , _unref_ptr_safe(pTransferBuffer), _unref_ptr_safe(semaphore)));
 }
 DEFINE_PRIM(_VOID, RenderTarget_captureAsBuffer2, _IDL _IDL _IDL);
 
-HL_PRIM int HL_NAME(RenderTarget_captureSize0)(_ref(RenderTarget)* _this) {
+HL_PRIM int HL_NAME(RenderTarget_captureSize0)(pref<RenderTarget>* _this) {
 	return (forge_render_target_capture_size( _unref(_this) ));
 }
 DEFINE_PRIM(_I32, RenderTarget_captureSize0, _IDL);
 
-HL_PRIM HL_CONST _ref(Shader)* HL_NAME(GraphicsPipelineDesc_get_pShaderProgram)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM HL_CONST pref<Shader>* HL_NAME(GraphicsPipelineDesc_get_pShaderProgram)( pref<GraphicsPipelineDesc>* _this ) {
 	return alloc_ref_const(_unref(_this)->pShaderProgram,Shader);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pShaderProgram,_IDL);
-HL_PRIM HL_CONST _ref(Shader)* HL_NAME(GraphicsPipelineDesc_set_pShaderProgram)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(Shader)* value ) {
+HL_PRIM HL_CONST pref<Shader>* HL_NAME(GraphicsPipelineDesc_set_pShaderProgram)( pref<GraphicsPipelineDesc>* _this, HL_CONST pref<Shader>* value ) {
 	_unref(_this)->pShaderProgram = _unref_ptr_safe(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pShaderProgram,_IDL _IDL);
 
-HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(GraphicsPipelineDesc_get_pRootSignature)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM HL_CONST pref<RootSignature>* HL_NAME(GraphicsPipelineDesc_get_pRootSignature)( pref<GraphicsPipelineDesc>* _this ) {
 	return alloc_ref_const(_unref(_this)->pRootSignature,RootSignature);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pRootSignature,_IDL);
-HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(GraphicsPipelineDesc_set_pRootSignature)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(RootSignature)* value ) {
+HL_PRIM HL_CONST pref<RootSignature>* HL_NAME(GraphicsPipelineDesc_set_pRootSignature)( pref<GraphicsPipelineDesc>* _this, HL_CONST pref<RootSignature>* value ) {
 	_unref(_this)->pRootSignature = _unref_ptr_safe(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pRootSignature,_IDL _IDL);
 
-HL_PRIM HL_CONST _ref(VertexLayout)* HL_NAME(GraphicsPipelineDesc_get_pVertexLayout)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM HL_CONST pref<VertexLayout>* HL_NAME(GraphicsPipelineDesc_get_pVertexLayout)( pref<GraphicsPipelineDesc>* _this ) {
 	return alloc_ref_const(_unref(_this)->pVertexLayout,VertexLayout);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pVertexLayout,_IDL);
-HL_PRIM HL_CONST _ref(VertexLayout)* HL_NAME(GraphicsPipelineDesc_set_pVertexLayout)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(VertexLayout)* value ) {
+HL_PRIM HL_CONST pref<VertexLayout>* HL_NAME(GraphicsPipelineDesc_set_pVertexLayout)( pref<GraphicsPipelineDesc>* _this, HL_CONST pref<VertexLayout>* value ) {
 	_unref(_this)->pVertexLayout = _unref_ptr_safe(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pVertexLayout,_IDL _IDL);
 
-HL_PRIM HL_CONST _ref(BlendStateDesc)* HL_NAME(GraphicsPipelineDesc_get_pBlendState)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM HL_CONST pref<BlendStateDesc>* HL_NAME(GraphicsPipelineDesc_get_pBlendState)( pref<GraphicsPipelineDesc>* _this ) {
 	return alloc_ref_const(_unref(_this)->pBlendState,BlendStateDesc);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pBlendState,_IDL);
-HL_PRIM HL_CONST _ref(BlendStateDesc)* HL_NAME(GraphicsPipelineDesc_set_pBlendState)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(BlendStateDesc)* value ) {
+HL_PRIM HL_CONST pref<BlendStateDesc>* HL_NAME(GraphicsPipelineDesc_set_pBlendState)( pref<GraphicsPipelineDesc>* _this, HL_CONST pref<BlendStateDesc>* value ) {
 	_unref(_this)->pBlendState = _unref_ptr_safe(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pBlendState,_IDL _IDL);
 
-HL_PRIM HL_CONST _ref(DepthStateDesc)* HL_NAME(GraphicsPipelineDesc_get_pDepthState)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM HL_CONST pref<DepthStateDesc>* HL_NAME(GraphicsPipelineDesc_get_pDepthState)( pref<GraphicsPipelineDesc>* _this ) {
 	return alloc_ref_const(_unref(_this)->pDepthState,DepthStateDesc);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pDepthState,_IDL);
-HL_PRIM HL_CONST _ref(DepthStateDesc)* HL_NAME(GraphicsPipelineDesc_set_pDepthState)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(DepthStateDesc)* value ) {
+HL_PRIM HL_CONST pref<DepthStateDesc>* HL_NAME(GraphicsPipelineDesc_set_pDepthState)( pref<GraphicsPipelineDesc>* _this, HL_CONST pref<DepthStateDesc>* value ) {
 	_unref(_this)->pDepthState = _unref_ptr_safe(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pDepthState,_IDL _IDL);
 
-HL_PRIM HL_CONST _ref(RasterizerStateDesc)* HL_NAME(GraphicsPipelineDesc_get_pRasterizerState)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM HL_CONST pref<RasterizerStateDesc>* HL_NAME(GraphicsPipelineDesc_get_pRasterizerState)( pref<GraphicsPipelineDesc>* _this ) {
 	return alloc_ref_const(_unref(_this)->pRasterizerState,RasterizerStateDesc);
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_get_pRasterizerState,_IDL);
-HL_PRIM HL_CONST _ref(RasterizerStateDesc)* HL_NAME(GraphicsPipelineDesc_set_pRasterizerState)( _ref(GraphicsPipelineDesc)* _this, HL_CONST _ref(RasterizerStateDesc)* value ) {
+HL_PRIM HL_CONST pref<RasterizerStateDesc>* HL_NAME(GraphicsPipelineDesc_set_pRasterizerState)( pref<GraphicsPipelineDesc>* _this, HL_CONST pref<RasterizerStateDesc>* value ) {
 	_unref(_this)->pRasterizerState = _unref_ptr_safe(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,GraphicsPipelineDesc_set_pRasterizerState,_IDL _IDL);
 
-HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_get_mRenderTargetCount)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_get_mRenderTargetCount)( pref<GraphicsPipelineDesc>* _this ) {
 	return _unref(_this)->mRenderTargetCount;
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_mRenderTargetCount,_IDL);
-HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_set_mRenderTargetCount)( _ref(GraphicsPipelineDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_set_mRenderTargetCount)( pref<GraphicsPipelineDesc>* _this, unsigned int value ) {
 	_unref(_this)->mRenderTargetCount = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_mRenderTargetCount,_IDL _I32);
 
-HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_sampleCount)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_sampleCount)( pref<GraphicsPipelineDesc>* _this ) {
 	return HL_NAME(SampleCount_valueToIndex0)(_unref(_this)->mSampleCount);
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_sampleCount,_IDL);
-HL_PRIM int HL_NAME(GraphicsPipelineDesc_set_sampleCount)( _ref(GraphicsPipelineDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(GraphicsPipelineDesc_set_sampleCount)( pref<GraphicsPipelineDesc>* _this, int value ) {
 	_unref(_this)->mSampleCount = (SampleCount)HL_NAME(SampleCount_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_sampleCount,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_get_sampleQuality)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_get_sampleQuality)( pref<GraphicsPipelineDesc>* _this ) {
 	return _unref(_this)->mSampleQuality;
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_sampleQuality,_IDL);
-HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_set_sampleQuality)( _ref(GraphicsPipelineDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(GraphicsPipelineDesc_set_sampleQuality)( pref<GraphicsPipelineDesc>* _this, unsigned int value ) {
 	_unref(_this)->mSampleQuality = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_sampleQuality,_IDL _I32);
 
-HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_depthStencilFormat)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_depthStencilFormat)( pref<GraphicsPipelineDesc>* _this ) {
 	return HL_NAME(TinyImageFormat_valueToIndex0)(_unref(_this)->mDepthStencilFormat);
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_depthStencilFormat,_IDL);
-HL_PRIM int HL_NAME(GraphicsPipelineDesc_set_depthStencilFormat)( _ref(GraphicsPipelineDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(GraphicsPipelineDesc_set_depthStencilFormat)( pref<GraphicsPipelineDesc>* _this, int value ) {
 	_unref(_this)->mDepthStencilFormat = (TinyImageFormat)HL_NAME(TinyImageFormat_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_depthStencilFormat,_IDL _I32);
 
-HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_mPrimitiveTopo)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM int HL_NAME(GraphicsPipelineDesc_get_mPrimitiveTopo)( pref<GraphicsPipelineDesc>* _this ) {
 	return HL_NAME(PrimitiveTopology_valueToIndex0)(_unref(_this)->mPrimitiveTopo);
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_get_mPrimitiveTopo,_IDL);
-HL_PRIM int HL_NAME(GraphicsPipelineDesc_set_mPrimitiveTopo)( _ref(GraphicsPipelineDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(GraphicsPipelineDesc_set_mPrimitiveTopo)( pref<GraphicsPipelineDesc>* _this, int value ) {
 	_unref(_this)->mPrimitiveTopo = (PrimitiveTopology)HL_NAME(PrimitiveTopology_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,GraphicsPipelineDesc_set_mPrimitiveTopo,_IDL _I32);
 
-HL_PRIM bool HL_NAME(GraphicsPipelineDesc_get_mSupportIndirectCommandBuffer)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM bool HL_NAME(GraphicsPipelineDesc_get_mSupportIndirectCommandBuffer)( pref<GraphicsPipelineDesc>* _this ) {
 	return _unref(_this)->mSupportIndirectCommandBuffer;
 }
 DEFINE_PRIM(_BOOL,GraphicsPipelineDesc_get_mSupportIndirectCommandBuffer,_IDL);
-HL_PRIM bool HL_NAME(GraphicsPipelineDesc_set_mSupportIndirectCommandBuffer)( _ref(GraphicsPipelineDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(GraphicsPipelineDesc_set_mSupportIndirectCommandBuffer)( pref<GraphicsPipelineDesc>* _this, bool value ) {
 	_unref(_this)->mSupportIndirectCommandBuffer = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,GraphicsPipelineDesc_set_mSupportIndirectCommandBuffer,_IDL _BOOL);
 
-HL_PRIM bool HL_NAME(GraphicsPipelineDesc_get_mVRFoveatedRendering)( _ref(GraphicsPipelineDesc)* _this ) {
+HL_PRIM bool HL_NAME(GraphicsPipelineDesc_get_mVRFoveatedRendering)( pref<GraphicsPipelineDesc>* _this ) {
 	return _unref(_this)->mVRFoveatedRendering;
 }
 DEFINE_PRIM(_BOOL,GraphicsPipelineDesc_get_mVRFoveatedRendering,_IDL);
-HL_PRIM bool HL_NAME(GraphicsPipelineDesc_set_mVRFoveatedRendering)( _ref(GraphicsPipelineDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(GraphicsPipelineDesc_set_mVRFoveatedRendering)( pref<GraphicsPipelineDesc>* _this, bool value ) {
 	_unref(_this)->mVRFoveatedRendering = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,GraphicsPipelineDesc_set_mVRFoveatedRendering,_IDL _BOOL);
 
-HL_PRIM HL_CONST _ref(Shader)* HL_NAME(ComputePipelineDesc_get_shaderProgram)( _ref(ComputePipelineDesc)* _this ) {
+HL_PRIM HL_CONST pref<Shader>* HL_NAME(ComputePipelineDesc_get_shaderProgram)( pref<ComputePipelineDesc>* _this ) {
 	return alloc_ref_const(_unref(_this)->pShaderProgram,Shader);
 }
 DEFINE_PRIM(_IDL,ComputePipelineDesc_get_shaderProgram,_IDL);
-HL_PRIM HL_CONST _ref(Shader)* HL_NAME(ComputePipelineDesc_set_shaderProgram)( _ref(ComputePipelineDesc)* _this, HL_CONST _ref(Shader)* value ) {
+HL_PRIM HL_CONST pref<Shader>* HL_NAME(ComputePipelineDesc_set_shaderProgram)( pref<ComputePipelineDesc>* _this, HL_CONST pref<Shader>* value ) {
 	_unref(_this)->pShaderProgram = _unref_ptr_safe(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,ComputePipelineDesc_set_shaderProgram,_IDL _IDL);
 
-HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(ComputePipelineDesc_get_rootSignature)( _ref(ComputePipelineDesc)* _this ) {
+HL_PRIM HL_CONST pref<RootSignature>* HL_NAME(ComputePipelineDesc_get_rootSignature)( pref<ComputePipelineDesc>* _this ) {
 	return alloc_ref_const(_unref(_this)->pRootSignature,RootSignature);
 }
 DEFINE_PRIM(_IDL,ComputePipelineDesc_get_rootSignature,_IDL);
-HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(ComputePipelineDesc_set_rootSignature)( _ref(ComputePipelineDesc)* _this, HL_CONST _ref(RootSignature)* value ) {
+HL_PRIM HL_CONST pref<RootSignature>* HL_NAME(ComputePipelineDesc_set_rootSignature)( pref<ComputePipelineDesc>* _this, HL_CONST pref<RootSignature>* value ) {
 	_unref(_this)->pRootSignature = _unref_ptr_safe(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,ComputePipelineDesc_set_rootSignature,_IDL _IDL);
 
-HL_PRIM _ref(HlForgePipelineDesc)* HL_NAME(PipelineDesc_new0)() {
+HL_PRIM pref<HlForgePipelineDesc>* HL_NAME(PipelineDesc_new0)() {
 	return alloc_ref((new HlForgePipelineDesc()),PipelineDesc);
 }
 DEFINE_PRIM(_IDL, PipelineDesc_new0,);
 
-HL_PRIM HL_CONST _ref(GraphicsPipelineDesc)* HL_NAME(PipelineDesc_graphicsPipeline0)(_ref(HlForgePipelineDesc)* _this) {
+HL_PRIM HL_CONST pref<GraphicsPipelineDesc>* HL_NAME(PipelineDesc_graphicsPipeline0)(pref<HlForgePipelineDesc>* _this) {
 	return alloc_ref_const((_unref(_this)->graphicsPipeline()),GraphicsPipelineDesc);
 }
 DEFINE_PRIM(_IDL, PipelineDesc_graphicsPipeline0, _IDL);
 
-HL_PRIM HL_CONST _ref(ComputePipelineDesc)* HL_NAME(PipelineDesc_computePipeline0)(_ref(HlForgePipelineDesc)* _this) {
+HL_PRIM HL_CONST pref<ComputePipelineDesc>* HL_NAME(PipelineDesc_computePipeline0)(pref<HlForgePipelineDesc>* _this) {
 	return alloc_ref_const((_unref(_this)->computePipeline()),ComputePipelineDesc);
 }
 DEFINE_PRIM(_IDL, PipelineDesc_computePipeline0, _IDL);
 
-HL_PRIM _ref(PipelineCache)* HL_NAME(PipelineDesc_get_pCache)( _ref(HlForgePipelineDesc)* _this ) {
+HL_PRIM pref<PipelineCache>* HL_NAME(PipelineDesc_get_pCache)( pref<HlForgePipelineDesc>* _this ) {
 	return alloc_ref(_unref(_this)->pCache,PipelineCache);
 }
 DEFINE_PRIM(_IDL,PipelineDesc_get_pCache,_IDL);
-HL_PRIM _ref(PipelineCache)* HL_NAME(PipelineDesc_set_pCache)( _ref(HlForgePipelineDesc)* _this, _ref(PipelineCache)* value ) {
+HL_PRIM pref<PipelineCache>* HL_NAME(PipelineDesc_set_pCache)( pref<HlForgePipelineDesc>* _this, pref<PipelineCache>* value ) {
 	_unref(_this)->pCache = _unref_ptr_safe(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,PipelineDesc_set_pCache,_IDL _IDL);
 
-HL_PRIM unsigned int HL_NAME(PipelineDesc_get_mExtensionCount)( _ref(HlForgePipelineDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(PipelineDesc_get_mExtensionCount)( pref<HlForgePipelineDesc>* _this ) {
 	return _unref(_this)->mExtensionCount;
 }
 DEFINE_PRIM(_I32,PipelineDesc_get_mExtensionCount,_IDL);
-HL_PRIM unsigned int HL_NAME(PipelineDesc_set_mExtensionCount)( _ref(HlForgePipelineDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(PipelineDesc_set_mExtensionCount)( pref<HlForgePipelineDesc>* _this, unsigned int value ) {
 	_unref(_this)->mExtensionCount = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,PipelineDesc_set_mExtensionCount,_IDL _I32);
 
-HL_PRIM void HL_NAME(PipelineDesc_setName1)(_ref(HlForgePipelineDesc)* _this, vstring * name) {
+HL_PRIM void HL_NAME(PipelineDesc_setName1)(pref<HlForgePipelineDesc>* _this, vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	(_unref(_this)->setName(name__cstr));
 }
 DEFINE_PRIM(_VOID, PipelineDesc_setName1, _IDL _STRING);
 
-HL_PRIM void HL_NAME(PipelineDesc_reset0)(_ref(HlForgePipelineDesc)* _this) {
+HL_PRIM void HL_NAME(PipelineDesc_reset0)(pref<HlForgePipelineDesc>* _this) {
 	(_unref(_this)->reset());
 }
 DEFINE_PRIM(_VOID, PipelineDesc_reset0, _IDL);
 
-HL_PRIM void HL_NAME(PipelineDesc_setRenderTargetGlobals2)(_ref(HlForgePipelineDesc)* _this, int sampleCount, int sampleQuality) {
+HL_PRIM void HL_NAME(PipelineDesc_setRenderTargetGlobals2)(pref<HlForgePipelineDesc>* _this, int sampleCount, int sampleQuality) {
 	(_unref(_this)->setRenderTargetGlobals(SampleCount__values[sampleCount], sampleQuality));
 }
 DEFINE_PRIM(_VOID, PipelineDesc_setRenderTargetGlobals2, _IDL _I32 _I32);
 
-HL_PRIM int HL_NAME(PipelineDesc_addGraphicsRenderTarget1)(_ref(HlForgePipelineDesc)* _this, int format) {
+HL_PRIM int HL_NAME(PipelineDesc_addGraphicsRenderTarget1)(pref<HlForgePipelineDesc>* _this, int format) {
 	return (_unref(_this)->addGraphicsRenderTarget(TinyImageFormat__values[format]));
 }
 DEFINE_PRIM(_I32, PipelineDesc_addGraphicsRenderTarget1, _IDL _I32);
 
-HL_PRIM _ref(BufferBinder)* HL_NAME(BufferBinder_new0)() {
+HL_PRIM pref<BufferBinder>* HL_NAME(BufferBinder_new0)() {
 	return alloc_ref((new BufferBinder()),BufferBinder);
 }
 DEFINE_PRIM(_IDL, BufferBinder_new0,);
 
-HL_PRIM void HL_NAME(BufferBinder_reset0)(_ref(BufferBinder)* _this) {
+HL_PRIM void HL_NAME(BufferBinder_reset0)(pref<BufferBinder>* _this) {
 	(_unref(_this)->reset());
 }
 DEFINE_PRIM(_VOID, BufferBinder_reset0, _IDL);
 
-HL_PRIM int HL_NAME(BufferBinder_add3)(_ref(BufferBinder)* _this, _ref(Buffer)* buf, int stride, int offset) {
+HL_PRIM int HL_NAME(BufferBinder_add3)(pref<BufferBinder>* _this, pref<Buffer>* buf, int stride, int offset) {
 	return (_unref(_this)->add(_unref_ptr_safe(buf), stride, offset));
 }
 DEFINE_PRIM(_I32, BufferBinder_add3, _IDL _IDL _I32 _I32);
 
-HL_PRIM _ref(ResourceBarrierBuilder)* HL_NAME(ResourceBarrierBuilder_new0)() {
+HL_PRIM pref<ResourceBarrierBuilder>* HL_NAME(ResourceBarrierBuilder_new0)() {
 	return alloc_ref((new ResourceBarrierBuilder()),ResourceBarrierBuilder);
 }
 DEFINE_PRIM(_IDL, ResourceBarrierBuilder_new0,);
 
-HL_PRIM int HL_NAME(ResourceBarrierBuilder_addRTBarrier3)(_ref(ResourceBarrierBuilder)* _this, _ref(RenderTarget)* rt, int src, int dst) {
+HL_PRIM int HL_NAME(ResourceBarrierBuilder_addRTBarrier3)(pref<ResourceBarrierBuilder>* _this, pref<RenderTarget>* rt, int src, int dst) {
 	return (_unref(_this)->addRTBarrier(_unref_ptr_safe(rt), ResourceState__values[src], ResourceState__values[dst]));
 }
 DEFINE_PRIM(_I32, ResourceBarrierBuilder_addRTBarrier3, _IDL _IDL _I32 _I32);
 
-HL_PRIM void HL_NAME(ResourceBarrierBuilder_insert1)(_ref(ResourceBarrierBuilder)* _this, _ref(Cmd)* cmd) {
+HL_PRIM void HL_NAME(ResourceBarrierBuilder_insert1)(pref<ResourceBarrierBuilder>* _this, pref<Cmd>* cmd) {
 	(_unref(_this)->insert(_unref_ptr_safe(cmd)));
 }
 DEFINE_PRIM(_VOID, ResourceBarrierBuilder_insert1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(Cmd_bind4)(_ref(Cmd)* _this, _ref(RenderTarget)* rt, _ref(RenderTarget)* depthstencil, int color, int depth) {
+HL_PRIM void HL_NAME(Cmd_bind4)(pref<Cmd>* _this, pref<RenderTarget>* rt, pref<RenderTarget>* depthstencil, int color, int depth) {
 	(forge_render_target_bind( _unref(_this) , _unref_ptr_safe(rt), _unref_ptr_safe(depthstencil), LoadActionType__values[color], LoadActionType__values[depth]));
 }
 DEFINE_PRIM(_VOID, Cmd_bind4, _IDL _IDL _IDL _I32 _I32);
 
-HL_PRIM void HL_NAME(Cmd_unbindRenderTarget0)(_ref(Cmd)* _this) {
+HL_PRIM void HL_NAME(Cmd_unbindRenderTarget0)(pref<Cmd>* _this) {
 	(forge_cmd_unbind( _unref(_this) ));
 }
 DEFINE_PRIM(_VOID, Cmd_unbindRenderTarget0, _IDL);
 
-HL_PRIM void HL_NAME(Cmd_begin0)(_ref(Cmd)* _this) {
+HL_PRIM void HL_NAME(Cmd_begin0)(pref<Cmd>* _this) {
 	(beginCmd( _unref(_this) ));
 }
 DEFINE_PRIM(_VOID, Cmd_begin0, _IDL);
 
-HL_PRIM void HL_NAME(Cmd_end0)(_ref(Cmd)* _this) {
+HL_PRIM void HL_NAME(Cmd_end0)(pref<Cmd>* _this) {
 	(endCmd( _unref(_this) ));
 }
 DEFINE_PRIM(_VOID, Cmd_end0, _IDL);
 
-HL_PRIM void HL_NAME(Cmd_pushConstants3)(_ref(Cmd)* _this, _ref(RootSignature)* rs, int index, vbyte* data) {
+HL_PRIM void HL_NAME(Cmd_pushConstants3)(pref<Cmd>* _this, pref<RootSignature>* rs, int index, vbyte* data) {
 	(cmdBindPushConstants( _unref(_this) , _unref_ptr_safe(rs), index, data));
 }
 DEFINE_PRIM(_VOID, Cmd_pushConstants3, _IDL _IDL _I32 _BYTES);
 
-HL_PRIM void HL_NAME(Cmd_bindIndexBuffer3)(_ref(Cmd)* _this, _ref(Buffer)* b, int format, int offset) {
+HL_PRIM void HL_NAME(Cmd_bindIndexBuffer3)(pref<Cmd>* _this, pref<Buffer>* b, int format, int offset) {
 	(cmdBindIndexBuffer( _unref(_this) , _unref_ptr_safe(b), IndexType__values[format], offset));
 }
 DEFINE_PRIM(_VOID, Cmd_bindIndexBuffer3, _IDL _IDL _I32 _I32);
 
-HL_PRIM void HL_NAME(Cmd_bindVertexBuffer1)(_ref(Cmd)* _this, _ref(BufferBinder)* binder) {
+HL_PRIM void HL_NAME(Cmd_bindVertexBuffer1)(pref<Cmd>* _this, pref<BufferBinder>* binder) {
 	(BufferBinder::bind( _unref(_this) , _unref_ptr_safe(binder)));
 }
 DEFINE_PRIM(_VOID, Cmd_bindVertexBuffer1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(Cmd_drawIndexed3)(_ref(Cmd)* _this, int vertCount, unsigned int first_index, unsigned int first_vertex) {
+HL_PRIM void HL_NAME(Cmd_drawIndexed3)(pref<Cmd>* _this, int vertCount, unsigned int first_index, unsigned int first_vertex) {
 	(cmdDrawIndexed( _unref(_this) , vertCount, first_index, first_vertex));
 }
 DEFINE_PRIM(_VOID, Cmd_drawIndexed3, _IDL _I32 _I32 _I32);
 
-HL_PRIM void HL_NAME(Cmd_bindPipeline1)(_ref(Cmd)* _this, _ref(Pipeline)* pipeline) {
+HL_PRIM void HL_NAME(Cmd_bindPipeline1)(pref<Cmd>* _this, pref<Pipeline>* pipeline) {
 	(cmdBindPipeline( _unref(_this) , _unref_ptr_safe(pipeline)));
 }
 DEFINE_PRIM(_VOID, Cmd_bindPipeline1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(Cmd_bindDescriptorSet2)(_ref(Cmd)* _this, int index, _ref(DescriptorSet)* set) {
+HL_PRIM void HL_NAME(Cmd_bindDescriptorSet2)(pref<Cmd>* _this, int index, pref<DescriptorSet>* set) {
 	(cmdBindDescriptorSet( _unref(_this) , index, _unref_ptr_safe(set)));
 }
 DEFINE_PRIM(_VOID, Cmd_bindDescriptorSet2, _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(Cmd_insertBarrier1)(_ref(Cmd)* _this, _ref(ResourceBarrierBuilder)* barrier) {
+HL_PRIM void HL_NAME(Cmd_insertBarrier1)(pref<Cmd>* _this, pref<ResourceBarrierBuilder>* barrier) {
 	(forge_cmd_insert_barrier( _unref(_this) , _unref_ptr_safe(barrier)));
 }
 DEFINE_PRIM(_VOID, Cmd_insertBarrier1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(Cmd_dispatch3)(_ref(Cmd)* _this, int groupx, int groupy, int groupz) {
+HL_PRIM void HL_NAME(Cmd_dispatch3)(pref<Cmd>* _this, int groupx, int groupy, int groupz) {
 	(cmdDispatch( _unref(_this) , groupx, groupy, groupz));
 }
 DEFINE_PRIM(_VOID, Cmd_dispatch3, _IDL _I32 _I32 _I32);
 
-HL_PRIM _ref(Map64Int)* HL_NAME(Map64Int_new0)() {
+HL_PRIM pref<Map64Int>* HL_NAME(Map64Int_new0)() {
 	return alloc_ref((new Map64Int()),Map64Int);
 }
 DEFINE_PRIM(_IDL, Map64Int_new0,);
 
-HL_PRIM bool HL_NAME(Map64Int_exists1)(_ref(Map64Int)* _this, int64_t key) {
+HL_PRIM bool HL_NAME(Map64Int_exists1)(pref<Map64Int>* _this, int64_t key) {
 	return (_unref(_this)->exists(key));
 }
 DEFINE_PRIM(_BOOL, Map64Int_exists1, _IDL _I64);
 
-HL_PRIM void HL_NAME(Map64Int_set2)(_ref(Map64Int)* _this, int64_t key, int value) {
+HL_PRIM void HL_NAME(Map64Int_set2)(pref<Map64Int>* _this, int64_t key, int value) {
 	(_unref(_this)->set(key, value));
 }
 DEFINE_PRIM(_VOID, Map64Int_set2, _IDL _I64 _I32);
 
-HL_PRIM int HL_NAME(Map64Int_get1)(_ref(Map64Int)* _this, int64_t key) {
+HL_PRIM int HL_NAME(Map64Int_get1)(pref<Map64Int>* _this, int64_t key) {
 	return (_unref(_this)->get(key));
 }
 DEFINE_PRIM(_I32, Map64Int_get1, _IDL _I64);
 
-HL_PRIM int HL_NAME(Map64Int_size0)(_ref(Map64Int)* _this) {
+HL_PRIM int HL_NAME(Map64Int_size0)(pref<Map64Int>* _this) {
 	return (_unref(_this)->size());
 }
 DEFINE_PRIM(_I32, Map64Int_size0, _IDL);
 
-HL_PRIM void HL_NAME(Queue_waitIdle0)(_ref(Queue)* _this) {
+HL_PRIM void HL_NAME(Queue_waitIdle0)(pref<Queue>* _this) {
 	(waitQueueIdle( _unref(_this) ));
 }
 DEFINE_PRIM(_VOID, Queue_waitIdle0, _IDL);
 
-HL_PRIM void HL_NAME(Queue_submit4)(_ref(Queue)* _this, _ref(Cmd)* cmd, _ref(Semaphore)* signalSemphor, _ref(Semaphore)* wait, _ref(Fence)* signalFence) {
+HL_PRIM void HL_NAME(Queue_submit4)(pref<Queue>* _this, pref<Cmd>* cmd, pref<Semaphore>* signalSemphor, pref<Semaphore>* wait, pref<Fence>* signalFence) {
 	(forge_queue_submit_cmd( _unref(_this) , _unref_ptr_safe(cmd), _unref_ptr_safe(signalSemphor), _unref_ptr_safe(wait), _unref_ptr_safe(signalFence)));
 }
 DEFINE_PRIM(_VOID, Queue_submit4, _IDL _IDL _IDL _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(RenderTarget)* HL_NAME(SwapChain_getRenderTarget1)(_ref(SwapChain)* _this, int rtidx) {
+HL_PRIM HL_CONST pref<RenderTarget>* HL_NAME(SwapChain_getRenderTarget1)(pref<SwapChain>* _this, int rtidx) {
 	return alloc_ref_const((forge_swap_chain_get_render_target( _unref(_this) , rtidx)),RenderTarget);
 }
 DEFINE_PRIM(_IDL, SwapChain_getRenderTarget1, _IDL _I32);
 
-HL_PRIM bool HL_NAME(SwapChain_isVSync0)(_ref(SwapChain)* _this) {
+HL_PRIM bool HL_NAME(SwapChain_isVSync0)(pref<SwapChain>* _this) {
 	return (isVSync( _unref(_this) ));
 }
 DEFINE_PRIM(_BOOL, SwapChain_isVSync0, _IDL);
 
-HL_PRIM _ref(RenderTargetDesc)* HL_NAME(RenderTargetDesc_new0)() {
+HL_PRIM pref<RenderTargetDesc>* HL_NAME(RenderTargetDesc_new0)() {
 	auto ___retvalue = alloc_ref((new RenderTargetDesc()),RenderTargetDesc);
 	*(___retvalue->value) = {};
-	return ___retvalue;
+	return (___retvalue);
 }
 DEFINE_PRIM(_IDL, RenderTargetDesc_new0,);
 
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_flags)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_flags)( pref<RenderTargetDesc>* _this ) {
 	return _unref(_this)->mFlags;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_flags,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_flags)( _ref(RenderTargetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_flags)( pref<RenderTargetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mFlags = (TextureCreationFlags)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_flags,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_width)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_width)( pref<RenderTargetDesc>* _this ) {
 	return _unref(_this)->mWidth;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_width,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_width)( _ref(RenderTargetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_width)( pref<RenderTargetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mWidth = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_width,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_height)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_height)( pref<RenderTargetDesc>* _this ) {
 	return _unref(_this)->mHeight;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_height,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_height)( _ref(RenderTargetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_height)( pref<RenderTargetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mHeight = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_height,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_depth)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_depth)( pref<RenderTargetDesc>* _this ) {
 	return _unref(_this)->mDepth;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_depth,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_depth)( _ref(RenderTargetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_depth)( pref<RenderTargetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mDepth = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_depth,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_arraySize)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_arraySize)( pref<RenderTargetDesc>* _this ) {
 	return _unref(_this)->mArraySize;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_arraySize,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_arraySize)( _ref(RenderTargetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_arraySize)( pref<RenderTargetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mArraySize = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_arraySize,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_mipLevels)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_mipLevels)( pref<RenderTargetDesc>* _this ) {
 	return _unref(_this)->mMipLevels;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_mipLevels,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_mipLevels)( _ref(RenderTargetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_mipLevels)( pref<RenderTargetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mMipLevels = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_mipLevels,_IDL _I32);
 
-HL_PRIM int HL_NAME(RenderTargetDesc_get_sampleCount)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM int HL_NAME(RenderTargetDesc_get_sampleCount)( pref<RenderTargetDesc>* _this ) {
 	return HL_NAME(SampleCount_valueToIndex0)(_unref(_this)->mSampleCount);
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_sampleCount,_IDL);
-HL_PRIM int HL_NAME(RenderTargetDesc_set_sampleCount)( _ref(RenderTargetDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(RenderTargetDesc_set_sampleCount)( pref<RenderTargetDesc>* _this, int value ) {
 	_unref(_this)->mSampleCount = (SampleCount)HL_NAME(SampleCount_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_sampleCount,_IDL _I32);
 
-HL_PRIM int HL_NAME(RenderTargetDesc_get_startState)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM int HL_NAME(RenderTargetDesc_get_startState)( pref<RenderTargetDesc>* _this ) {
 	return HL_NAME(ResourceState_valueToIndex0)(_unref(_this)->mStartState);
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_startState,_IDL);
-HL_PRIM int HL_NAME(RenderTargetDesc_set_startState)( _ref(RenderTargetDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(RenderTargetDesc_set_startState)( pref<RenderTargetDesc>* _this, int value ) {
 	_unref(_this)->mStartState = (ResourceState)HL_NAME(ResourceState_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_startState,_IDL _I32);
 
-HL_PRIM int HL_NAME(RenderTargetDesc_get_format)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM int HL_NAME(RenderTargetDesc_get_format)( pref<RenderTargetDesc>* _this ) {
 	return HL_NAME(TinyImageFormat_valueToIndex0)(_unref(_this)->mFormat);
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_format,_IDL);
-HL_PRIM int HL_NAME(RenderTargetDesc_set_format)( _ref(RenderTargetDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(RenderTargetDesc_set_format)( pref<RenderTargetDesc>* _this, int value ) {
 	_unref(_this)->mFormat = (TinyImageFormat)HL_NAME(TinyImageFormat_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_format,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_sampleQuality)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_sampleQuality)( pref<RenderTargetDesc>* _this ) {
 	return _unref(_this)->mSampleQuality;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_sampleQuality,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_sampleQuality)( _ref(RenderTargetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_sampleQuality)( pref<RenderTargetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mSampleQuality = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_sampleQuality,_IDL _I32);
 
-HL_PRIM int HL_NAME(RenderTargetDesc_get_descriptors)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM int HL_NAME(RenderTargetDesc_get_descriptors)( pref<RenderTargetDesc>* _this ) {
 	return HL_NAME(DescriptorType_valueToIndex0)(_unref(_this)->mDescriptors);
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_descriptors,_IDL);
-HL_PRIM int HL_NAME(RenderTargetDesc_set_descriptors)( _ref(RenderTargetDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(RenderTargetDesc_set_descriptors)( pref<RenderTargetDesc>* _this, int value ) {
 	_unref(_this)->mDescriptors = (DescriptorType)HL_NAME(DescriptorType_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_descriptors,_IDL _I32);
 
-HL_PRIM void* HL_NAME(RenderTargetDesc_get_nativeHandle)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM void* HL_NAME(RenderTargetDesc_get_nativeHandle)( pref<RenderTargetDesc>* _this ) {
 	return (void*)_unref(_this)->pNativeHandle;
 }
 DEFINE_PRIM(_BYTES,RenderTargetDesc_get_nativeHandle,_IDL);
-HL_PRIM void* HL_NAME(RenderTargetDesc_set_nativeHandle)( _ref(RenderTargetDesc)* _this, void* value ) {
+HL_PRIM void* HL_NAME(RenderTargetDesc_set_nativeHandle)( pref<RenderTargetDesc>* _this, void* value ) {
 	_unref(_this)->pNativeHandle = (value);
 	return value;
 }
 DEFINE_PRIM(_BYTES,RenderTargetDesc_set_nativeHandle,_IDL _BYTES);
 
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_mSharedNodeIndexCount)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_mSharedNodeIndexCount)( pref<RenderTargetDesc>* _this ) {
 	return _unref(_this)->mSharedNodeIndexCount;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_mSharedNodeIndexCount,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_mSharedNodeIndexCount)( _ref(RenderTargetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_mSharedNodeIndexCount)( pref<RenderTargetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mSharedNodeIndexCount = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_mSharedNodeIndexCount,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_nodeIndex)( _ref(RenderTargetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_nodeIndex)( pref<RenderTargetDesc>* _this ) {
 	return _unref(_this)->mNodeIndex;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_get_nodeIndex,_IDL);
-HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_nodeIndex)( _ref(RenderTargetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(RenderTargetDesc_set_nodeIndex)( pref<RenderTargetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mNodeIndex = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_nodeIndex,_IDL _I32);
 
-HL_PRIM int HL_NAME(RootSignature_getDescriptorIndexFromName1)(_ref(RootSignature)* _this, vstring * name) {
+HL_PRIM int HL_NAME(RootSignature_getDescriptorIndexFromName1)(pref<RootSignature>* _this, vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	auto ___retvalue = (getDescriptorIndexFromName( _unref(_this) , name__cstr));
-	return ___retvalue;
+	return (___retvalue);
 }
 DEFINE_PRIM(_I32, RootSignature_getDescriptorIndexFromName1, _IDL _STRING);
 
-HL_PRIM _ref(SamplerDesc)* HL_NAME(SamplerDesc_new0)() {
+HL_PRIM pref<SamplerDesc>* HL_NAME(SamplerDesc_new0)() {
 	return alloc_ref((new SamplerDesc()),SamplerDesc);
 }
 DEFINE_PRIM(_IDL, SamplerDesc_new0,);
 
-HL_PRIM int HL_NAME(SamplerDesc_get_mMinFilter)( _ref(SamplerDesc)* _this ) {
+HL_PRIM int HL_NAME(SamplerDesc_get_mMinFilter)( pref<SamplerDesc>* _this ) {
 	return HL_NAME(FilterType_valueToIndex0)(_unref(_this)->mMinFilter);
 }
 DEFINE_PRIM(_I32,SamplerDesc_get_mMinFilter,_IDL);
-HL_PRIM int HL_NAME(SamplerDesc_set_mMinFilter)( _ref(SamplerDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(SamplerDesc_set_mMinFilter)( pref<SamplerDesc>* _this, int value ) {
 	_unref(_this)->mMinFilter = (FilterType)HL_NAME(FilterType_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,SamplerDesc_set_mMinFilter,_IDL _I32);
 
-HL_PRIM int HL_NAME(SamplerDesc_get_mMagFilter)( _ref(SamplerDesc)* _this ) {
+HL_PRIM int HL_NAME(SamplerDesc_get_mMagFilter)( pref<SamplerDesc>* _this ) {
 	return HL_NAME(FilterType_valueToIndex0)(_unref(_this)->mMagFilter);
 }
 DEFINE_PRIM(_I32,SamplerDesc_get_mMagFilter,_IDL);
-HL_PRIM int HL_NAME(SamplerDesc_set_mMagFilter)( _ref(SamplerDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(SamplerDesc_set_mMagFilter)( pref<SamplerDesc>* _this, int value ) {
 	_unref(_this)->mMagFilter = (FilterType)HL_NAME(FilterType_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,SamplerDesc_set_mMagFilter,_IDL _I32);
 
-HL_PRIM int HL_NAME(SamplerDesc_get_mMipMapMode)( _ref(SamplerDesc)* _this ) {
+HL_PRIM int HL_NAME(SamplerDesc_get_mMipMapMode)( pref<SamplerDesc>* _this ) {
 	return HL_NAME(MipMapMode_valueToIndex0)(_unref(_this)->mMipMapMode);
 }
 DEFINE_PRIM(_I32,SamplerDesc_get_mMipMapMode,_IDL);
-HL_PRIM int HL_NAME(SamplerDesc_set_mMipMapMode)( _ref(SamplerDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(SamplerDesc_set_mMipMapMode)( pref<SamplerDesc>* _this, int value ) {
 	_unref(_this)->mMipMapMode = (MipMapMode)HL_NAME(MipMapMode_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,SamplerDesc_set_mMipMapMode,_IDL _I32);
 
-HL_PRIM int HL_NAME(SamplerDesc_get_mAddressU)( _ref(SamplerDesc)* _this ) {
+HL_PRIM int HL_NAME(SamplerDesc_get_mAddressU)( pref<SamplerDesc>* _this ) {
 	return HL_NAME(AddressMode_valueToIndex0)(_unref(_this)->mAddressU);
 }
 DEFINE_PRIM(_I32,SamplerDesc_get_mAddressU,_IDL);
-HL_PRIM int HL_NAME(SamplerDesc_set_mAddressU)( _ref(SamplerDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(SamplerDesc_set_mAddressU)( pref<SamplerDesc>* _this, int value ) {
 	_unref(_this)->mAddressU = (AddressMode)HL_NAME(AddressMode_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,SamplerDesc_set_mAddressU,_IDL _I32);
 
-HL_PRIM int HL_NAME(SamplerDesc_get_mAddressV)( _ref(SamplerDesc)* _this ) {
+HL_PRIM int HL_NAME(SamplerDesc_get_mAddressV)( pref<SamplerDesc>* _this ) {
 	return HL_NAME(AddressMode_valueToIndex0)(_unref(_this)->mAddressV);
 }
 DEFINE_PRIM(_I32,SamplerDesc_get_mAddressV,_IDL);
-HL_PRIM int HL_NAME(SamplerDesc_set_mAddressV)( _ref(SamplerDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(SamplerDesc_set_mAddressV)( pref<SamplerDesc>* _this, int value ) {
 	_unref(_this)->mAddressV = (AddressMode)HL_NAME(AddressMode_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,SamplerDesc_set_mAddressV,_IDL _I32);
 
-HL_PRIM int HL_NAME(SamplerDesc_get_mAddressW)( _ref(SamplerDesc)* _this ) {
+HL_PRIM int HL_NAME(SamplerDesc_get_mAddressW)( pref<SamplerDesc>* _this ) {
 	return HL_NAME(AddressMode_valueToIndex0)(_unref(_this)->mAddressW);
 }
 DEFINE_PRIM(_I32,SamplerDesc_get_mAddressW,_IDL);
-HL_PRIM int HL_NAME(SamplerDesc_set_mAddressW)( _ref(SamplerDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(SamplerDesc_set_mAddressW)( pref<SamplerDesc>* _this, int value ) {
 	_unref(_this)->mAddressW = (AddressMode)HL_NAME(AddressMode_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,SamplerDesc_set_mAddressW,_IDL _I32);
 
-HL_PRIM float HL_NAME(SamplerDesc_get_mMipLodBias)( _ref(SamplerDesc)* _this ) {
+HL_PRIM float HL_NAME(SamplerDesc_get_mMipLodBias)( pref<SamplerDesc>* _this ) {
 	return _unref(_this)->mMipLodBias;
 }
 DEFINE_PRIM(_F32,SamplerDesc_get_mMipLodBias,_IDL);
-HL_PRIM float HL_NAME(SamplerDesc_set_mMipLodBias)( _ref(SamplerDesc)* _this, float value ) {
+HL_PRIM float HL_NAME(SamplerDesc_set_mMipLodBias)( pref<SamplerDesc>* _this, float value ) {
 	_unref(_this)->mMipLodBias = (value);
 	return value;
 }
 DEFINE_PRIM(_F32,SamplerDesc_set_mMipLodBias,_IDL _F32);
 
-HL_PRIM bool HL_NAME(SamplerDesc_get_mSetLodRange)( _ref(SamplerDesc)* _this ) {
+HL_PRIM bool HL_NAME(SamplerDesc_get_mSetLodRange)( pref<SamplerDesc>* _this ) {
 	return _unref(_this)->mSetLodRange;
 }
 DEFINE_PRIM(_BOOL,SamplerDesc_get_mSetLodRange,_IDL);
-HL_PRIM bool HL_NAME(SamplerDesc_set_mSetLodRange)( _ref(SamplerDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(SamplerDesc_set_mSetLodRange)( pref<SamplerDesc>* _this, bool value ) {
 	_unref(_this)->mSetLodRange = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,SamplerDesc_set_mSetLodRange,_IDL _BOOL);
 
-HL_PRIM float HL_NAME(SamplerDesc_get_mMinLod)( _ref(SamplerDesc)* _this ) {
+HL_PRIM float HL_NAME(SamplerDesc_get_mMinLod)( pref<SamplerDesc>* _this ) {
 	return _unref(_this)->mMinLod;
 }
 DEFINE_PRIM(_F32,SamplerDesc_get_mMinLod,_IDL);
-HL_PRIM float HL_NAME(SamplerDesc_set_mMinLod)( _ref(SamplerDesc)* _this, float value ) {
+HL_PRIM float HL_NAME(SamplerDesc_set_mMinLod)( pref<SamplerDesc>* _this, float value ) {
 	_unref(_this)->mMinLod = (value);
 	return value;
 }
 DEFINE_PRIM(_F32,SamplerDesc_set_mMinLod,_IDL _F32);
 
-HL_PRIM float HL_NAME(SamplerDesc_get_mMaxLod)( _ref(SamplerDesc)* _this ) {
+HL_PRIM float HL_NAME(SamplerDesc_get_mMaxLod)( pref<SamplerDesc>* _this ) {
 	return _unref(_this)->mMaxLod;
 }
 DEFINE_PRIM(_F32,SamplerDesc_get_mMaxLod,_IDL);
-HL_PRIM float HL_NAME(SamplerDesc_set_mMaxLod)( _ref(SamplerDesc)* _this, float value ) {
+HL_PRIM float HL_NAME(SamplerDesc_set_mMaxLod)( pref<SamplerDesc>* _this, float value ) {
 	_unref(_this)->mMaxLod = (value);
 	return value;
 }
 DEFINE_PRIM(_F32,SamplerDesc_set_mMaxLod,_IDL _F32);
 
-HL_PRIM float HL_NAME(SamplerDesc_get_mMaxAnisotropy)( _ref(SamplerDesc)* _this ) {
+HL_PRIM float HL_NAME(SamplerDesc_get_mMaxAnisotropy)( pref<SamplerDesc>* _this ) {
 	return _unref(_this)->mMaxAnisotropy;
 }
 DEFINE_PRIM(_F32,SamplerDesc_get_mMaxAnisotropy,_IDL);
-HL_PRIM float HL_NAME(SamplerDesc_set_mMaxAnisotropy)( _ref(SamplerDesc)* _this, float value ) {
+HL_PRIM float HL_NAME(SamplerDesc_set_mMaxAnisotropy)( pref<SamplerDesc>* _this, float value ) {
 	_unref(_this)->mMaxAnisotropy = (value);
 	return value;
 }
 DEFINE_PRIM(_F32,SamplerDesc_set_mMaxAnisotropy,_IDL _F32);
 
-HL_PRIM int HL_NAME(SamplerDesc_get_mCompareFunc)( _ref(SamplerDesc)* _this ) {
+HL_PRIM int HL_NAME(SamplerDesc_get_mCompareFunc)( pref<SamplerDesc>* _this ) {
 	return HL_NAME(CompareMode_valueToIndex0)(_unref(_this)->mCompareFunc);
 }
 DEFINE_PRIM(_I32,SamplerDesc_get_mCompareFunc,_IDL);
-HL_PRIM int HL_NAME(SamplerDesc_set_mCompareFunc)( _ref(SamplerDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(SamplerDesc_set_mCompareFunc)( pref<SamplerDesc>* _this, int value ) {
 	_unref(_this)->mCompareFunc = (CompareMode)HL_NAME(CompareMode_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,SamplerDesc_set_mCompareFunc,_IDL _I32);
 
-HL_PRIM _ref(DescriptorSetDesc)* HL_NAME(DescriptorSetDesc_new0)() {
+HL_PRIM pref<DescriptorSetDesc>* HL_NAME(DescriptorSetDesc_new0)() {
 	return alloc_ref((new DescriptorSetDesc()),DescriptorSetDesc);
 }
 DEFINE_PRIM(_IDL, DescriptorSetDesc_new0,);
 
-HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(DescriptorSetDesc_get_pRootSignature)( _ref(DescriptorSetDesc)* _this ) {
+HL_PRIM HL_CONST pref<RootSignature>* HL_NAME(DescriptorSetDesc_get_pRootSignature)( pref<DescriptorSetDesc>* _this ) {
 	return alloc_ref_const(_unref(_this)->pRootSignature,RootSignature);
 }
 DEFINE_PRIM(_IDL,DescriptorSetDesc_get_pRootSignature,_IDL);
-HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(DescriptorSetDesc_set_pRootSignature)( _ref(DescriptorSetDesc)* _this, HL_CONST _ref(RootSignature)* value ) {
+HL_PRIM HL_CONST pref<RootSignature>* HL_NAME(DescriptorSetDesc_set_pRootSignature)( pref<DescriptorSetDesc>* _this, HL_CONST pref<RootSignature>* value ) {
 	_unref(_this)->pRootSignature = _unref_ptr_safe(value);
 	return value;
 }
 DEFINE_PRIM(_IDL,DescriptorSetDesc_set_pRootSignature,_IDL _IDL);
 
-HL_PRIM int HL_NAME(DescriptorSetDesc_get_updateFrequency)( _ref(DescriptorSetDesc)* _this ) {
+HL_PRIM int HL_NAME(DescriptorSetDesc_get_updateFrequency)( pref<DescriptorSetDesc>* _this ) {
 	return HL_NAME(DescriptorUpdateFrequency_valueToIndex0)(_unref(_this)->mUpdateFrequency);
 }
 DEFINE_PRIM(_I32,DescriptorSetDesc_get_updateFrequency,_IDL);
-HL_PRIM int HL_NAME(DescriptorSetDesc_set_updateFrequency)( _ref(DescriptorSetDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(DescriptorSetDesc_set_updateFrequency)( pref<DescriptorSetDesc>* _this, int value ) {
 	_unref(_this)->mUpdateFrequency = (DescriptorUpdateFrequency)HL_NAME(DescriptorUpdateFrequency_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,DescriptorSetDesc_set_updateFrequency,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_get_maxSets)( _ref(DescriptorSetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_get_maxSets)( pref<DescriptorSetDesc>* _this ) {
 	return _unref(_this)->mMaxSets;
 }
 DEFINE_PRIM(_I32,DescriptorSetDesc_get_maxSets,_IDL);
-HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_set_maxSets)( _ref(DescriptorSetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_set_maxSets)( pref<DescriptorSetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mMaxSets = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,DescriptorSetDesc_set_maxSets,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_get_nodeIndex)( _ref(DescriptorSetDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_get_nodeIndex)( pref<DescriptorSetDesc>* _this ) {
 	return _unref(_this)->mNodeIndex;
 }
 DEFINE_PRIM(_I32,DescriptorSetDesc_get_nodeIndex,_IDL);
-HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_set_nodeIndex)( _ref(DescriptorSetDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_set_nodeIndex)( pref<DescriptorSetDesc>* _this, unsigned int value ) {
 	_unref(_this)->mNodeIndex = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,DescriptorSetDesc_set_nodeIndex,_IDL _I32);
 
-HL_PRIM _ref(DescriptorDataBuilder)* HL_NAME(DescriptorDataBuilder_new0)() {
+HL_PRIM pref<DescriptorDataBuilder>* HL_NAME(DescriptorDataBuilder_new0)() {
 	return alloc_ref((new DescriptorDataBuilder()),DescriptorDataBuilder);
 }
 DEFINE_PRIM(_IDL, DescriptorDataBuilder_new0,);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_clear0)(_ref(DescriptorDataBuilder)* _this) {
+HL_PRIM void HL_NAME(DescriptorDataBuilder_clear0)(pref<DescriptorDataBuilder>* _this) {
 	(_unref(_this)->clear());
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_clear0, _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_clearSlotData1)(_ref(DescriptorDataBuilder)* _this, int index) {
+HL_PRIM void HL_NAME(DescriptorDataBuilder_clearSlotData1)(pref<DescriptorDataBuilder>* _this, int index) {
 	(_unref(_this)->clearSlotData(index));
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_clearSlotData1, _IDL _I32);
 
-HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlot2)(_ref(DescriptorDataBuilder)* _this, vstring * name, int descriptorType) {
+HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlot2)(pref<DescriptorDataBuilder>* _this, vstring * name, int descriptorType) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	auto ___retvalue = (_unref(_this)->addSlot(name__cstr, DescriptorSlotMode__values[descriptorType]));
-	return ___retvalue;
+	return (___retvalue);
 }
 DEFINE_PRIM(_I32, DescriptorDataBuilder_addSlot2, _IDL _STRING _I32);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotTexture2)(_ref(DescriptorDataBuilder)* _this, int slot, _ref(Texture)* tex) {
+HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotTexture2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Texture>* tex) {
 	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(tex)));
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotTexture2, _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotSampler2)(_ref(DescriptorDataBuilder)* _this, int slot, _ref(Sampler)* sampler) {
+HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotSampler2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Sampler>* sampler) {
 	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(sampler)));
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotSampler2, _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotUAVMipSlice2)(_ref(DescriptorDataBuilder)* _this, int slot, int idx) {
+HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotUAVMipSlice2)(pref<DescriptorDataBuilder>* _this, int slot, int idx) {
 	(_unref(_this)->setSlotUAVMipSlice(slot, idx));
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_setSlotUAVMipSlice2, _IDL _I32 _I32);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_update3)(_ref(DescriptorDataBuilder)* _this, _ref(Renderer)* renderer, int index, _ref(DescriptorSet)* set) {
+HL_PRIM void HL_NAME(DescriptorDataBuilder_update3)(pref<DescriptorDataBuilder>* _this, pref<Renderer>* renderer, int index, pref<DescriptorSet>* set) {
 	(_unref(_this)->update(_unref_ptr_safe(renderer), index, _unref_ptr_safe(set)));
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_update3, _IDL _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_bind3)(_ref(DescriptorDataBuilder)* _this, _ref(Cmd)* cmd, int index, _ref(DescriptorSet)* set) {
+HL_PRIM void HL_NAME(DescriptorDataBuilder_bind3)(pref<DescriptorDataBuilder>* _this, pref<Cmd>* cmd, int index, pref<DescriptorSet>* set) {
 	(_unref(_this)->bind(_unref_ptr_safe(cmd), index, _unref_ptr_safe(set)));
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_bind3, _IDL _IDL _I32 _IDL);
 
-HL_PRIM _ref(RootSignatureFactory)* HL_NAME(RootSignatureDesc_new0)() {
+HL_PRIM pref<RootSignatureFactory>* HL_NAME(RootSignatureDesc_new0)() {
 	return alloc_ref((new RootSignatureFactory()),RootSignatureDesc);
 }
 DEFINE_PRIM(_IDL, RootSignatureDesc_new0,);
 
-HL_PRIM void HL_NAME(RootSignatureDesc_addShader1)(_ref(RootSignatureFactory)* _this, _ref(Shader)* shader) {
+HL_PRIM void HL_NAME(RootSignatureDesc_addShader1)(pref<RootSignatureFactory>* _this, pref<Shader>* shader) {
 	(_unref(_this)->addShader(_unref_ptr_safe(shader)));
 }
 DEFINE_PRIM(_VOID, RootSignatureDesc_addShader1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(RootSignatureDesc_addSampler2)(_ref(RootSignatureFactory)* _this, _ref(Sampler)* sampler, vstring * name) {
+HL_PRIM void HL_NAME(RootSignatureDesc_addSampler2)(pref<RootSignatureFactory>* _this, pref<Sampler>* sampler, vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	(_unref(_this)->addSampler(_unref_ptr_safe(sampler), name__cstr));
 }
 DEFINE_PRIM(_VOID, RootSignatureDesc_addSampler2, _IDL _IDL _STRING);
 
-HL_PRIM HL_CONST _ref(Queue)* HL_NAME(Renderer_createQueue0)(_ref(Renderer)* _this) {
+HL_PRIM HL_CONST pref<Queue>* HL_NAME(Renderer_createQueue0)(pref<Renderer>* _this) {
 	return alloc_ref_const((createQueue( _unref(_this) )),Queue);
 }
 DEFINE_PRIM(_IDL, Renderer_createQueue0, _IDL);
 
-HL_PRIM void HL_NAME(Renderer_removeQueue1)(_ref(Renderer)* _this, _ref(Queue)* pGraphicsQueue) {
+HL_PRIM void HL_NAME(Renderer_removeQueue1)(pref<Renderer>* _this, pref<Queue>* pGraphicsQueue) {
 	(removeQueue( _unref(_this) , _unref_ptr_safe(pGraphicsQueue)));
 }
 DEFINE_PRIM(_VOID, Renderer_removeQueue1, _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(RenderTarget)* HL_NAME(Renderer_createRenderTarget1)(_ref(Renderer)* _this, _ref(RenderTargetDesc)* desc) {
+HL_PRIM HL_CONST pref<RenderTarget>* HL_NAME(Renderer_createRenderTarget1)(pref<Renderer>* _this, pref<RenderTargetDesc>* desc) {
 	return alloc_ref_const((forge_sdl_create_render_target( _unref(_this) , _unref_ptr_safe(desc))),RenderTarget);
 }
 DEFINE_PRIM(_IDL, Renderer_createRenderTarget1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(Renderer_initResourceLoaderInterface0)(_ref(Renderer)* _this) {
+HL_PRIM void HL_NAME(Renderer_initResourceLoaderInterface0)(pref<Renderer>* _this) {
 	(forge_init_loader( _unref(_this) ));
 }
 DEFINE_PRIM(_VOID, Renderer_initResourceLoaderInterface0, _IDL);
 
-HL_PRIM HL_CONST _ref(CmdPool)* HL_NAME(Renderer_createCommandPool1)(_ref(Renderer)* _this, _ref(Queue)* queue) {
+HL_PRIM HL_CONST pref<CmdPool>* HL_NAME(Renderer_createCommandPool1)(pref<Renderer>* _this, pref<Queue>* queue) {
 	return alloc_ref_const((forge_sdl_renderer_create_cmd_pool( _unref(_this) , _unref_ptr_safe(queue))),CmdPool);
 }
 DEFINE_PRIM(_IDL, Renderer_createCommandPool1, _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(Cmd)* HL_NAME(Renderer_createCommand1)(_ref(Renderer)* _this, _ref(CmdPool)* pool) {
+HL_PRIM HL_CONST pref<Cmd>* HL_NAME(Renderer_createCommand1)(pref<Renderer>* _this, pref<CmdPool>* pool) {
 	return alloc_ref_const((forge_sdl_renderer_create_cmd( _unref(_this) , _unref_ptr_safe(pool))),Cmd);
 }
 DEFINE_PRIM(_IDL, Renderer_createCommand1, _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(Fence)* HL_NAME(Renderer_createFence0)(_ref(Renderer)* _this) {
+HL_PRIM HL_CONST pref<Fence>* HL_NAME(Renderer_createFence0)(pref<Renderer>* _this) {
 	return alloc_ref_const((forge_sdl_renderer_create_fence( _unref(_this) )),Fence);
 }
 DEFINE_PRIM(_IDL, Renderer_createFence0, _IDL);
 
-HL_PRIM HL_CONST _ref(Semaphore)* HL_NAME(Renderer_createSemaphore0)(_ref(Renderer)* _this) {
+HL_PRIM HL_CONST pref<Semaphore>* HL_NAME(Renderer_createSemaphore0)(pref<Renderer>* _this) {
 	return alloc_ref_const((forge_sdl_renderer_create_semaphore( _unref(_this) )),Semaphore);
 }
 DEFINE_PRIM(_IDL, Renderer_createSemaphore0, _IDL);
 
-HL_PRIM unsigned int HL_NAME(Renderer_acquireNextImage4)(_ref(Renderer)* _this, _ref(SwapChain)* pSwapChain, _ref(Semaphore)* pImageAcquiredSemaphore, _ref(Fence)* fence) {
+HL_PRIM unsigned int HL_NAME(Renderer_acquireNextImage4)(pref<Renderer>* _this, pref<SwapChain>* pSwapChain, pref<Semaphore>* pImageAcquiredSemaphore, pref<Fence>* fence) {
 	unsigned int __tmpret;
 acquireNextImage( _unref(_this) , _unref_ptr_safe(pSwapChain), _unref_ptr_safe(pImageAcquiredSemaphore), _unref_ptr_safe(fence), &__tmpret);
-	return __tmpret;
+	return (__tmpret);
 }
 DEFINE_PRIM(_I32, Renderer_acquireNextImage4, _IDL _IDL _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(Shader)* HL_NAME(Renderer_loadComputeShader1)(_ref(Renderer)* _this, vstring * fileName) {
+HL_PRIM HL_CONST pref<Shader>* HL_NAME(Renderer_loadComputeShader1)(pref<Renderer>* _this, vstring * fileName) {
 	const char* fileName__cstr = (fileName == nullptr) ? "" : hl_to_utf8( fileName->bytes ); // Should be garbage collected
 	auto ___retvalue = alloc_ref_const((forge_load_compute_shader_file( _unref(_this) , fileName__cstr)),Shader);
-	return ___retvalue;
+	return (___retvalue);
 }
 DEFINE_PRIM(_IDL, Renderer_loadComputeShader1, _IDL _STRING);
 
-HL_PRIM _ref(DescriptorSet)* HL_NAME(Renderer_addDescriptorSet2)(_ref(Renderer)* _this, _ref(DescriptorSetDesc)* desc) {
+HL_PRIM pref<DescriptorSet>* HL_NAME(Renderer_addDescriptorSet2)(pref<Renderer>* _this, pref<DescriptorSetDesc>* desc) {
 	DescriptorSet* __tmpret;
 addDescriptorSet( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
 	return alloc_ref_const( __tmpret, DescriptorSet );
 }
 DEFINE_PRIM(_IDL, Renderer_addDescriptorSet2, _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(DescriptorSet)* HL_NAME(Renderer_createDescriptorSet4)(_ref(Renderer)* _this, _ref(RootSignature)* sig, int updateFrequency, unsigned int maxSets, unsigned int nodeIndex) {
+HL_PRIM HL_CONST pref<DescriptorSet>* HL_NAME(Renderer_createDescriptorSet4)(pref<Renderer>* _this, pref<RootSignature>* sig, int updateFrequency, unsigned int maxSets, unsigned int nodeIndex) {
 	return alloc_ref_const((forge_renderer_create_descriptor_set( _unref(_this) , _unref_ptr_safe(sig), DescriptorUpdateFrequency__values[updateFrequency], maxSets, nodeIndex)),DescriptorSet);
 }
 DEFINE_PRIM(_IDL, Renderer_createDescriptorSet4, _IDL _IDL _I32 _I32 _I32);
 
-HL_PRIM _ref(Sampler)* HL_NAME(Renderer_createSampler2)(_ref(Renderer)* _this, _ref(SamplerDesc)* desc) {
+HL_PRIM pref<Sampler>* HL_NAME(Renderer_createSampler2)(pref<Renderer>* _this, pref<SamplerDesc>* desc) {
 	Sampler* __tmpret;
 addSampler( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
 	return alloc_ref_const( __tmpret, Sampler );
 }
 DEFINE_PRIM(_IDL, Renderer_createSampler2, _IDL _IDL);
 
-HL_PRIM void HL_NAME(Renderer_waitFence1)(_ref(Renderer)* _this, _ref(Fence)* fence) {
+HL_PRIM void HL_NAME(Renderer_waitFence1)(pref<Renderer>* _this, pref<Fence>* fence) {
 	(forge_renderer_wait_fence( _unref(_this) , _unref_ptr_safe(fence)));
 }
 DEFINE_PRIM(_VOID, Renderer_waitFence1, _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(Shader)* HL_NAME(Renderer_createShader2)(_ref(Renderer)* _this, vstring * vertShaderPath, vstring * fragShaderPath) {
+HL_PRIM HL_CONST pref<Shader>* HL_NAME(Renderer_createShader2)(pref<Renderer>* _this, vstring * vertShaderPath, vstring * fragShaderPath) {
 	const char* vertShaderPath__cstr = (vertShaderPath == nullptr) ? "" : hl_to_utf8( vertShaderPath->bytes ); // Should be garbage collected
 	const char* fragShaderPath__cstr = (fragShaderPath == nullptr) ? "" : hl_to_utf8( fragShaderPath->bytes ); // Should be garbage collected
 	auto ___retvalue = alloc_ref_const((forge_renderer_shader_create( _unref(_this) , vertShaderPath__cstr, fragShaderPath__cstr)),Shader);
-	return ___retvalue;
+	return (___retvalue);
 }
 DEFINE_PRIM(_IDL, Renderer_createShader2, _IDL _STRING _STRING);
 
-HL_PRIM bool HL_NAME(Renderer_captureAsBytes6)(_ref(Renderer)* _this, _ref(Cmd)* submittableCmd, _ref(RenderTarget)* renderTarget, _ref(Queue)* queue, int renderTargetCurrentState, vbyte* buffer, int bufferSize) {
+HL_PRIM bool HL_NAME(Renderer_captureAsBytes6)(pref<Renderer>* _this, pref<Cmd>* submittableCmd, pref<RenderTarget>* renderTarget, pref<Queue>* queue, int renderTargetCurrentState, vbyte* buffer, int bufferSize) {
 	return (forge_render_target_capture_2( _unref(_this) , _unref_ptr_safe(submittableCmd), _unref_ptr_safe(renderTarget), _unref_ptr_safe(queue), ResourceState__values[renderTargetCurrentState], buffer, bufferSize));
 }
 DEFINE_PRIM(_BOOL, Renderer_captureAsBytes6, _IDL _IDL _IDL _IDL _I32 _BYTES _I32);
 
-HL_PRIM void HL_NAME(Renderer_resetCmdPool1)(_ref(Renderer)* _this, _ref(CmdPool)* pool) {
+HL_PRIM void HL_NAME(Renderer_resetCmdPool1)(pref<Renderer>* _this, pref<CmdPool>* pool) {
 	(resetCmdPool( _unref(_this) , _unref_ptr_safe(pool)));
 }
 DEFINE_PRIM(_VOID, Renderer_resetCmdPool1, _IDL _IDL);
 
-HL_PRIM _ref(Pipeline)* HL_NAME(Renderer_createPipeline2)(_ref(Renderer)* _this, _ref(HlForgePipelineDesc)* desc) {
+HL_PRIM pref<Pipeline>* HL_NAME(Renderer_createPipeline2)(pref<Renderer>* _this, pref<HlForgePipelineDesc>* desc) {
 	Pipeline* __tmpret;
 addPipeline( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
 	return alloc_ref_const( __tmpret, Pipeline );
 }
 DEFINE_PRIM(_IDL, Renderer_createPipeline2, _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(Renderer_createRootSigSimple1)(_ref(Renderer)* _this, _ref(Shader)* shader) {
+HL_PRIM HL_CONST pref<RootSignature>* HL_NAME(Renderer_createRootSigSimple1)(pref<Renderer>* _this, pref<Shader>* shader) {
 	return alloc_ref_const((forge_renderer_createRootSignatureSimple( _unref(_this) , _unref_ptr_safe(shader))),RootSignature);
 }
 DEFINE_PRIM(_IDL, Renderer_createRootSigSimple1, _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(RootSignature)* HL_NAME(Renderer_createRootSig1)(_ref(Renderer)* _this, _ref(RootSignatureFactory)* desc) {
+HL_PRIM HL_CONST pref<RootSignature>* HL_NAME(Renderer_createRootSig1)(pref<Renderer>* _this, pref<RootSignatureFactory>* desc) {
 	return alloc_ref_const((forge_renderer_createRootSignature( _unref(_this) , _unref_ptr_safe(desc))),RootSignature);
 }
 DEFINE_PRIM(_IDL, Renderer_createRootSig1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(Renderer_toggleVSync1)(_ref(Renderer)* _this, _ref(SwapChain)* sc) {
+HL_PRIM void HL_NAME(Renderer_toggleVSync1)(pref<Renderer>* _this, pref<SwapChain>* sc) {
 	(::toggleVSync( _unref(_this) , &_unref(sc)));
 }
 DEFINE_PRIM(_VOID, Renderer_toggleVSync1, _IDL _IDL);
 
-HL_PRIM HL_CONST _ref(Buffer)* HL_NAME(Renderer_createTransferBuffer4)(_ref(Renderer)* _this, int format, int width, int height, int nodeIndex) {
+HL_PRIM HL_CONST pref<Buffer>* HL_NAME(Renderer_createTransferBuffer4)(pref<Renderer>* _this, int format, int width, int height, int nodeIndex) {
 	return alloc_ref_const((forge_create_transfer_buffer( _unref(_this) , TinyImageFormat__values[format], width, height, nodeIndex)),Buffer);
 }
 DEFINE_PRIM(_IDL, Renderer_createTransferBuffer4, _IDL _I32 _I32 _I32 _I32);
 
-HL_PRIM _ref(ForgeSDLWindow)* HL_NAME(ForgeSDLWindow_new1)(_ref(SDL_Window)* sdlWindow) {
+HL_PRIM pref<ForgeSDLWindow>* HL_NAME(ForgeSDLWindow_new1)(pref<SDL_Window>* sdlWindow) {
 	return alloc_ref((new ForgeSDLWindow(_unref_ptr_safe(sdlWindow))),ForgeSDLWindow);
 }
 DEFINE_PRIM(_IDL, ForgeSDLWindow_new1, _IDL);
 
-HL_PRIM HL_CONST _ref(SwapChain)* HL_NAME(ForgeSDLWindow_createSwapChain6)(_ref(ForgeSDLWindow)* _this, _ref(Renderer)* renderer, _ref(Queue)* queue, int width, int height, int count, bool hdr10) {
+HL_PRIM HL_CONST pref<SwapChain>* HL_NAME(ForgeSDLWindow_createSwapChain6)(pref<ForgeSDLWindow>* _this, pref<Renderer>* renderer, pref<Queue>* queue, int width, int height, int count, bool hdr10) {
 	return alloc_ref_const((_unref(_this)->createSwapChain(_unref_ptr_safe(renderer), _unref_ptr_safe(queue), width, height, count, hdr10)),SwapChain);
 }
 DEFINE_PRIM(_IDL, ForgeSDLWindow_createSwapChain6, _IDL _IDL _IDL _I32 _I32 _I32 _BOOL);
 
-HL_PRIM HL_CONST _ref(Renderer)* HL_NAME(ForgeSDLWindow_renderer0)(_ref(ForgeSDLWindow)* _this) {
+HL_PRIM HL_CONST pref<Renderer>* HL_NAME(ForgeSDLWindow_renderer0)(pref<ForgeSDLWindow>* _this) {
 	return alloc_ref_const((_unref(_this)->renderer()),Renderer);
 }
 DEFINE_PRIM(_IDL, ForgeSDLWindow_renderer0, _IDL);
 
-HL_PRIM void HL_NAME(ForgeSDLWindow_present4)(_ref(ForgeSDLWindow)* _this, _ref(Queue)* pGraphicsQueue, _ref(SwapChain)* pSwapChain, int swapchainImageIndex, _ref(Semaphore)* pRenderCompleteSemaphore) {
+HL_PRIM void HL_NAME(ForgeSDLWindow_present4)(pref<ForgeSDLWindow>* _this, pref<Queue>* pGraphicsQueue, pref<SwapChain>* pSwapChain, int swapchainImageIndex, pref<Semaphore>* pRenderCompleteSemaphore) {
 	(_unref(_this)->present(_unref_ptr_safe(pGraphicsQueue), _unref_ptr_safe(pSwapChain), swapchainImageIndex, _unref_ptr_safe(pRenderCompleteSemaphore)));
 }
 DEFINE_PRIM(_VOID, ForgeSDLWindow_present4, _IDL _IDL _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(Buffer_updateRegion4)(_ref(Buffer)* _this, vbyte* data, int toffset, int size, int soffset) {
+HL_PRIM void HL_NAME(Buffer_updateRegion4)(pref<Buffer>* _this, vbyte* data, int toffset, int size, int soffset) {
 	(forge_sdl_buffer_update_region( _unref(_this) , data, toffset, size, soffset));
 }
 DEFINE_PRIM(_VOID, Buffer_updateRegion4, _IDL _BYTES _I32 _I32 _I32);
 
-HL_PRIM void HL_NAME(Buffer_update1)(_ref(Buffer)* _this, vbyte* data) {
+HL_PRIM void HL_NAME(Buffer_update1)(pref<Buffer>* _this, vbyte* data) {
 	(forge_sdl_buffer_update( _unref(_this) , data));
 }
 DEFINE_PRIM(_VOID, Buffer_update1, _IDL _BYTES);
 
-HL_PRIM void HL_NAME(Buffer_dispose0)(_ref(Buffer)* _this) {
+HL_PRIM void HL_NAME(Buffer_dispose0)(pref<Buffer>* _this) {
 	(removeResource( _unref(_this) ));
 }
 DEFINE_PRIM(_VOID, Buffer_dispose0, _IDL);
 
-HL_PRIM vbyte* HL_NAME(Buffer_getCpuAddress0)(_ref(Buffer)* _this) {
+HL_PRIM vbyte* HL_NAME(Buffer_getCpuAddress0)(pref<Buffer>* _this) {
 	return (forge_buffer_get_cpu_address( _unref(_this) ));
 }
 DEFINE_PRIM(_BYTES, Buffer_getCpuAddress0, _IDL);
 
-HL_PRIM unsigned int HL_NAME(Buffer_get_size)( _ref(Buffer)* _this ) {
+HL_PRIM unsigned int HL_NAME(Buffer_get_size)( pref<Buffer>* _this ) {
 	return _unref(_this)->mSize;
 }
 DEFINE_PRIM(_I32,Buffer_get_size,_IDL);
-HL_PRIM unsigned int HL_NAME(Buffer_set_size)( _ref(Buffer)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(Buffer_set_size)( pref<Buffer>* _this, unsigned int value ) {
 	_unref(_this)->mSize = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,Buffer_set_size,_IDL _I32);
 
-HL_PRIM _ref(BufferLoadDesc)* HL_NAME(BufferLoadDesc_new0)() {
+HL_PRIM pref<BufferLoadDesc>* HL_NAME(BufferLoadDesc_new0)() {
 	auto ___retvalue = alloc_ref((new BufferLoadDesc()),BufferLoadDesc);
 	*(___retvalue->value) = {};
-	return ___retvalue;
+	return (___retvalue);
 }
 DEFINE_PRIM(_IDL, BufferLoadDesc_new0,);
 
-HL_PRIM bool HL_NAME(BufferLoadDesc_get_forceReset)( _ref(BufferLoadDesc)* _this ) {
+HL_PRIM bool HL_NAME(BufferLoadDesc_get_forceReset)( pref<BufferLoadDesc>* _this ) {
 	return _unref(_this)->mForceReset;
 }
 DEFINE_PRIM(_BOOL,BufferLoadDesc_get_forceReset,_IDL);
-HL_PRIM bool HL_NAME(BufferLoadDesc_set_forceReset)( _ref(BufferLoadDesc)* _this, bool value ) {
+HL_PRIM bool HL_NAME(BufferLoadDesc_set_forceReset)( pref<BufferLoadDesc>* _this, bool value ) {
 	_unref(_this)->mForceReset = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,BufferLoadDesc_set_forceReset,_IDL _BOOL);
 
-HL_PRIM HL_CONST _ref(Buffer)* HL_NAME(BufferLoadDesc_load1)(_ref(BufferLoadDesc)* _this, _ref(SyncToken)* syncToken) {
+HL_PRIM HL_CONST pref<Buffer>* HL_NAME(BufferLoadDesc_load1)(pref<BufferLoadDesc>* _this, pref<SyncToken>* syncToken) {
 	return alloc_ref_const((forge_sdl_buffer_load( _unref(_this) , _unref_ptr_safe(syncToken))),Buffer);
 }
 DEFINE_PRIM(_IDL, BufferLoadDesc_load1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(BufferLoadDesc_setIndexbuffer3)(_ref(BufferLoadDesc)* _this, int size, vbyte* data, bool shared) {
+HL_PRIM void HL_NAME(BufferLoadDesc_setIndexbuffer3)(pref<BufferLoadDesc>* _this, int size, vbyte* data, bool shared) {
 	(forge_sdl_buffer_load_desc_set_index_buffer( _unref(_this) , size, data, shared));
 }
 DEFINE_PRIM(_VOID, BufferLoadDesc_setIndexbuffer3, _IDL _I32 _BYTES _BOOL);
 
-HL_PRIM void HL_NAME(BufferLoadDesc_setVertexbuffer3)(_ref(BufferLoadDesc)* _this, int size, vbyte* data, bool shared) {
+HL_PRIM void HL_NAME(BufferLoadDesc_setVertexbuffer3)(pref<BufferLoadDesc>* _this, int size, vbyte* data, bool shared) {
 	(forge_sdl_buffer_load_desc_set_vertex_buffer( _unref(_this) , size, data, shared));
 }
 DEFINE_PRIM(_VOID, BufferLoadDesc_setVertexbuffer3, _IDL _I32 _BYTES _BOOL);
 
-HL_PRIM void HL_NAME(Texture_upload2)(_ref(Texture)* _this, vbyte* data, int size) {
+HL_PRIM void HL_NAME(Texture_upload2)(pref<Texture>* _this, vbyte* data, int size) {
 	(forge_sdl_texture_upload( _unref(_this) , data, size));
 }
 DEFINE_PRIM(_VOID, Texture_upload2, _IDL _BYTES _I32);
 
-HL_PRIM void HL_NAME(Texture_uploadMip3)(_ref(Texture)* _this, int mip, vbyte* data, int size) {
+HL_PRIM void HL_NAME(Texture_uploadMip3)(pref<Texture>* _this, int mip, vbyte* data, int size) {
 	(forge_texture_upload_mip( _unref(_this) , mip, data, size));
 }
 DEFINE_PRIM(_VOID, Texture_uploadMip3, _IDL _I32 _BYTES _I32);
 
-HL_PRIM void HL_NAME(Texture_uploadLayerMip4)(_ref(Texture)* _this, int layer, int mip, vbyte* data, int size) {
+HL_PRIM void HL_NAME(Texture_uploadLayerMip4)(pref<Texture>* _this, int layer, int mip, vbyte* data, int size) {
 	(forge_texture_upload_layer_mip( _unref(_this) , layer, mip, data, size));
 }
 DEFINE_PRIM(_VOID, Texture_uploadLayerMip4, _IDL _I32 _I32 _BYTES _I32);
 
-HL_PRIM void HL_NAME(Texture_dispose0)(_ref(Texture)* _this) {
+HL_PRIM void HL_NAME(Texture_dispose0)(pref<Texture>* _this) {
 	(removeResource( _unref(_this) ));
 }
 DEFINE_PRIM(_VOID, Texture_dispose0, _IDL);
 
-HL_PRIM _ref(TextureDesc)* HL_NAME(TextureDesc_new0)() {
+HL_PRIM pref<TextureDesc>* HL_NAME(TextureDesc_new0)() {
 	auto ___retvalue = alloc_ref((new TextureDesc()),TextureDesc);
 	*(___retvalue->value) = {};
-	return ___retvalue;
+	return (___retvalue);
 }
 DEFINE_PRIM(_IDL, TextureDesc_new0,);
 
-HL_PRIM HL_CONST _ref(Texture)* HL_NAME(TextureDesc_load2)(_ref(TextureDesc)* _this, vstring * name, _ref(SyncToken)* syncToken) {
+HL_PRIM HL_CONST pref<Texture>* HL_NAME(TextureDesc_load2)(pref<TextureDesc>* _this, vstring * name, pref<SyncToken>* syncToken) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
 	auto ___retvalue = alloc_ref_const((forge_texture_load_from_desc( _unref(_this) , name__cstr, _unref_ptr_safe(syncToken))),Texture);
-	return ___retvalue;
+	return (___retvalue);
 }
 DEFINE_PRIM(_IDL, TextureDesc_load2, _IDL _STRING _IDL);
 
-HL_PRIM void* HL_NAME(TextureDesc_get_nativeHandle)( _ref(TextureDesc)* _this ) {
+HL_PRIM void* HL_NAME(TextureDesc_get_nativeHandle)( pref<TextureDesc>* _this ) {
 	return (void*)_unref(_this)->pNativeHandle;
 }
 DEFINE_PRIM(_BYTES,TextureDesc_get_nativeHandle,_IDL);
-HL_PRIM void* HL_NAME(TextureDesc_set_nativeHandle)( _ref(TextureDesc)* _this, void* value ) {
+HL_PRIM void* HL_NAME(TextureDesc_set_nativeHandle)( pref<TextureDesc>* _this, void* value ) {
 	_unref(_this)->pNativeHandle = (value);
 	return value;
 }
 DEFINE_PRIM(_BYTES,TextureDesc_set_nativeHandle,_IDL _BYTES);
 
-HL_PRIM int HL_NAME(TextureDesc_get_flags)( _ref(TextureDesc)* _this ) {
+HL_PRIM int HL_NAME(TextureDesc_get_flags)( pref<TextureDesc>* _this ) {
 	return HL_NAME(TextureCreationFlags_valueToIndex0)(_unref(_this)->mFlags);
 }
 DEFINE_PRIM(_I32,TextureDesc_get_flags,_IDL);
-HL_PRIM int HL_NAME(TextureDesc_set_flags)( _ref(TextureDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(TextureDesc_set_flags)( pref<TextureDesc>* _this, int value ) {
 	_unref(_this)->mFlags = (TextureCreationFlags)HL_NAME(TextureCreationFlags_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_flags,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(TextureDesc_get_width)( _ref(TextureDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_width)( pref<TextureDesc>* _this ) {
 	return _unref(_this)->mWidth;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_width,_IDL);
-HL_PRIM unsigned int HL_NAME(TextureDesc_set_width)( _ref(TextureDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_width)( pref<TextureDesc>* _this, unsigned int value ) {
 	_unref(_this)->mWidth = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_width,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(TextureDesc_get_height)( _ref(TextureDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_height)( pref<TextureDesc>* _this ) {
 	return _unref(_this)->mHeight;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_height,_IDL);
-HL_PRIM unsigned int HL_NAME(TextureDesc_set_height)( _ref(TextureDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_height)( pref<TextureDesc>* _this, unsigned int value ) {
 	_unref(_this)->mHeight = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_height,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(TextureDesc_get_depth)( _ref(TextureDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_depth)( pref<TextureDesc>* _this ) {
 	return _unref(_this)->mDepth;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_depth,_IDL);
-HL_PRIM unsigned int HL_NAME(TextureDesc_set_depth)( _ref(TextureDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_depth)( pref<TextureDesc>* _this, unsigned int value ) {
 	_unref(_this)->mDepth = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_depth,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(TextureDesc_get_arraySize)( _ref(TextureDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_arraySize)( pref<TextureDesc>* _this ) {
 	return _unref(_this)->mArraySize;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_arraySize,_IDL);
-HL_PRIM unsigned int HL_NAME(TextureDesc_set_arraySize)( _ref(TextureDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_arraySize)( pref<TextureDesc>* _this, unsigned int value ) {
 	_unref(_this)->mArraySize = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_arraySize,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(TextureDesc_get_mipLevels)( _ref(TextureDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_mipLevels)( pref<TextureDesc>* _this ) {
 	return _unref(_this)->mMipLevels;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_mipLevels,_IDL);
-HL_PRIM unsigned int HL_NAME(TextureDesc_set_mipLevels)( _ref(TextureDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_mipLevels)( pref<TextureDesc>* _this, unsigned int value ) {
 	_unref(_this)->mMipLevels = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_mipLevels,_IDL _I32);
 
-HL_PRIM int HL_NAME(TextureDesc_get_sampleCount)( _ref(TextureDesc)* _this ) {
+HL_PRIM int HL_NAME(TextureDesc_get_sampleCount)( pref<TextureDesc>* _this ) {
 	return HL_NAME(SampleCount_valueToIndex0)(_unref(_this)->mSampleCount);
 }
 DEFINE_PRIM(_I32,TextureDesc_get_sampleCount,_IDL);
-HL_PRIM int HL_NAME(TextureDesc_set_sampleCount)( _ref(TextureDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(TextureDesc_set_sampleCount)( pref<TextureDesc>* _this, int value ) {
 	_unref(_this)->mSampleCount = (SampleCount)HL_NAME(SampleCount_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_sampleCount,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(TextureDesc_get_sampleQuality)( _ref(TextureDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_sampleQuality)( pref<TextureDesc>* _this ) {
 	return _unref(_this)->mSampleQuality;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_sampleQuality,_IDL);
-HL_PRIM unsigned int HL_NAME(TextureDesc_set_sampleQuality)( _ref(TextureDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_sampleQuality)( pref<TextureDesc>* _this, unsigned int value ) {
 	_unref(_this)->mSampleQuality = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_sampleQuality,_IDL _I32);
 
-HL_PRIM int HL_NAME(TextureDesc_get_format)( _ref(TextureDesc)* _this ) {
+HL_PRIM int HL_NAME(TextureDesc_get_format)( pref<TextureDesc>* _this ) {
 	return HL_NAME(TinyImageFormat_valueToIndex0)(_unref(_this)->mFormat);
 }
 DEFINE_PRIM(_I32,TextureDesc_get_format,_IDL);
-HL_PRIM int HL_NAME(TextureDesc_set_format)( _ref(TextureDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(TextureDesc_set_format)( pref<TextureDesc>* _this, int value ) {
 	_unref(_this)->mFormat = (TinyImageFormat)HL_NAME(TinyImageFormat_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_format,_IDL _I32);
 
-HL_PRIM int HL_NAME(TextureDesc_get_startState)( _ref(TextureDesc)* _this ) {
+HL_PRIM int HL_NAME(TextureDesc_get_startState)( pref<TextureDesc>* _this ) {
 	return HL_NAME(ResourceState_valueToIndex0)(_unref(_this)->mStartState);
 }
 DEFINE_PRIM(_I32,TextureDesc_get_startState,_IDL);
-HL_PRIM int HL_NAME(TextureDesc_set_startState)( _ref(TextureDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(TextureDesc_set_startState)( pref<TextureDesc>* _this, int value ) {
 	_unref(_this)->mStartState = (ResourceState)HL_NAME(ResourceState_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_startState,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(TextureDesc_get_descriptors)( _ref(TextureDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_descriptors)( pref<TextureDesc>* _this ) {
 	return _unref(_this)->mDescriptors;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_descriptors,_IDL);
-HL_PRIM unsigned int HL_NAME(TextureDesc_set_descriptors)( _ref(TextureDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_descriptors)( pref<TextureDesc>* _this, unsigned int value ) {
 	_unref(_this)->mDescriptors = (DescriptorType)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_descriptors,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(TextureDesc_get_sharedNodeIndexCount)( _ref(TextureDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_sharedNodeIndexCount)( pref<TextureDesc>* _this ) {
 	return _unref(_this)->mSharedNodeIndexCount;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_sharedNodeIndexCount,_IDL);
-HL_PRIM unsigned int HL_NAME(TextureDesc_set_sharedNodeIndexCount)( _ref(TextureDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_sharedNodeIndexCount)( pref<TextureDesc>* _this, unsigned int value ) {
 	_unref(_this)->mSharedNodeIndexCount = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_sharedNodeIndexCount,_IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(TextureDesc_get_nodeIndex)( _ref(TextureDesc)* _this ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_nodeIndex)( pref<TextureDesc>* _this ) {
 	return _unref(_this)->mNodeIndex;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_nodeIndex,_IDL);
-HL_PRIM unsigned int HL_NAME(TextureDesc_set_nodeIndex)( _ref(TextureDesc)* _this, unsigned int value ) {
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_nodeIndex)( pref<TextureDesc>* _this, unsigned int value ) {
 	_unref(_this)->mNodeIndex = (value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_nodeIndex,_IDL _I32);
 
-HL_PRIM _ref(TextureLoadDesc)* HL_NAME(TextureLoadDesc_new0)() {
+HL_PRIM pref<TextureLoadDesc>* HL_NAME(TextureLoadDesc_new0)() {
 	auto ___retvalue = alloc_ref((new TextureLoadDesc()),TextureLoadDesc);
 	*(___retvalue->value) = {};
-	return ___retvalue;
+	return (___retvalue);
 }
 DEFINE_PRIM(_IDL, TextureLoadDesc_new0,);
 
-HL_PRIM HL_CONST _ref(Texture)* HL_NAME(TextureLoadDesc_load1)(_ref(TextureLoadDesc)* _this, _ref(SyncToken)* syncToken) {
+HL_PRIM HL_CONST pref<Texture>* HL_NAME(TextureLoadDesc_load1)(pref<TextureLoadDesc>* _this, pref<SyncToken>* syncToken) {
 	return alloc_ref_const((forge_texture_load( _unref(_this) , _unref_ptr_safe(syncToken))),Texture);
 }
 DEFINE_PRIM(_IDL, TextureLoadDesc_load1, _IDL _IDL);
 
-HL_PRIM int HL_NAME(TextureLoadDesc_get_creationFlag)( _ref(TextureLoadDesc)* _this ) {
+HL_PRIM int HL_NAME(TextureLoadDesc_get_creationFlag)( pref<TextureLoadDesc>* _this ) {
 	return HL_NAME(TextureCreationFlags_valueToIndex0)(_unref(_this)->mCreationFlag);
 }
 DEFINE_PRIM(_I32,TextureLoadDesc_get_creationFlag,_IDL);
-HL_PRIM int HL_NAME(TextureLoadDesc_set_creationFlag)( _ref(TextureLoadDesc)* _this, int value ) {
+HL_PRIM int HL_NAME(TextureLoadDesc_set_creationFlag)( pref<TextureLoadDesc>* _this, int value ) {
 	_unref(_this)->mCreationFlag = (TextureCreationFlags)HL_NAME(TextureCreationFlags_indexToValue0)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureLoadDesc_set_creationFlag,_IDL _I32);
+
+HL_PRIM vstring * HL_NAME(Tools_glslToMetal3)(vstring * source, vstring * path, bool fragmentShader) {
+	const char* source__cstr = (source == nullptr) ? "" : hl_to_utf8( source->bytes ); // Should be garbage collected
+	const char* path__cstr = (path == nullptr) ? "" : hl_to_utf8( path->bytes ); // Should be garbage collected
+	auto ___retvalue = (forge_translate_glsl_metal(source__cstr, path__cstr, fragmentShader));
+	return hl_utf8_to_hlstr(___retvalue);
+}
+DEFINE_PRIM(_STRING, Tools_glslToMetal3, _STRING _STRING _BOOL);
+
+HL_PRIM void HL_NAME(Tools_metalToBin2)(vstring * sourcePath, vstring * outpath) {
+	const char* sourcePath__cstr = (sourcePath == nullptr) ? "" : hl_to_utf8( sourcePath->bytes ); // Should be garbage collected
+	const char* outpath__cstr = (outpath == nullptr) ? "" : hl_to_utf8( outpath->bytes ); // Should be garbage collected
+	(hl_compile_metal_to_bin(sourcePath__cstr, outpath__cstr));
+}
+DEFINE_PRIM(_VOID, Tools_metalToBin2, _STRING _STRING);
 
 }
