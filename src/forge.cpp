@@ -2602,10 +2602,10 @@ HL_PRIM int HL_NAME(PolyMesh_addAttribute4)(pref<PolyMesh>* _this, vstring * nam
 }
 DEFINE_PRIM(_I32, PolyMesh_addAttribute4, _IDL _STRING _I32 _I32 _I32);
 
-HL_PRIM int HL_NAME(PolyMesh_beginPolygon2)(pref<PolyMesh>* _this, int count, int materialID) {
-	return (_unref(_this)->beginPolygon(count, materialID));
+HL_PRIM int HL_NAME(PolyMesh_beginPolygon1)(pref<PolyMesh>* _this, int count) {
+	return (_unref(_this)->beginPolygon(count));
 }
-DEFINE_PRIM(_I32, PolyMesh_beginPolygon2, _IDL _I32 _I32);
+DEFINE_PRIM(_I32, PolyMesh_beginPolygon1, _IDL _I32);
 
 HL_PRIM int HL_NAME(PolyMesh_beginPolyNode0)(pref<PolyMesh>* _this) {
 	return (_unref(_this)->beginPolyNode());
@@ -2681,6 +2681,21 @@ HL_PRIM int HL_NAME(PolyMesh_getIndices1)(pref<PolyMesh>* _this, vbyte* indices)
 	return (_unref(_this)->getIndices((int*)indices));
 }
 DEFINE_PRIM(_I32, PolyMesh_getIndices1, _IDL _BYTES);
+
+HL_PRIM int HL_NAME(PolyMesh_getStride0)(pref<PolyMesh>* _this) {
+	return (_unref(_this)->getStride());
+}
+DEFINE_PRIM(_I32, PolyMesh_getStride0, _IDL);
+
+HL_PRIM int HL_NAME(PolyMesh_getAttributeOffset1)(pref<PolyMesh>* _this, int semantic) {
+	return (_unref(_this)->getAttributeOffset(AttributeSemantic__values[semantic]));
+}
+DEFINE_PRIM(_I32, PolyMesh_getAttributeOffset1, _IDL _I32);
+
+HL_PRIM void HL_NAME(PolyMesh_getInterleavedVertices1)(pref<PolyMesh>* _this, vbyte* data) {
+	(_unref(_this)->getInterleavedVertices(data));
+}
+DEFINE_PRIM(_VOID, PolyMesh_getInterleavedVertices1, _IDL _BYTES);
 
 HL_PRIM void HL_NAME(PolyMesh_removeDuplicateVerts0)(pref<PolyMesh>* _this) {
 	(_unref(_this)->removeDuplicateVerts());

@@ -431,7 +431,6 @@ class PolyMesh {
     std::vector<Attr> _attributes;
     std::vector<uint32_t> _polygonCount;
     std::vector<uint32_t> _indices;
-    std::vector<uint32_t> _materials;
 
     bool _begun;
     int _targetCapacity;
@@ -470,10 +469,9 @@ class PolyMesh {
 
         return x;
     }
-    int beginPolygon(int count, int matID) {
+    int beginPolygon(int count) {
         auto x = _polygonCount.size();
         _polygonCount.push_back(count);
-        _materials.push_back(matID);
         _currentPolygonPolyNode = 0;
         return x;
     }
@@ -636,13 +634,6 @@ class PolyMesh {
     }
 
     void optimizeTriangleIndices() {
-        /**
-         * Vertex transform cache optimizer
-         * Reorders indices to reduce the number of GPU vertex shader invocations
-         * If index buffer contains multiple ranges for multiple draw calls, this functions needs to be called on each range individually.
-         *
-         * destination must contain enough space for the resulting index buffer (index_count elements)
-         */
         std::vector<u_int32_t> optIndices;
         optIndices.resize(_indices.size());
 
@@ -681,7 +672,7 @@ class PolyMesh {
         for (int i = 0; i < _attributes.size(); i++) {
             auto &a = _attributes[i];
             std::vector<uint8_t> tmp;
-            tmp.resize( _numVerts * a.binarySize);
+            tmp.resize(_numVerts * a.binarySize);
 
             meshopt_remapVertexBuffer(&tmp[0], &a.data[0], _numVerts, a.binarySize, &remapIndices[0]);
             a.data = std::move(tmp);
@@ -693,6 +684,37 @@ class PolyMesh {
         meshopt_remapIndexBuffer(&updatedIndices[0], &_indices[0], _indices.size(), &remapIndices[0]);
 
         _indices = std::move(updatedIndices);
+    }
+
+    int getStride() {
+        auto accum = 0;
+        for (int i = 0; i < _attributes.size(); i++) {
+            accum += _attributes[i].binarySize;
+        }
+        return accum;
+    }
+
+    int getAttributeOffset(AttributeSemantic semantic) {
+        auto accum = 0;
+        for (int i = 0; i < _attributes.size(); i++) {
+            auto &a = _attributes[i];
+            if (a.semantic == semantic) return accum;
+            accum += a.binarySize;
+        }
+
+        return accum;
+    }
+    void getInterleavedVertices(void *ptr) {
+
+        uint8_t *data = (uint8_t *)ptr;
+
+        for (int v = 0; v < _numVerts; v++) {
+            for (int i = 0; i < _attributes.size(); i++) {
+                auto &a = _attributes[i];
+                memcpy(data, &a.data[v * a.binarySize], a.binarySize);
+                data += a.binarySize;
+            }
+        }
     }
 };
 

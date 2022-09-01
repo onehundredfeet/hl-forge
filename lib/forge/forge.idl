@@ -1117,7 +1117,7 @@ interface PolyMesh {
 	// Building
 	void reserve( int polynodes );
 	int addAttribute( String name, AttributeSemantic semantic, AttributeType type, int dimensions );
-	int beginPolygon(int count, int materialID);
+	int beginPolygon(int count);
 	int beginPolyNode( );
 	void setNodeAddtribute1f( int attr, float x );
 	void setNodeAddtribute2f( int attr, float x, float y );
@@ -1135,6 +1135,9 @@ interface PolyMesh {
 	int numVerts();
 	int numPolys();
 	int getIndices( int * indices );
+	int getStride();
+	int getAttributeOffset( AttributeSemantic semantic);
+	void getInterleavedVertices( bytes data );
 
 	//Procedures
 	void removeDuplicateVerts();
