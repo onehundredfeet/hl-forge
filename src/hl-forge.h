@@ -338,9 +338,10 @@ enum AttributeType {
     FLOAT16,
     FLOAT32,
     FLOAT64,
-    INT16,
-    INT32,
-    INT64
+    UINT8,
+    UINT16,
+    UINT32,
+    UINT64
 };
 
 int inline getAttributeSize(AttributeType t, int dimensions) {
@@ -351,11 +352,13 @@ int inline getAttributeSize(AttributeType t, int dimensions) {
             return sizeof(float_t) * dimensions;
         case FLOAT64:
             return sizeof(double) * dimensions;
-        case INT16:
+        case UINT8:
+            return sizeof(u_int8_t) * dimensions;
+        case UINT16:
             return sizeof(u_int16_t) * dimensions;
-        case INT32:
+        case UINT32:
             return sizeof(u_int32_t) * dimensions;
-        case INT64:
+        case UINT64:
             return sizeof(u_int64_t) * dimensions;
         default:
             return 0;
@@ -387,13 +390,16 @@ class PolyMesh {
                     case FLOAT64:
                         ((double *)d)[i] = v[i];
                         break;
-                    case INT16:
+                    case UINT8:
+                        ((u_int8_t *)d)[i] = normalized ? std::clamp(v[i] * (double)std::numeric_limits<std::uint8_t>::max(), 0., (double)std::numeric_limits<std::uint8_t>::max()) : v[i];
+                        break;
+                    case UINT16:
                         ((u_int16_t *)d)[i] = normalized ? std::clamp(v[i] * (double)std::numeric_limits<std::uint16_t>::max(), 0., (double)std::numeric_limits<std::uint16_t>::max()) : v[i];
                         break;
-                    case INT32:
+                    case UINT32:
                         ((u_int32_t *)d)[i] = normalized ? v[i] * (double)std::numeric_limits<std::uint32_t>::max() : v[i];
                         break;
-                    case INT64:
+                    case UINT64:
                         ((u_int64_t *)d)[i] = normalized ? v[i] * (double)std::numeric_limits<std::uint64_t>::max() : v[i];
                         break;
                 }
@@ -415,13 +421,16 @@ class PolyMesh {
                     case FLOAT64:
                         ((double *)d)[i] = v[i];
                         break;
-                    case INT16:
+                    case UINT8:
+                        ((u_int8_t *)d)[i] = normalized ? std::clamp(v[i] * (float)std::numeric_limits<std::uint8_t>::max(), 0.0f, (float)std::numeric_limits<std::uint8_t>::max()) : v[i];
+                        break;
+                    case UINT16:
                         ((u_int16_t *)d)[i] = normalized ? std::clamp(v[i] * (float)std::numeric_limits<std::uint16_t>::max(), 0.0f, (float)std::numeric_limits<std::uint16_t>::max()) : v[i];
                         break;
-                    case INT32:
+                    case UINT32:
                         ((u_int32_t *)d)[i] = normalized ? v[i] * (float)std::numeric_limits<std::uint32_t>::max() : v[i];
                         break;
-                    case INT64:
+                    case UINT64:
                         ((u_int64_t *)d)[i] = normalized ? v[i] * (float)std::numeric_limits<std::uint64_t>::max() : v[i];
                         break;
                 }
@@ -694,16 +703,43 @@ class PolyMesh {
         return accum;
     }
 
-    int getAttributeOffset(AttributeSemantic semantic) {
-        auto accum = 0;
+	int getAttributeIndexBySemantic( AttributeSemantic semantic ) {
         for (int i = 0; i < _attributes.size(); i++) {
             auto &a = _attributes[i];
-            if (a.semantic == semantic) return accum;
+            if (a.semantic == semantic) return i;
+        }
+
+        return -1;
+    }
+
+	int getAttributeOffset( int index ) {
+        auto accum = 0;
+        for (int i = 0; i < index; i++) {
+            auto &a = _attributes[i];
             accum += a.binarySize;
         }
 
         return accum;
     }
+
+	AttributeSemantic getAttributeSemantic( int index ) {
+        return  _attributes[index].semantic;
+    }
+	AttributeType getAttributeType( int index ) {
+        return  _attributes[index].type;
+    }
+	int getAttributeDimensions( int index ) {
+        return  _attributes[index].dimensions;
+    }
+
+    int numAttributes(  ) {
+        return  _attributes.size();
+    }
+
+    const std::string &getAttributeName( int index ) {
+        return _attributes[index].name;
+    }
+
     void getInterleavedVertices(void *ptr) {
 
         uint8_t *data = (uint8_t *)ptr;

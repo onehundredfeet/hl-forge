@@ -829,7 +829,7 @@ HL_PRIM int HL_NAME(AttributeSemantic_fromValue1)( int value ) {
 DEFINE_PRIM(_I32, AttributeSemantic_fromValue1, _I32);
 HL_PRIM int HL_NAME(AttributeSemantic_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, AttributeSemantic_fromIndex1, _I32);
-static AttributeType AttributeType__values[] = { FLOAT16,FLOAT32,FLOAT64,INT16,INT32,INT64 };
+static AttributeType AttributeType__values[] = { FLOAT16,FLOAT32,FLOAT64,UINT8,UINT16,UINT32,UINT64 };
 HL_PRIM int HL_NAME(AttributeType_toValue0)( int idx ) {
 	return AttributeType__values[idx];
 }
@@ -839,11 +839,11 @@ HL_PRIM int HL_NAME(AttributeType_indexToValue0)( int idx ) {
 }
 DEFINE_PRIM(_I32, AttributeType_indexToValue0, _I32);
 HL_PRIM int HL_NAME(AttributeType_valueToIndex1)( int value ) {
-	for( int i = 0; i < 6; i++ ) if ( value == (int)AttributeType__values[i]) return i; return -1;
+	for( int i = 0; i < 7; i++ ) if ( value == (int)AttributeType__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, AttributeType_valueToIndex1, _I32);
 HL_PRIM int HL_NAME(AttributeType_fromValue1)( int value ) {
-	for( int i = 0; i < 6; i++ ) if ( value == (int)AttributeType__values[i]) return i; return -1;
+	for( int i = 0; i < 7; i++ ) if ( value == (int)AttributeType__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, AttributeType_fromValue1, _I32);
 HL_PRIM int HL_NAME(AttributeType_fromIndex1)( int index ) {return index;}
@@ -2687,15 +2687,45 @@ HL_PRIM int HL_NAME(PolyMesh_getStride0)(pref<PolyMesh>* _this) {
 }
 DEFINE_PRIM(_I32, PolyMesh_getStride0, _IDL);
 
-HL_PRIM int HL_NAME(PolyMesh_getAttributeOffset1)(pref<PolyMesh>* _this, int semantic) {
-	return (_unref(_this)->getAttributeOffset(AttributeSemantic__values[semantic]));
-}
-DEFINE_PRIM(_I32, PolyMesh_getAttributeOffset1, _IDL _I32);
-
 HL_PRIM void HL_NAME(PolyMesh_getInterleavedVertices1)(pref<PolyMesh>* _this, vbyte* data) {
 	(_unref(_this)->getInterleavedVertices(data));
 }
 DEFINE_PRIM(_VOID, PolyMesh_getInterleavedVertices1, _IDL _BYTES);
+
+HL_PRIM int HL_NAME(PolyMesh_numAttributes0)(pref<PolyMesh>* _this) {
+	return (_unref(_this)->numAttributes());
+}
+DEFINE_PRIM(_I32, PolyMesh_numAttributes0, _IDL);
+
+HL_PRIM int HL_NAME(PolyMesh_getAttributeIndexBySemantic1)(pref<PolyMesh>* _this, int semantic) {
+	return (_unref(_this)->getAttributeIndexBySemantic(AttributeSemantic__values[semantic]));
+}
+DEFINE_PRIM(_I32, PolyMesh_getAttributeIndexBySemantic1, _IDL _I32);
+
+HL_PRIM int HL_NAME(PolyMesh_getAttributeOffset1)(pref<PolyMesh>* _this, int index) {
+	return (_unref(_this)->getAttributeOffset(index));
+}
+DEFINE_PRIM(_I32, PolyMesh_getAttributeOffset1, _IDL _I32);
+
+HL_PRIM int HL_NAME(PolyMesh_getAttributeSemantic1)(pref<PolyMesh>* _this, int index) {
+	return HL_NAME(AttributeSemantic_valueToIndex1)(_unref(_this)->getAttributeSemantic(index));
+}
+DEFINE_PRIM(_I32, PolyMesh_getAttributeSemantic1, _IDL _I32);
+
+HL_PRIM int HL_NAME(PolyMesh_getAttributeType1)(pref<PolyMesh>* _this, int index) {
+	return HL_NAME(AttributeType_valueToIndex1)(_unref(_this)->getAttributeType(index));
+}
+DEFINE_PRIM(_I32, PolyMesh_getAttributeType1, _IDL _I32);
+
+HL_PRIM int HL_NAME(PolyMesh_getAttributeDimensions1)(pref<PolyMesh>* _this, int index) {
+	return (_unref(_this)->getAttributeDimensions(index));
+}
+DEFINE_PRIM(_I32, PolyMesh_getAttributeDimensions1, _IDL _I32);
+
+HL_PRIM vstring * HL_NAME(PolyMesh_getAttributeName1)(pref<PolyMesh>* _this, int index) {
+	return hl_utf8_to_hlstr(_unref(_this)->getAttributeName(index));
+}
+DEFINE_PRIM(_STRING, PolyMesh_getAttributeName1, _IDL _I32);
 
 HL_PRIM void HL_NAME(PolyMesh_removeDuplicateVerts0)(pref<PolyMesh>* _this) {
 	(_unref(_this)->removeDuplicateVerts());

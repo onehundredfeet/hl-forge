@@ -1104,9 +1104,10 @@ enum AttributeType {
 	"FLOAT16",
 	"FLOAT32",
 	"FLOAT64",
-	"INT16",
-	"INT32",
-	"INT64"
+	"UINT8",
+	"UINT16",
+	"UINT32",
+	"UINT64"
 };
 
 
@@ -1117,7 +1118,7 @@ interface PolyMesh {
 	// Building
 	void reserve( int polynodes );
 	int addAttribute( String name, AttributeSemantic semantic, AttributeType type, int dimensions );
-	int beginPolygon(int count);
+	int beginPolygon(int count );
 	int beginPolyNode( );
 	void setNodeAddtribute1f( int attr, float x );
 	void setNodeAddtribute2f( int attr, float x, float y );
@@ -1136,8 +1137,14 @@ interface PolyMesh {
 	int numPolys();
 	int getIndices( int * indices );
 	int getStride();
-	int getAttributeOffset( AttributeSemantic semantic);
 	void getInterleavedVertices( bytes data );
+	int numAttributes();
+	int getAttributeIndexBySemantic( AttributeSemantic semantic );
+	int getAttributeOffset( int index );
+	AttributeSemantic getAttributeSemantic( int index );
+	AttributeType getAttributeType( int index );
+	int getAttributeDimensions( int index );
+	[STL] String getAttributeName(int index );
 
 	//Procedures
 	void removeDuplicateVerts();
