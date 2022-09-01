@@ -17,6 +17,8 @@ if (NOT FORGE_INC_DIR)
 set(FORGE_INC_DIR "${FORGE_ROOT}/include")
 endif()
 
+set(FP16_INC_DIR "ext/FP16/include")
+
 if (NOT HL_INCLUDE_DIR) 
     set(HL_INCLUDE_DIR "/usr/local/include")
 endif()
@@ -127,6 +129,7 @@ ${FORGE_INC_DIR}
 ${FORGE_LIB_INC}
 ${HL_INCLUDE_DIR}
 ${FORGE_TP_INC}
+${FP16_INC_DIR}
 "${XXHASH_ROOT_DIR}"
 )
 

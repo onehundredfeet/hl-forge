@@ -10,3 +10,6 @@
 [submodule "ext/xxHash"]
 	path = ext/xxHash
 	url = https://github.com/Cyan4973/xxHash.git
+[submodule "ext/FP16"]
+	path = ext/FP16
+	url = https://github.com/Maratyszcza/FP16.git
