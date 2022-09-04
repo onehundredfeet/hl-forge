@@ -614,14 +614,14 @@ Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int w
 
     return tmp;
 }
-
+ 
 std::string forge_translate_glsl_metal( const char *source, const char *filepath, bool fragment ) {
     auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
-    auto spirvASM = compile_file_to_assembly(filepath, HLFG_SHADER_VERTEX, source, false);
+    auto spirvASM = compile_file_to_assembly(filepath, shaderKind, source, false);
     auto spvCode = assemble_to_spv(spirvASM);
      return getMSLFromSPV(spvCode);
 }
-
+ 
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile) {
     auto vertSrc = getShaderSource(vertFile);
     auto fragSrc = getShaderSource(fragFile);
