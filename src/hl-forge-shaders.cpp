@@ -69,7 +69,7 @@ void writeShaderSPV(const std::string &path, const std::vector<uint32_t> &code) 
     fout.write((char*)&code[0], code.size() * sizeof(uint32_t));
     fout.close();
 }
-std::string getShaderSource(const char *path) {
+std::string getShaderSource(const std::string &path) {
     std::ifstream ifs(path);
     std::string content((std::istreambuf_iterator<char>(ifs)),
                         (std::istreambuf_iterator<char>()));

@@ -14,6 +14,6 @@ std::string compile_file_to_assembly(const char *source_name,
                                      bool optimize = false);
 void writeShaderSource(const std::string &path, const std::string &source);
 void writeShaderSPV(const std::string &path, const std::vector<uint32_t> &code);
-std::string getShaderSource(const char *path);
+std::string getShaderSource(const std::string &path);
 std::string getMSLFromSPV( const std::vector<uint32_t> &spirv_binary ) ;
 #endif

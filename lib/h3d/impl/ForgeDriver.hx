@@ -11,6 +11,7 @@ import h3d.mat.Pass as Pass;
 import forge.Native.BlendStateTargets as BlendStateTargets;
 import forge.Native.ColorMask as ColorMask;
 import forge.Native.StateBuilder as StateBuilder;
+import forge.Forge;
 
 private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
@@ -922,6 +923,20 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	var _programIds = 0;
 	var _bilinearClamp2DSampler : forge.Native.Sampler;
 
+	function convertGLSLToMetalBin(glslsource : String, file_root : String, shaderType : ShaderType)
+	{
+		var vertmetalsrc = forge.Native.Tools.glslToMetal(glslsource, file_root + '.glsl', shaderType == FRAGMENT_SHADER);
+		var metalPath = file_root + '.metal';
+		var binPath = file_root + '.metal.bin';
+		forge.FileDependency.overwriteIfDifferentString( file_root + '.glsl',  glslsource);
+		forge.FileDependency.overwriteIfDifferentString( file_root + '.metal',  vertmetalsrc);
+		if (forge.FileDependency.isTargetOutOfDate(metalPath, binPath)) {
+			forge.Native.Tools.metalToBin(metalPath, binPath);
+		}
+	
+		return {glsl:glslsource, metal:vertmetalsrc, metal_bin: sys.io.File.getBytes( binPath ) };						
+	}
+
 	public function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
 		var vertTranscoder = new forge.GLSLTranscoder();
 		var fragTranscoder = new forge.GLSLTranscoder();
@@ -945,8 +960,11 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 		var vertpath = 'shadercache/shader_${vert_md5}.vert';
 		var fragpath = 'shadercache/shader_${frag_md5}.frag';
-		sys.io.File.saveContent(vertpath + ".glsl", vert_glsl);
-		sys.io.File.saveContent(fragpath + ".glsl", frag_glsl);
+
+		forge.FileDependency.overwriteIfDifferentString(vertpath + ".glsl", vert_glsl);
+		forge.FileDependency.overwriteIfDifferentString(fragpath + ".glsl", frag_glsl);
+//		sys.io.File.saveContent(vertpath + ".glsl", vert_glsl);
+//		sys.io.File.saveContent(fragpath + ".glsl", frag_glsl);
 		var fgShader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
 		p.forgeShader = fgShader;
 		p.vertex = new CompiledShader(fgShader, true, shader.vertex);

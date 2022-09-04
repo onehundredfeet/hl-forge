@@ -1,7 +1,7 @@
 
 #include <iostream>
 #include <sstream>
-
+#include <filesystem>
 
 #include "hl-forge-shaders.h"
 
@@ -621,8 +621,53 @@ std::string forge_translate_glsl_metal( const char *source, const char *filepath
     auto spvCode = assemble_to_spv(spirvASM);
      return getMSLFromSPV(spvCode);
 }
- 
+
+bool isTargetFileOutOfDate( const std::string &source, const std::string &target ) {
+    if (!std::filesystem::exists(source)) return false;
+    if (!std::filesystem::exists(target)) return true;
+    auto sourceTime = std::filesystem::last_write_time(source); // read back from the filesystem
+    auto targetTime = std::filesystem::last_write_time(target); // read back from the filesystem
+    return sourceTime > targetTime;
+}
+
+void generateMetalShader( const std::string &glslPath, const std::string &metalPath, bool fragment ) {
+    if (isTargetFileOutOfDate(glslPath, metalPath)) {
+        auto src = getShaderSource(glslPath);
+
+        if (src.length() == 0) {
+            std::cout << "Could not read GLSL source: " << glslPath << std::endl;
+            return ;
+        }
+        
+        auto msl = forge_translate_glsl_metal( src.c_str(), glslPath.c_str(), fragment );
+        if (fragment) {
+            auto bufferspot = msl.find("spvDescriptorSet0 [[buffer(");
+            if (bufferspot != std::string::npos) {
+                DEBUG_PRINT("RENDER modifying metal shader code at %d\n", bufferspot);
+                bufferspot += sizeof("spvDescriptorSet0 [[buffer(") - 1;
+                msl = msl.replace(bufferspot, 1, "UPDATE_FREQ_PER_DRAW");
+            }
+        }
+
+
+        writeShaderSource(metalPath, msl);
+
+    }
+}
+
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile) {
+    std::string vertFilePathOriginal(vertFile);
+    std::string fragFilePathOriginal(fragFile);
+    std::string vertFilePath = removeExtension(vertFilePathOriginal);
+    std::string fragFilePath = removeExtension(fragFilePathOriginal);
+    auto vertFilePathMSL = vertFilePath + ".metal";
+    auto fragFilePathMSL = fragFilePath + ".metal";
+
+
+    generateMetalShader(vertFilePathOriginal, vertFilePathMSL, false );
+    generateMetalShader(fragFilePathOriginal, fragFilePathMSL, true );
+
+/*
     auto vertSrc = getShaderSource(vertFile);
     auto fragSrc = getShaderSource(fragFile);
 
@@ -637,11 +682,8 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
 //    auto vertSpirvAsm = compile_file_to_assembly(vertFile, HLFG_SHADER_VERTEX, vertSrc, false);
   //  auto fragSpirvAsm = compile_file_to_assembly(fragFile, HLFG_SHADER_FRAGMENT, fragSrc, false);
 
-    std::string vertFilePathOriginal(vertFile);
-    std::string fragFilePathOriginal(fragFile);
 
-    std::string vertFilePath = removeExtension(vertFilePathOriginal);
-    std::string fragFilePath = removeExtension(fragFilePathOriginal);
+   
 
     auto vertFilePathSpirv = vertFilePath + ".spirvasm";
     auto fragFilePathSpirv = fragFilePath + ".spirvasm";
@@ -659,19 +701,14 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
 //    auto vertMSL = getMSLFromSPV(vertCode);
 //    auto fragMSL = getMSLFromSPV(fragCode);
 
-    auto vertFilePathMSL = vertFilePath + ".metal";
-    auto fragFilePathMSL = fragFilePath + ".metal";
+   
 
-    auto bufferspot = fragMSL.find("spvDescriptorSet0 [[buffer(");
-    if (bufferspot != std::string::npos) {
-        DEBUG_PRINT("RENDER modifying metal shader code at %d\n", bufferspot);
-        bufferspot += sizeof("spvDescriptorSet0 [[buffer(") - 1;
-        fragMSL = fragMSL.replace(bufferspot, 1, "UPDATE_FREQ_PER_DRAW");
-    }
-
+    
     DEBUG_PRINT("writing MTL\n");
     writeShaderSource(vertFilePathMSL, vertMSL);
     writeShaderSource(fragFilePathMSL, fragMSL);
+*/
+
 
     auto vertFN = getFilename(vertFilePath);
     auto fragFN = getFilename(fragFilePath);
