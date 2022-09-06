@@ -488,7 +488,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (m.size * m.stride == 0)
 			throw "zero size managed buffer";
 		var placeHolder = new Array<hl.UI8>();
-		var byteCount = m.size * m.stride * 4;
+		var byteCount = m.size * m.strideBytes;
 		placeHolder.resize(byteCount);
 
 		var desc = new forge.Native.BufferLoadDesc();
@@ -507,7 +507,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		var buff = desc.load(null);
 
 		debugTrace ('STRIDE FILTER - Allocating vertex buffer ${m.size} with stride ${m.stride} total bytecount  ${byteCount}');
-		return {b: buff, stride: m.stride #if multidriver, driver: this #end};
+		return {b: buff, strideBytes: m.strideBytes, stride: m.stride #if multidriver, driver: this #end};
 	}
 
 	function getTinyTextureFormat(f:h3d.mat.Data.TextureFormat) : forge.Native.TinyImageFormat{
@@ -823,9 +823,8 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			gl.bindBuffer(GL.ARRAY_BUFFER, null);
 		 */
 
-		 var stride:Int = v.stride;
 		 debugTrace('RENDER STRIDE INDEX VERTEX BUFFER UPDATE updating vertex buffer start ${startVertex} vstride ${v.stride} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} floats');
-		 v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4 * 0);
+		 v.b.updateRegion(hl.Bytes.getArray(buf.getNative()), startVertex * v.strideBytes, vertexCount * v.strideBytes, 0);
 	}
 
 	public override function uploadTexturePixels(t:h3d.mat.Texture, pixels:hxd.Pixels, mipLevel:Int, layer:Int) {
@@ -2744,9 +2743,9 @@ var offset = 8;
 	}
 
 	public override function uploadVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-		debugTrace('RENDER STRIDE UPLOAD  uploadVertexBytes start ${startVertex} vstride ${v.stride} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} floats');
-		var stride:Int = v.stride;
-		v.b.updateRegion(buf, startVertex * stride * 4, vertexCount * stride * 4, bufPos * 4 * 0);
+//		trace('RENDER STRIDE UPLOAD  uploadVertexBytes start ${startVertex} vstride ${v.stride} vstridebytes ${v.strideBytes} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} elements');
+		v.b.updateRegion(buf, startVertex * v.strideBytes, vertexCount * v.strideBytes, 0);
+//		trace('Done');
 	}
 
 	public override function uploadIndexBytes(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
