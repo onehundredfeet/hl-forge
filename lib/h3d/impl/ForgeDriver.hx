@@ -71,7 +71,7 @@ private class CompiledAttribute {
 	public var divisor:Int;
 	public var offsetBytes:Int;
 	public var name:String;
-	public var stride:Int;
+	public var strideBytes:Int;
 	public var semantic:forge.Native.ShaderSemantic;
 
 	public function new() {}
@@ -1144,6 +1144,14 @@ struct spvDescriptorSetBuffer0
 			}
 		}
 
+		//accumulate total size
+		var strideBytes = 0;
+		for (a in p.attribs) {
+			strideBytes += a.sizeBytes;
+		}
+		for (a in p.attribs) {
+			a.strideBytes = strideBytes;
+		}
 		p.inputs = InputNames.get(attribNames);
 		p.naturalLayout = buildLayoutFromShader(p);
 
@@ -1614,7 +1622,8 @@ struct spvDescriptorSetBuffer0
 			layout_attr.mSemantic = a.semantic;
 			layout_attr.mSemanticNameLength = a.name.length;
 			layout_attr.setSemanticName( a.name );
-			vl.setstrides(location, a.stride * 4);
+			debugTrace('LAYOUT STRIDE Building layout from compiled attribute ${a.strideBytes} stride bytes');
+			vl.setstrides(location, a.strideBytes);
 		}
 
 		return vl;
@@ -1672,7 +1681,7 @@ var offset = 8;
 				case s:
 					bytePos = offsetBytes;
 					offsetBytes += a.sizeBytes;
-					if( offsetBytes > (m.stride * 4)) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+					if( offsetBytes > (m.strideBytes)) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
 
 			}
 
@@ -1683,7 +1692,7 @@ var offset = 8;
 			layout_attr.mSemantic = a.semantic;
 			layout_attr.mSemanticNameLength = a.name.length;
 			layout_attr.setSemanticName( a.name );
-			vl.setstrides(location, m.stride * 4);
+			vl.setstrides(location, m.strideBytes);
 		}
 
 		return vl;
@@ -1692,7 +1701,7 @@ var offset = 8;
 	function buildLayoutFromMultiBuffer(s :CompiledProgram, b : Buffer.BufferOffset ) : forge.Native.VertexLayout {
 		var vl = buildLayoutFromShader(s);
 		for (i in 0...vl.attribCount) {
-			vl.setstrides(i, b.buffer.buffer.stride * 4);
+			vl.setstrides(i, b.buffer.buffer.strideBytes);
 		}
 
 		return vl;
@@ -1792,14 +1801,17 @@ var offset = 8;
 
 		if (_curBuffer != null) {
 			if (_curBuffer.flags.has(RawFormat)) {
+				debugTrace('RENDER BUFFER BIND Raw format selected');
 				_hashBulder.addInt8(0);
 			} else {
+				debugTrace('RENDER BUFFER BIND non Raw format selected');
 				_hashBulder.addInt8(2);
-				_hashBulder.addInt16( _curBuffer.buffer.stride );
+				_hashBulder.addInt16( _curBuffer.buffer.strideBytes );
 			}
 		} else if (_curMultiBuffer != null) {
+			debugTrace('RENDER BUFFER BIND multi buffer selected');
 			_hashBulder.addInt8(1);
-			_hashBulder.addInt16(_curMultiBuffer.buffer.buffer.stride);
+			_hashBulder.addInt16(_curMultiBuffer.buffer.buffer.strideBytes); // this is unreliable
 		} else
 			throw "no buffer specified to bind pipeline";
 
@@ -1823,13 +1835,16 @@ var offset = 8;
 
 			if (_curBuffer != null) {
 				if (_curBuffer.flags.has(RawFormat)) {
+					debugTrace('LAYOUT BINDING NATURAL layout');
 					cmat._layout = _curShader.naturalLayout;
 					cmat._stride = _curShader.naturalLayout.getstrides(0);
 				} else {
+					debugTrace('LAYOUT BINDING HEAPS layout');
 					cmat._layout = buildHeapsLayout( _curShader, _curBuffer.buffer );
 					cmat._stride = cmat._layout.getstrides(0);
 				}
 			} else if (_curMultiBuffer != null) {
+				debugTrace('LAYOUT BINDING Multi layout');
 				// there can be a stride mistmatch here
 				cmat._layout = buildLayoutFromMultiBuffer( _curShader, _curMultiBuffer);
 				cmat._stride = cmat._layout.getstrides(0);
@@ -1863,8 +1878,8 @@ var offset = 8;
 		}
 
 		if (_currentPipeline != cmat) {
+			debugTrace('RENDER CALLSTACK PIPELINE changing binding to another existing pipeline ${_currentPass.name} : ${cmat._id} vs ${_currentPipeline == null ? -1 : _currentPipeline._id}');
 			_currentPipeline = cmat;
-			debugTrace("RENDER CALLSTACK PIPELINE changing binding to another existing pipeline " + _currentPass.name);
 			_currentCmd.bindPipeline( _currentPipeline._pipeline );			
 		}
 	}
@@ -2127,7 +2142,7 @@ var offset = 8;
 	}
 
 	public override function selectMaterial(pass:h3d.mat.Pass) {
-		debugTrace('RENDER CALLSTACK selectMaterial ${pass.name}');
+		debugTrace('RENDER CALLSTACK selectMaterial "${pass.name}"');
 
 		// culling
 		// stencil
@@ -2160,29 +2175,32 @@ var offset = 8;
 	public function bindMultiBuffers() {
 		debugTrace('RENDER CALLSTACK bindMultiBuffers ${_curShader.attribs.length}');
 		if (_curMultiBuffer == null) throw "Multibuffers are null";
-		var buffers = _curMultiBuffer;
-		var mb = buffers.buffer.buffer;
-		//trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
+		var curBufferView = _curMultiBuffer;
+
 		_bufferBinder.reset();
 		var strideCountBytes = 0;
 		for (a in _curShader.attribs) {
-			var bb = buffers.buffer;
-			var vb = @:privateAccess mb.vbuf;
+			var bb = curBufferView.buffer;
+			var mb = bb.buffer;
+			//trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
+			var isByteBuffer = mb.flags.has(ByteBuffer);
+			var elementSize = isByteBuffer ? 1 : 4;
+				var vb = @:privateAccess mb.vbuf;
 			var b = @:privateAccess vb.b;
 			//debugTrace('FILTER prebinding buffer b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} si ${a.size} bbvc ${bb.vertices} mbstr ${mb.stride} mbsi ${mb.size} bo ${buffers.offset} - ${_curShader.inputs.names[a.index]}' );
 			//_bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
 
 			strideCountBytes += a.sizeBytes;
-			_bufferBinder.add( b, mb.stride * 4, buffers.offset * 4);
-			
+			_bufferBinder.add( b, mb.strideBytes, curBufferView.offset * elementSize );
+			debugTrace ('RENDER STRIDE OFFSET attr ${a.name} offset ${ curBufferView.offset} offset bytes ${curBufferView.offset * elementSize}');
 			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
 			// gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
 			// updateDivisor(a);
-			buffers = buffers.next;
+			curBufferView = curBufferView.next;
 		}
-		debugTrace ('RENDER STRIDE shader stride ${strideCountBytes} vs pipe ${_currentPipeline._stride} vs buffer ${mb.stride * 4}');
+		debugTrace ('RENDER STRIDE shader stride ${strideCountBytes} vs pipe ${_currentPipeline._stride} ');
 
-		if (_currentPipeline._stride  != mb.stride * 4) throw "Shader - buffer stride mistmatch";
+		//if (_currentPipeline._stride  != mb.strideBytes) throw "Shader - buffer stride mistmatch";
 
 		//debugTrace('Binding vertex buffer');
 		_currentCmd.bindVertexBuffer(_bufferBinder);
@@ -2268,11 +2286,13 @@ var offset = 8;
 
 
 		if( v.flags.has(RawFormat) ) {
+			debugTrace('SELECT RAW FORMAT');
+
 			// Use the shader binding
 			for( a in _curShader.attribs ) {
-				debugTrace('STRIDE selectBuffer binding ${a.index} strid ${m.stride} offset ${a.offsetBytes}');
+				debugTrace('STRIDE selectBuffer binding ${a.index} strid ${m.stride} stridebytes ${m.strideBytes} offset ${a.offsetBytes}');
 			
-				_bufferBinder.add( b, m.stride * 4, a.offsetBytes);
+				_bufferBinder.add( b, m.strideBytes, a.offsetBytes);
 				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 
 				// m.stride * 4
@@ -2283,6 +2303,7 @@ var offset = 8;
 			}
 			_currentCmd.bindVertexBuffer(_bufferBinder);
 		} else {
+			debugTrace('SELECT NON RAW FORMAT');
 
 			var offsetBytes = 8 * 4; // 8 floats * 4 bytes a piece
 			var strideCheck = 0;
@@ -2302,18 +2323,18 @@ var offset = 8;
 					debugTrace('RENDER STRIDE WARNING unrecognized buffer ${s}');
 					posBytes = offsetBytes;
 					offsetBytes += a.sizeBytes;
-					if( offsetBytes > m.stride * 4 ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+					if( offsetBytes > m.strideBytes ) throw "Buffer is missing '"+s+"' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
 				}
 				//m.stride * 4
 				//_bufferBinder.add( m.b, 0, pos * 4 );
 
 				//gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 				//updateDivisor(a);
-				debugTrace('STRIDE BUFFER ${_curShader.inputs.names[i]} type is ${a.type } size is ${a.sizeBytes} bytes vs stride ${m.stride} floats (${m.stride * 4} bytes)');
-				_bufferBinder.add( b, m.stride * 4, posBytes);
+				debugTrace('STRIDE BUFFER ${_curShader.inputs.names[i]} type is ${a.type } size is ${a.sizeBytes} bytes vs stride ${m.stride} elements (${m.strideBytes})');
+				_bufferBinder.add( b, m.strideBytes, posBytes);
 			}
-			if (offsetBytes != m.stride * 4) {
-				debugTrace('RENDER WARNING stride byte mistmatch ${offsetBytes} vs ${m.stride * 4} attrib len ${_curShader.attribs.length}');
+			if (offsetBytes != m.strideBytes) {
+				debugTrace('RENDER WARNING stride byte mistmatch ${offsetBytes} bytes vs ${m.strideBytes} bytes attrib len ${_curShader.attribs.length}');
 			}
 			_currentCmd.bindVertexBuffer(_bufferBinder);
 //			throw ("unsupported");
@@ -2483,6 +2504,8 @@ var offset = 8;
 		}
 
 		if (_currentPass != null) {
+			debugTrace('RENDER SELECTING DEFAULT MATERIAL');
+
 			selectMaterial( _currentPass);
 		}
 //		_currentRT = 
@@ -2573,7 +2596,7 @@ var offset = 8;
 	var _curTexture : h3d.mat.Texture;
 	var _currentTargets = new Array<forge.Native.RenderTarget>();
 	function setDefaultRenderTarget() {
-		debugTrace('RENDER CALLSTACK TARGET CLEAR setDefaultRenderTarget');
+		debugTrace('RENDER CALLSTACK TARGET CLEAR setDefaultRenderTarget ');
 		
 		_currentCmd.unbindRenderTarget();
 		_currentCmd.insertBarrier( _currentRT.outBarrier );
