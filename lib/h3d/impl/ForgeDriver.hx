@@ -951,8 +951,8 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 		var vert_md5 = haxe.crypto.Md5.encode(vert_glsl);
 		var frag_md5 = haxe.crypto.Md5.encode(frag_glsl);
-		//debugTrace('vert md5 ${vert_md5}');
-		//debugTrace('frag md5 ${frag_md5}');
+		debugTrace('RENDER MATERIAL SHADER vert md5 ${vert_md5}');
+		debugTrace('RENDER MATERIAL SHADER frag md5 ${frag_md5}');
 
 		//debugTrace('shader cache exists ${FileSystem.exists('shadercache')}');
 		//debugTrace('cwd ${FileSystem.absolutePath('')}');
@@ -1163,7 +1163,7 @@ struct spvDescriptorSetBuffer0
 	}
 
 	public override function selectShader(shader:hxsl.RuntimeShader) {
-		debugTrace('RENDER CALLSTACK selectShader ${shader.id}');
+		debugTrace('RENDER MATERIAL SHADER selectShader ${shader.id}');
 
 		var p = _shaders.get(shader.id);
 		if (_curShader!= p) {
@@ -2142,7 +2142,7 @@ var offset = 8;
 	}
 
 	public override function selectMaterial(pass:h3d.mat.Pass) {
-		debugTrace('RENDER CALLSTACK selectMaterial "${pass.name}"');
+		debugTrace('RENDER MATERIAL SHADER selectMaterial PASS NAME: "${pass.name}" ${[for (s in pass.getShaders()) '${s.toString()} : ${s.name}']}');
 
 		// culling
 		// stencil
@@ -3034,7 +3034,10 @@ var offset = 8;
 		restoreBind();
 	 */
 	public override function setRenderFlag(r:RenderFlag, value:Int) {
-		throw "Not implemented";
+		switch(r) {
+			case CameraHandness: _rightHanded = value != 0;
+			default:		throw "Not implemented";
+		}
 	}
 
 	public override function isDisposed() {

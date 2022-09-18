@@ -376,7 +376,14 @@ class PolyMesh {
         std::vector<u_int8_t> data;
 
         void set(int idx, double *v, int count) {
-            u_int8_t *d = &data[binarySize * idx];
+            auto offset = binarySize * idx;
+
+            if (offset > data.size())
+            {
+                printf("ERROR: Index %d is out of bounds\n", idx);
+                
+            }
+            u_int8_t *d = &data[offset];
 
             if (count > dimensions) count = dimensions;
             for (int i = 0; i < count; i++) {
@@ -456,8 +463,11 @@ class PolyMesh {
 
    public:
     PolyMesh(int targetCapacity = 100) : _begun(false), _targetCapacity(targetCapacity), _numVerts(0), _currentPolygonPolyNode(0) {
+        printf("CREATING POLYMESH\n");
     }
-    ~PolyMesh() {}
+    ~PolyMesh() {
+        printf("DELETING POLY MESH\n");
+    }
     void reserve(int polynodes) {
         _targetCapacity = polynodes;
         for (auto i = 0; i < _attributes.size(); i++) {
@@ -487,6 +497,12 @@ class PolyMesh {
 
     int beginPolyNode() {
         _indices.push_back(_numVerts);
+        
+        for (int i = 0; i < _attributes.size(); i++) {
+            auto &a = _attributes[i];
+            a.data.resize( a.data.size() + a.binarySize );
+        }
+        
         return _currentPolygonPolyNode;
     }
     void setNodeAddtribute1f(int attr, float x) {
