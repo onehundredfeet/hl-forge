@@ -177,6 +177,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		_width = win.width;
 		_height = win.height;
 
+		trace('-------> Specified window dims ${win.width} x ${win.height}');
+
 		_renderer = _forgeSDLWin.renderer();
 		_queue = _renderer.createQueue();
 
@@ -265,6 +267,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	function attach() {
 		if (_sc == null) {
+			trace('Creating swap achain with ${_width} x ${_height}');
 			_sc = _forgeSDLWin.createSwapChain(_renderer, _queue, _width, _height, _swap_count, _hdr);
 			for(i in 0..._swap_count) {
 				var rt = _sc.getRenderTarget(i);
@@ -293,10 +296,20 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	function detach() {
-		//		waitQueueIdle(pGraphicsQueue);
-
-		//		removeSwapChain(pRenderer, pSwapChain);
-		//		removeRenderTarget(pRenderer, pDepthBuffer);
+		if (_sc != null) {
+			_queue.waitIdle();
+			_renderer.destroySwapChain( _sc );
+			_sc = null;	
+		}
+		if (_defaultDepth != null) {
+			var b = @:privateAccess _defaultDepth.b;
+			var drb = b.r;
+			_renderer.destroyRenderTarget( drb );
+			_defaultDepth = null;	
+		}
+		_currentRT = null;
+		_currentDepth = null;
+		_swapRenderTargets.resize(0);
 	}
 
 	// second function called
@@ -357,9 +370,9 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function resize(width:Int, height:Int) {
-		debugTrace('Resizing ${width} ${height}');
+		trace('Resizing ${width} ${height}');
 		debugTrace('----> SC IS ${_sc}');
-
+		
 		_width = width;
 		_height = height;
 		detach();
@@ -2362,7 +2375,6 @@ var offset = 8;
 		
 		debugTrace('RENDER CLEAR BINDING');
 		// 
-
 		_currentCmd.bind(_currentRT.rt,_currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
 		debugTrace('RENDER CLEAR BINDING DONE');
 		

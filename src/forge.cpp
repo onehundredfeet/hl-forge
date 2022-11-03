@@ -2292,6 +2292,16 @@ HL_PRIM HL_CONST pref<Buffer>* HL_NAME(Renderer_createTransferBuffer4)(pref<Rend
 }
 DEFINE_PRIM(_IDL, Renderer_createTransferBuffer4, _IDL _I32 _I32 _I32 _I32);
 
+HL_PRIM HL_CONST void HL_NAME(Renderer_destroySwapChain1)(pref<Renderer>* _this, pref<SwapChain>* swapChain) {
+	(forge_renderer_destroySwapChain( _unref(_this) , _unref_ptr_safe(swapChain)));
+}
+DEFINE_PRIM(_VOID, Renderer_destroySwapChain1, _IDL _IDL);
+
+HL_PRIM HL_CONST void HL_NAME(Renderer_destroyRenderTarget1)(pref<Renderer>* _this, pref<RenderTarget>* swapChain) {
+	(forge_renderer_destroyRenderTarget( _unref(_this) , _unref_ptr_safe(swapChain)));
+}
+DEFINE_PRIM(_VOID, Renderer_destroyRenderTarget1, _IDL _IDL);
+
 HL_PRIM pref<ForgeSDLWindow>* HL_NAME(ForgeSDLWindow_new1)(pref<SDL_Window>* sdlWindow) {
 	return alloc_ref((new ForgeSDLWindow(_unref_ptr_safe(sdlWindow))),ForgeSDLWindow);
 }

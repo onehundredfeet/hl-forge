@@ -956,6 +956,9 @@ interface Renderer {
 	[CObject,Internal="::toggleVSync"] void toggleVSync([AddressOf] SwapChain sc);
 	[CObject,Internal="forge_create_transfer_buffer", Const] Buffer createTransferBuffer(TinyImageFormat format, int width, int height, int nodeIndex);
 
+	[CObject,Internal="forge_renderer_destroySwapChain", Const] void destroySwapChain(SwapChain swapChain);
+	[CObject,Internal="forge_renderer_destroyRenderTarget", Const] void destroyRenderTarget(RenderTarget swapChain);
+
 };
 
 

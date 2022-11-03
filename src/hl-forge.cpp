@@ -230,6 +230,8 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
 
     //	NSView *view = [nswin contentView];
 
+    _layer.drawableSize = CGSizeMake(width, height);
+    
     SwapChainDesc swapChainDesc = {};
     swapChainDesc.mWindowHandle.window = _view;
     swapChainDesc.mPresentQueueCount = 1;
@@ -237,6 +239,8 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
     swapChainDesc.mWidth = width;
     swapChainDesc.mHeight = height;
     swapChainDesc.mImageCount = chainCount;
+
+    printf("ForgeSDLWindow::createSwapChain - Swap chain dimensions %d %d\n", width, height);
 
     if (hdr10)
         swapChainDesc.mColorFormat = TinyImageFormat_R10G10B10A2_UNORM;
@@ -250,6 +254,13 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
     return pSwapChain;
 }
 
+void forge_renderer_destroySwapChain( Renderer *pRenderer, SwapChain *swapChain) {
+    removeSwapChain(pRenderer, swapChain);
+}
+
+void forge_renderer_destroyRenderTarget( Renderer *pRenderer, RenderTarget *rt) {
+    removeRenderTarget(pRenderer, rt);
+}
 void ForgeSDLWindow::present(Queue *pGraphicsQueue, SwapChain *pSwapChain, int swapchainImageIndex, Semaphore *pRenderCompleteSemaphore) {
     QueuePresentDesc presentDesc = {};
     presentDesc.mIndex = swapchainImageIndex;
