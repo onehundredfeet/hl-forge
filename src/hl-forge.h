@@ -463,10 +463,10 @@ class PolyMesh {
 
    public:
     PolyMesh(int targetCapacity = 100) : _begun(false), _targetCapacity(targetCapacity), _numVerts(0), _currentPolygonPolyNode(0) {
-        printf("CREATING POLYMESH\n");
+        //printf("CREATING POLYMESH\n");
     }
     ~PolyMesh() {
-        printf("DELETING POLY MESH\n");
+        //printf("DELETING POLY MESH\n");
     }
     void reserve(int polynodes) {
         _targetCapacity = polynodes;
@@ -810,6 +810,9 @@ void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Se
 // Buffer Load
 void forge_sdl_buffer_load_desc_set_index_buffer(BufferLoadDesc *bld, int size, void *data, bool shared);
 void forge_sdl_buffer_load_desc_set_vertex_buffer(BufferLoadDesc *bld, int size, void *data, bool shared);
+void forge_sdl_buffer_load_desc_set_uniform_buffer(BufferLoadDesc *bld, int size, void *data, bool shared);
+
+
 Buffer *forge_sdl_buffer_load(BufferLoadDesc *bld, SyncToken *token);
 // Buffer
 void forge_sdl_buffer_update(Buffer *buffer, void *data);

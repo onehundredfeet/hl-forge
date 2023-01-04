@@ -380,6 +380,7 @@ void forge_renderer_wait_fence(Renderer *pRenderer, Fence *pFence) {
 RenderTarget *forge_swap_chain_get_render_target(SwapChain *pSwapChain, int swapchainImageIndex) {
     return pSwapChain->ppRenderTargets[swapchainImageIndex];
 }
+
 void forge_sdl_buffer_load_desc_set_vertex_buffer(BufferLoadDesc *bld, int size, void *data, bool shared) {
     bld->mDesc.mDescriptors = DESCRIPTOR_TYPE_VERTEX_BUFFER;
     if (shared) {
@@ -390,6 +391,17 @@ void forge_sdl_buffer_load_desc_set_vertex_buffer(BufferLoadDesc *bld, int size,
     bld->mDesc.mSize = size;
     bld->pData = data;
     //
+}
+
+void forge_sdl_buffer_load_desc_set_uniform_buffer(BufferLoadDesc *bld, int size, void *data, bool shared) {
+     bld->mDesc.mDescriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    if (shared) {
+        bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+    } else {
+        bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+    }
+    bld->mDesc.mSize = size;
+    bld->pData = data;
 }
 
 void forge_sdl_buffer_update(Buffer *buffer, void *data) {

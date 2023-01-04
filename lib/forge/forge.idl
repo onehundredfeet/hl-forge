@@ -1010,6 +1010,7 @@ interface BufferLoadDesc {
 
 	[CObject, Internal="forge_sdl_buffer_load_desc_set_index_buffer"] void setIndexbuffer( int size, bytes data, bool shared );
 	[CObject, Internal="forge_sdl_buffer_load_desc_set_vertex_buffer"] void setVertexbuffer( int size, bytes data, bool shared );
+	[CObject, Internal="forge_sdl_buffer_load_desc_set_uniform_buffer"] void setUnformBuffer( int size, bytes data, bool shared );
 
 };
 
