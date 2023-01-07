@@ -756,7 +756,7 @@ HL_PRIM void HL_NAME(DescriptorSetDesc_delete)( pref<DescriptorSetDesc>* _this )
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, DescriptorSetDesc_delete, _IDL);
-static DescriptorSlotMode DescriptorSlotMode__values[] = { DBM_TEXTURES,DBM_SAMPLERS };
+static DescriptorSlotMode DescriptorSlotMode__values[] = { DBM_TEXTURES,DBM_SAMPLERS,DBM_UNIFORMS };
 HL_PRIM int HL_NAME(DescriptorSlotMode_toValue0)( int idx ) {
 	return DescriptorSlotMode__values[idx];
 }
@@ -766,11 +766,11 @@ HL_PRIM int HL_NAME(DescriptorSlotMode_indexToValue1)( int idx ) {
 }
 DEFINE_PRIM(_I32, DescriptorSlotMode_indexToValue1, _I32);
 HL_PRIM int HL_NAME(DescriptorSlotMode_valueToIndex1)( int value ) {
-	for( int i = 0; i < 2; i++ ) if ( value == (int)DescriptorSlotMode__values[i]) return i; return -1;
+	for( int i = 0; i < 3; i++ ) if ( value == (int)DescriptorSlotMode__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, DescriptorSlotMode_valueToIndex1, _I32);
 HL_PRIM int HL_NAME(DescriptorSlotMode_fromValue1)( int value ) {
-	for( int i = 0; i < 2; i++ ) if ( value == (int)DescriptorSlotMode__values[i]) return i; return -1;
+	for( int i = 0; i < 3; i++ ) if ( value == (int)DescriptorSlotMode__values[i]) return i; return -1;
 }
 DEFINE_PRIM(_I32, DescriptorSlotMode_fromValue1, _I32);
 HL_PRIM int HL_NAME(DescriptorSlotMode_fromIndex1)( int index ) {return index;}
@@ -2121,12 +2121,21 @@ HL_PRIM void HL_NAME(DescriptorDataBuilder_clearSlotData1)(pref<DescriptorDataBu
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_clearSlotData1, _IDL _I32);
 
-HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlot2)(pref<DescriptorDataBuilder>* _this, vstring * name, int descriptorType) {
-	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
-	auto ___retvalue = (_unref(_this)->addSlot(name__cstr, DescriptorSlotMode__values[descriptorType]));
-	return (___retvalue);
+HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlot1)(pref<DescriptorDataBuilder>* _this, int descriptorType) {
+	return (_unref(_this)->addSlot(DescriptorSlotMode__values[descriptorType]));
 }
-DEFINE_PRIM(_I32, DescriptorDataBuilder_addSlot2, _IDL _STRING _I32);
+DEFINE_PRIM(_I32, DescriptorDataBuilder_addSlot1, _IDL _I32);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotBindName2)(pref<DescriptorDataBuilder>* _this, int slot, vstring * name) {
+	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
+	(_unref(_this)->setSlotBindName(slot, name__cstr));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_setSlotBindName2, _IDL _I32 _STRING);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotBindIndex2)(pref<DescriptorDataBuilder>* _this, int slot, int index) {
+	(_unref(_this)->setSlotBindIndex(slot, index));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_setSlotBindIndex2, _IDL _I32 _I32);
 
 HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotTexture2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Texture>* tex) {
 	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(tex)));
@@ -2137,6 +2146,11 @@ HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotSampler2)(pref<DescriptorDataB
 	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(sampler)));
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotSampler2, _IDL _I32 _IDL);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotUniformBuffer2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Buffer>* uniformBuffer) {
+	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(uniformBuffer)));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotUniformBuffer2, _IDL _I32 _IDL);
 
 HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotUAVMipSlice2)(pref<DescriptorDataBuilder>* _this, int slot, int idx) {
 	(_unref(_this)->setSlotUAVMipSlice(slot, idx));
@@ -2383,6 +2397,11 @@ HL_PRIM void HL_NAME(BufferLoadDesc_setVertexbuffer3)(pref<BufferLoadDesc>* _thi
 	(forge_sdl_buffer_load_desc_set_vertex_buffer( _unref(_this) , size, data, shared));
 }
 DEFINE_PRIM(_VOID, BufferLoadDesc_setVertexbuffer3, _IDL _I32 _BYTES _BOOL);
+
+HL_PRIM void HL_NAME(BufferLoadDesc_setUniformBuffer3)(pref<BufferLoadDesc>* _this, int size, vbyte* data, bool shared) {
+	(forge_sdl_buffer_load_desc_set_uniform_buffer( _unref(_this) , size, data, shared));
+}
+DEFINE_PRIM(_VOID, BufferLoadDesc_setUniformBuffer3, _IDL _I32 _BYTES _BOOL);
 
 HL_PRIM void HL_NAME(Texture_upload2)(pref<Texture>* _this, vbyte* data, int size) {
 	(forge_sdl_texture_upload( _unref(_this) , data, size));

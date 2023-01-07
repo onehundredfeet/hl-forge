@@ -465,7 +465,7 @@ SDL_MetalView forge_create_metal_view(SDL_Window *win) {
 
 void forge_sdl_texture_upload(Texture *tex, void *data, int dataSize) {
     TextureUpdateDesc updateDesc = {tex};
-    updateDesc.mArrayLayer
+//    updateDesc.mArrayLayer
     DEBUG_PRINT("TEXTURE upading texture width %d height %d\n", tex->mWidth, tex->mHeight);
     beginUpdateResource(&updateDesc);
     memcpy(updateDesc.pMappedData, data, dataSize);

@@ -96,7 +96,7 @@ class GLSLTranscoder {
     
     inline function identLookup( v : TVar ) {
         var n = switch(v.kind) {
-            case  VarKind.Global:(isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
+            case  VarKind.Global:(isVertex ? "_vertrootglobalsPerFrame." : "_fragrootglobalsPerFrame." ) + varName(v);
             case  VarKind.Param: 
                 switch(v.type) {
                     case TSampler2D: varName(v);
@@ -702,8 +702,10 @@ class GLSLTranscoder {
 			default:true;
 		});
 
-		if (globals.length > 0 || buffer_params.length > 0) {
-			add('layout( push_constant ) uniform ${isVertex ? "Vert" : "Frag"}Constants {\n');
+		
+
+		if (globals.length > 0) {
+			add('layout( set=1, binding=0 ) uniform ${isVertex ? "Vert" : "Frag"}Globals {\n');
 			if (globals.length > 0) {
 				// uniforms first
 				for( v in globals ) {
@@ -712,14 +714,28 @@ class GLSLTranscoder {
 				}
 			}
 			
-			if (buffer_params.length > 0) {	
+			add('} _${isVertex ? "vert" : "frag"}rootglobalsPerFrame;\n');
+		}
+
+		if (buffer_params.length > 0) {
+			add('layout( push_constant ) uniform ${isVertex ? "Vert" : "Frag"}Constants {\n');
+			/*
+			if (globals.length > 0) {
+				// uniforms first
+				for( v in globals ) {
+					add("\t");
+					initVar(v);
+				}
+			}*/
+			
+//			if (buffer_params.length > 0) {	
 				for( v in buffer_params ) {
 					add("\t");
 					initVar(v);
 				}
-			}
+//			}
 
-			add('} _${isVertex ? "vert" : "frag"}rootconstants;');
+			add('} _${isVertex ? "vert" : "frag"}rootconstants;\n');
 		}
 
 
@@ -731,9 +747,10 @@ class GLSLTranscoder {
         });
 
         add("//Samplers\n");
-		var binding = 0;
+		
+		var texBinding = 0;
         for( v in sampler_params ) {
-            add('layout (set=0,binding=${binding}) uniform ');
+            add('layout (set=1,binding=${texBinding}) uniform ');
 			switch(v.type) {
 				case TSampler2D: 
 					debugTrace ('RENDER adding sampler ${v.name}');
@@ -745,7 +762,7 @@ class GLSLTranscoder {
 			}
 
             initVar(v);
-			binding++;
+			texBinding++;
         }
 
 

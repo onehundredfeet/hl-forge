@@ -896,16 +896,20 @@ interface DescriptorSet {
 
 enum DescriptorSlotMode {
     "DBM_TEXTURES",
-    "DBM_SAMPLERS"
+    "DBM_SAMPLERS",
+	"DBM_UNIFORMS"
 };
 
 interface DescriptorDataBuilder {
 	void DescriptorDataBuilder();
 	void clear();
 	void clearSlotData(int index);
-	int addSlot(String name, DescriptorSlotMode descriptorType);
+	int addSlot(DescriptorSlotMode descriptorType);
+	void setSlotBindName(int slot, String name);
+	void setSlotBindIndex(int slot, int index);
 	[Internal="addSlotData"] void addSlotTexture( int slot, Texture tex );
 	[Internal="addSlotData"] void addSlotSampler( int slot, Sampler sampler );
+	[Internal="addSlotData"] void addSlotUniformBuffer( int slot, Buffer uniformBuffer );
 	void setSlotUAVMipSlice( int slot, int idx );
 	void update(Renderer renderer, int index, DescriptorSet set);
 	void bind(Cmd cmd, int index, DescriptorSet set);	
@@ -1010,7 +1014,7 @@ interface BufferLoadDesc {
 
 	[CObject, Internal="forge_sdl_buffer_load_desc_set_index_buffer"] void setIndexbuffer( int size, bytes data, bool shared );
 	[CObject, Internal="forge_sdl_buffer_load_desc_set_vertex_buffer"] void setVertexbuffer( int size, bytes data, bool shared );
-	[CObject, Internal="forge_sdl_buffer_load_desc_set_uniform_buffer"] void setUnformBuffer( int size, bytes data, bool shared );
+	[CObject, Internal="forge_sdl_buffer_load_desc_set_uniform_buffer"] void setUniformBuffer( int size, bytes data, bool shared );
 
 };
 

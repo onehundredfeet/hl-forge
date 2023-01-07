@@ -91,7 +91,7 @@ std::string getMSLFromSPV( const std::vector<uint32_t> &spirv_binary ) {
     // Set some options.
 	spirv_cross::CompilerMSL::Options mtl_options;
 
-   mtl_options.argument_buffers = true;
+   //mtl_options.argument_buffers = true;
    // mtl_options.pad_argument_buffer_resources = true;
   //  mtl_options.force_active_argument_buffer_resources = true;
 //    mtl_options.shader_input_buffer_index

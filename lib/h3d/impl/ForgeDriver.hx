@@ -12,6 +12,7 @@ import forge.Native.BlendStateTargets as BlendStateTargets;
 import forge.Native.ColorMask as ColorMask;
 import forge.Native.StateBuilder as StateBuilder;
 import forge.Forge;
+import forge.DynamicUniformBuffer;
 
 private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
@@ -22,6 +23,9 @@ private class CompiledShader {
 	public var s:ForgeShader;
 	public var vertex:Bool;
 	public var constantsIndex:DescriptorIndex;
+	public var globalsIndex:DescriptorIndex;
+	public var globalsDescriptorSetIndex:DescriptorIndex;
+	public var globalDescriptorSet : forge.Native.DescriptorSet;
 	public var params:DescriptorIndex;
 	public var globalsLength:Int;
 	public var paramsLength:Int;
@@ -36,7 +40,9 @@ private class CompiledShader {
 	public var textureSlot: Int;
 	public var samplerSlot: Int;
 	public var md5 : String;
-
+	public var globalsBuffer : DynamicUniformBuffer;
+	public var globalsLastUpdated : Int = -1;
+	
 	public function textureCount() : Int {
 		return textures != null ? textures.length : 0;
 	}
@@ -146,6 +152,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _fragmentTextureCubes = new Array<h3d.mat.Texture>();
 	var _swapRenderTargets = new Array<RenderTarget>();
 
+	
 //	var defaultDepthInst : h3d.mat.DepthBuffer;
 
 	var count = 0;
@@ -255,8 +262,10 @@ class ForgeDriver extends h3d.impl.Driver {
 		_mipGenDescriptor = _renderer.addDescriptorSet( setDesc );
 		_mipGenArrayDescriptor = _renderer.addDescriptorSet( setDesc );
 		
-		_mipGenDB.addSlot("Source", DBM_TEXTURES); //?
-		_mipGenDB.addSlot("Destination", DBM_TEXTURES);
+		var s = _mipGenDB.addSlot( DBM_TEXTURES); //?
+		_mipGenDB.setSlotBindName(s, "Source");
+		s = _mipGenDB.addSlot(DBM_TEXTURES);
+		_mipGenDB.setSlotBindName(s, "Destination");
 	}
 
 	function addDepthBuffer() {
@@ -913,6 +922,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		_curMultiBuffer = null;
 		_curBuffer = null;
 		_curShader = null;
+		_currentFrame = frame;
 	}
 
 	var _shaders:Map<Int, CompiledProgram>;
@@ -1070,12 +1080,28 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		// get inputs
 		p.vertex.params = rootSig.getDescriptorIndexFromName( "_vertrootconstants");
 		p.vertex.constantsIndex = rootSig.getDescriptorIndexFromName( "_vertrootconstants");
+		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName( "_vertrootglobalsPerFrame");
+		p.vertex.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0"); // doesn't seem to resolve
 		p.vertex.globalsLength = shader.vertex.globalsSize * 4; // vectors to floats
 		p.vertex.paramsLength = shader.vertex.paramsSize * 4; // vectors to floats
+		if (p.vertex.globalsLength > 0) {
+			p.vertex.globalsBuffer = DynamicUniformBuffer.allocate(p.vertex.globalsLength * 4, _swap_count); 
+			p.vertex.globalDescriptorSet = p.vertex.globalsBuffer.createDescriptors( _renderer, rootSig, p.vertex.globalsIndex, DESCRIPTOR_UPDATE_FREQ_PER_FRAME);
+		}
 		p.fragment.params = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
 		p.fragment.constantsIndex = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
 		p.fragment.globalsLength = shader.fragment.globalsSize * 4; // vectors to floats
+		p.fragment.globalsIndex = rootSig.getDescriptorIndexFromName( "_fragrootglobalsPerFrame");
+		p.fragment.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0");
+
+//		trace ('p.vertex.globalsIndex ${p.vertex.globalsIndex} p.vertex.globalsDescriptorSetIndex ${p.vertex.globalsDescriptorSetIndex}');
+//		trace ('p.fragment.globalsIndex ${p.fragment.globalsIndex} p.fragment.globalsDescriptorSetIndex ${p.fragment.globalsDescriptorSetIndex}');
+
 		p.fragment.paramsLength = shader.fragment.paramsSize * 4; // vectors to floats
+		if (p.fragment.globalsLength > 0) {
+			p.fragment.globalsBuffer = DynamicUniformBuffer.allocate(p.fragment.globalsLength * 4, 3); // need to use the swap chain depth, but 3 is enough for now
+			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, DESCRIPTOR_UPDATE_FREQ_PER_FRAME);
+		}
 //		p.fragment.textures
 /*
 struct spvDescriptorSetBuffer0
@@ -1191,8 +1217,8 @@ struct spvDescriptorSetBuffer0
 		_curShader = p;
 
 		if (_curShader != null) {
-			var vertTotalLength = _curShader.vertex.globalsLength + _curShader.vertex.paramsLength;
-			var fragTotalLength = _curShader.fragment.globalsLength + _curShader.fragment.paramsLength;
+			var vertTotalLength = _curShader.vertex.paramsLength; // + _curShader.vertex.globalsLength;
+			var fragTotalLength =  _curShader.fragment.paramsLength; // + _curShader.fragment.globalsLength;
 			//_vertConstantBuffer is in units of floats
 			//total length should also be in floats, but may be in vectors
 			if (_vertConstantBuffer.length < vertTotalLength) _vertConstantBuffer.resize(vertTotalLength);
@@ -1235,8 +1261,16 @@ struct spvDescriptorSetBuffer0
 					if (buf.vertex.globals == null) throw "Vertex Globals are expected on this shader";
 					if (_curShader.vertex.globalsLength > buf.vertex.globals.length) throw 'vertex Globals mismatch ${_curShader.vertex.globalsLength} vs ${buf.vertex.globals.length}';
 					
-					var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
-					tmpBuff.blit(0, hl.Bytes.getArray(buf.vertex.globals.toData()), 0,  _curShader.vertex.globalsLength * 4);
+//					var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
+//					tmpBuff.blit(0, hl.Bytes.getArray(buf.vertex.globals.toData()), 0,  _curShader.vertex.globalsLength * 4);
+
+					if (_curShader.vertex.globalsLastUpdated != _currentFrame && _curShader.vertex.globalsBuffer != null) {
+						_curShader.vertex.globalsLastUpdated = _currentFrame;
+						_curShader.vertex.globalsBuffer.next();
+						_curShader.vertex.globalsBuffer.push( hl.Bytes.getArray(buf.vertex.globals.toData()), _curShader.vertex.globalsLength * 4 );
+						_curShader.vertex.globalsBuffer.sync();
+						//_curShader.vertex.globalsCrc = 0; // interesting, copilot suggested this
+					}
 				}
 
 				if( _curShader.fragment.globalsLength > 0) {
@@ -1244,8 +1278,16 @@ struct spvDescriptorSetBuffer0
 					if (buf.fragment.globals == null) throw "Fragment Globals are expected on this shader";
 					if (_curShader.fragment.globalsLength > buf.fragment.globals.length) throw 'fragment Globals mismatch ${_curShader.fragment.globalsLength} vs ${buf.fragment.globals.length}';
 					
-					var tmpBuff = hl.Bytes.getArray(_fragConstantBuffer);
-					tmpBuff.blit(0, hl.Bytes.getArray(buf.fragment.globals.toData()), 0,  _curShader.fragment.globalsLength * 4);
+					//var tmpBuff = hl.Bytes.getArray(_fragConstantBuffer);
+					//tmpBuff.blit(0, hl.Bytes.getArray(buf.fragment.globals.toData()), 0,  _curShader.fragment.globalsLength * 4);
+
+					if (_curShader.fragment.globalsLastUpdated != _currentFrame && _curShader.fragment.globalsBuffer != null) {
+						_curShader.fragment.globalsLastUpdated = _currentFrame;
+						_curShader.fragment.globalsBuffer.next();
+						_curShader.fragment.globalsBuffer.push( hl.Bytes.getArray(buf.fragment.globals.toData()), _curShader.fragment.globalsLength * 4 );
+						_curShader.fragment.globalsBuffer.sync();
+						//_curShader.fragment.globalsCrc = 0; // interesting, copilot suggested this
+					}
 				}
 
 				// Update buffer
@@ -1257,7 +1299,8 @@ struct spvDescriptorSetBuffer0
 				if (_curShader.vertex.paramsLength > buf.vertex.params.length) throw 'Vertex Params mismatch ${_curShader.vertex.paramsLength} vs ${buf.vertex.params.length}  in ${_curShader.vertex.md5}';
 				
 				var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
-				var offset = _curShader.vertex.globalsLength * 4;
+				//var offset = _curShader.vertex.globalsLength * 4;
+				var offset = 0;
 				tmpBuff.blit(offset, hl.Bytes.getArray(buf.vertex.params.toData()), 0,  _curShader.vertex.paramsLength * 4);
 			}
 
@@ -1267,7 +1310,8 @@ struct spvDescriptorSetBuffer0
 				if (_curShader.fragment.paramsLength > buf.fragment.params.length) throw 'fragment params mismatch ${_curShader.fragment.paramsLength} vs ${buf.vertex.params.length}';
 				
 				var tmpBuff = hl.Bytes.getArray(_fragConstantBuffer);
-				var offset = _curShader.fragment.globalsLength * 4;
+//				var offset = _curShader.fragment.globalsLength * 4;
+				var offset = 0;
 				tmpBuff.blit(offset, hl.Bytes.getArray(buf.fragment.params.toData()), 0,  _curShader.fragment.paramsLength * 4);
 			}
 			case Textures:  
@@ -1909,6 +1953,12 @@ var offset = 8;
 			debugTrace('RENDER CALLSTACK CONSTANTS pushing fragment constants ${_curShader.fragment.globalsLength + _curShader.fragment.paramsLength}');
 			_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.constantsIndex, hl.Bytes.getArray(_fragConstantBuffer) );
 		}
+		if (_curShader.vertex.globalsIndex != -1) {
+			_currentCmd.bindDescriptorSet(_curShader.vertex.globalsBuffer.currentIdx(), _curShader.vertex.globalDescriptorSet);
+		}
+		if (_curShader.fragment.globalsIndex != -1) {
+			_currentCmd.bindDescriptorSet(_curShader.fragment.globalsBuffer.currentIdx(), _curShader.fragment.globalDescriptorSet);			
+		}
 	}
 
 
@@ -1996,13 +2046,17 @@ var offset = 8;
 						var cdb = new forge.Native.DescriptorDataBuilder();
 
 						if (textureMode & TBDT_2D != 0) {
-							cdb.addSlot("fragmentTextures", DBM_TEXTURES);
-							cdb.addSlot("fragmentTexturesSmplr", DBM_SAMPLERS);
+							var s = cdb.addSlot(DBM_TEXTURES);
+							cdb.setSlotBindName(s, "fragmentTextures");
+							s = cdb.addSlot( DBM_SAMPLERS);
+							cdb.setSlotBindName(s, "fragmentTexturesSmplr");
 						}
 
 						if (textureMode & TBDT_CUBE != 0) {
-							cdb.addSlot("fragmentTexturesCube", DBM_TEXTURES);
-							cdb.addSlot("fragmentTexturesCubeSmplr", DBM_SAMPLERS);
+							var s = cdb.addSlot(DBM_TEXTURES);
+							cdb.setSlotBindName(s, "fragmentTexturesCube");
+							s = cdb.addSlot( DBM_SAMPLERS);
+							cdb.setSlotBindName(s, "fragmentTexturesCubeSmplr");
 						}
 						_textureDataBuilder.push(cdb);
 					}

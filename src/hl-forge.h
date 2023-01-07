@@ -212,7 +212,8 @@ class HlForgePipelineDesc : public PipelineDesc {
 
 enum DescriptorSlotMode {
     DBM_TEXTURES,
-    DBM_SAMPLERS
+    DBM_SAMPLERS,
+    DBM_UNIFORMS
 };
 
 class DescriptorDataBuilder {
@@ -246,8 +247,8 @@ class DescriptorDataBuilder {
         _dataPointers[slot]->clear();
     }
 
-    int addSlot(const std::string &name, DescriptorSlotMode type) {
-        _names.push_back(name);
+    int addSlot(DescriptorSlotMode type) {
+        _names.push_back("");
         _dataPointers.push_back(::new std::vector<void *>());
         _modes.push_back(type);
         DescriptorData d = {};
@@ -255,6 +256,16 @@ class DescriptorDataBuilder {
         _uavMipSlices.push_back(0);
         return _names.size() - 1;
     }
+    
+    void setSlotBindName(int slot, const std::string &name) {
+        _names[slot] = name;
+        _data[slot].mBindByIndex = false;
+    }
+	void setSlotBindIndex(int slot, int index) {
+        _data[slot].mIndex = index;
+        _data[slot].mBindByIndex = true;
+    }
+
     void addSlotData(int slot, void *data) {
         _dataPointers[slot]->push_back(data);
     }
@@ -271,6 +282,9 @@ class DescriptorDataBuilder {
                     break;
                 case DBM_SAMPLERS:
                     _data[i].ppSamplers = (Sampler **)(&(*_dataPointers[i])[0]);
+                    break;
+                case DBM_UNIFORMS:
+                    _data[i].ppBuffers = (Buffer **)(&(*_dataPointers[i])[0]);
                     break;
                 default:
                     break;
