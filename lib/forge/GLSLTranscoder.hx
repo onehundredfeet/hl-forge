@@ -55,6 +55,7 @@ class GLSLTranscoder {
 	var allNames : Map<String, Int>;
 	var outIndexes : Map<Int, Int>;
     var varBuffer : Map<String,String>;
+	var _bufferCount = 0;
 
 	var isES(get,never) : Bool;
 	var isES2(get,never) : Bool;
@@ -103,6 +104,7 @@ class GLSLTranscoder {
 					case TSamplerCube: varName(v);
                     case TArray(t, size):
                         (t == TSampler2D || t == TSamplerCube) ? varName(v) :(isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
+					case TBuffer(t, size):varName(v);
                     default:
                         (isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
                 }
@@ -201,8 +203,10 @@ class GLSLTranscoder {
 			case SVar(v): ident(v);
 			case SConst(1) if( intelDriverFix ): add(2);
 			case SConst(n): add(n);
+			default:throw 'Unrecognized size ${size}';
 			}
 			add("]");
+//			trace('Added size ${size} for ${v}');
 		case TBuffer(t, size):
 			add((isVertex ? "vertex_" : "") + "uniform_buffer"+(uniformBuffer++));
 			add(" { ");
@@ -632,9 +636,10 @@ class GLSLTranscoder {
 	function initVar( v : TVar ){
 		switch( v.kind ) {
 		case Param, Global:
-			if( v.type.match(TBuffer(_)) )
-				add("layout(std140) ");
-//			add("uniform ");
+			if( v.type.match(TBuffer(_)) ) {
+				add('layout(std140, binding=${_bufferCount}) ');
+				add("uniform ");
+			}
 		case Input:
 			add( isES2 ? "attribute " : "in ");
 		case Var:
@@ -693,8 +698,11 @@ class GLSLTranscoder {
 		uniformBuffer = 0;
 		outIndexes = new Map();
 
-        var globals = s.vars.filter( (x) -> x.kind == Global);
-		var params = s.vars.filter( (x) -> x.kind == Param);
+		var nonBufferVars = s.vars.filter( (x) -> x.type.match(TBuffer(_)) == false);
+		var bufferVars = s.vars.filter( (x) -> x.type.match(TBuffer(_)) );
+
+        var globals = nonBufferVars.filter( (x) -> x.kind == Global);
+		var params = nonBufferVars.filter( (x) -> x.kind == Param);
 		var buffer_params = params.filter( (x) ->  switch(x.type) {
 			case TSampler2D: false;
 			case TSamplerCube: false;
@@ -702,10 +710,10 @@ class GLSLTranscoder {
 			default:true;
 		});
 
-		
+		_bufferCount = 0;
 
 		if (globals.length > 0) {
-			add('layout( set=1, binding=0 ) uniform ${isVertex ? "Vert" : "Frag"}Globals {\n');
+			add('layout( set=1, binding=${_bufferCount} ) uniform ${isVertex ? "Vert" : "Frag"}Globals {\n');
 			if (globals.length > 0) {
 				// uniforms first
 				for( v in globals ) {
@@ -715,6 +723,7 @@ class GLSLTranscoder {
 			}
 			
 			add('} _${isVertex ? "vert" : "frag"}rootglobalsPerFrame;\n');
+			_bufferCount++;
 		}
 
 		if (buffer_params.length > 0) {
@@ -738,6 +747,10 @@ class GLSLTranscoder {
 			add('} _${isVertex ? "vert" : "frag"}rootconstants;\n');
 		}
 
+		for (b in bufferVars) {
+			initVar(b);
+		}
+
 
         var sampler_params = params.filter( (x) ->  switch(x.type) {
             case TSampler2D: true;
@@ -748,9 +761,8 @@ class GLSLTranscoder {
 
         add("//Samplers\n");
 		
-		var texBinding = 0;
         for( v in sampler_params ) {
-            add('layout (set=1,binding=${texBinding}) uniform ');
+            add('layout (set=1,binding=${_bufferCount}) uniform ');
 			switch(v.type) {
 				case TSampler2D: 
 					debugTrace ('RENDER adding sampler ${v.name}');
@@ -762,7 +774,7 @@ class GLSLTranscoder {
 			}
 
             initVar(v);
-			texBinding++;
+			_bufferCount++;
         }
 
 

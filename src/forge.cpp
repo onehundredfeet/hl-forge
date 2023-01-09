@@ -2347,7 +2347,7 @@ HL_PRIM void HL_NAME(Buffer_update1)(pref<Buffer>* _this, vbyte* data) {
 DEFINE_PRIM(_VOID, Buffer_update1, _IDL _BYTES);
 
 HL_PRIM void HL_NAME(Buffer_dispose0)(pref<Buffer>* _this) {
-	(removeResource( _unref(_this) ));
+	(forge_sdl_buffer_dispose( _unref(_this) ));
 }
 DEFINE_PRIM(_VOID, Buffer_dispose0, _IDL);
 

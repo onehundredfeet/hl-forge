@@ -1,22 +1,21 @@
 
-#include <iostream>
-#include <sstream>
-#include <filesystem>
-
-#include "hl-forge-shaders.h"
-
-#include <Renderer/IRenderer.h>
 #include <OS/Interfaces/IInput.h>
 #include <OS/Logging/Log.h>
+#include <Renderer/IRenderer.h>
 #include <Renderer/IResourceLoader.h>
 #include <Renderer/IShaderReflection.h>
 #include <basis_universal/basisu_enc.h>
+#include <tinyimageformat/tinyimageformat_apis.h>
+#include <tinyimageformat/tinyimageformat_base.h>
+#include <tinyimageformat/tinyimageformat_bits.h>
+#include <tinyimageformat/tinyimageformat_query.h>
 #include <OS/Core/TextureContainers.h>
 
-#include <tinyimageformat/tinyimageformat_base.h>
-#include <tinyimageformat/tinyimageformat_apis.h>
-#include <tinyimageformat/tinyimageformat_query.h>
-#include <tinyimageformat/tinyimageformat_bits.h>
+#include <filesystem>
+#include <iostream>
+#include <sstream>
+
+#include "hl-forge-shaders.h"
 
 #define HL_NAME(x) forge_##x
 #include <hl.h>
@@ -24,11 +23,25 @@
 #include "hl-forge-meta.h"
 #include "hl-forge.h"
 
-//#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+// #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #define DEBUG_PRINT(...)
 
-static CpuInfo gCpu;
+struct BufferDispose {
+    BufferDispose(Buffer *buffer, uint64_t frame) {
+        this->buffer = buffer;
+        this->frame = frame;
+    }
+    Buffer *buffer;
+    uint64_t frame;
+};
 
+static CpuInfo gCpu;
+// This needs to be renderer relative? or window relative?
+static int64 _frame = 0;
+// Need to make this renderer relative [TODO] RC
+static std::vector<BufferDispose> _toDisposeA;
+static std::vector<BufferDispose> _toDisposeB;
+static std::vector<BufferDispose> *_toDispose = nullptr;
 // From SDL
 static int IsMetalAvailable(const SDL_SysWMinfo *syswm) {
     if (syswm->subsystem != SDL_SYSWM_COCOA && syswm->subsystem != SDL_SYSWM_UIKIT) {
@@ -147,7 +160,7 @@ bool hlForgeInitialize(const char *name) {
     return true;
 }
 
-void forge_blend_state_desc_set_rt( BlendStateDesc *bs, BlendStateTargets rt, bool enabled) {
+void forge_blend_state_desc_set_rt(BlendStateDesc *bs, BlendStateTargets rt, bool enabled) {
     if (enabled) {
         bs->mRenderTargetMask = (BlendStateTargets)(bs->mRenderTargetMask | rt);
     } else {
@@ -155,13 +168,13 @@ void forge_blend_state_desc_set_rt( BlendStateDesc *bs, BlendStateTargets rt, bo
     }
 }
 
-VertexAttrib *forge_vertex_layout_get_attrib( VertexLayout *layout, int idx) {
+VertexAttrib *forge_vertex_layout_get_attrib(VertexLayout *layout, int idx) {
     return &layout->mAttribs[idx];
 }
 
-void forge_vertex_attrib_set_semantic( VertexAttrib *attrib, const char *name ) {
+void forge_vertex_attrib_set_semantic(VertexAttrib *attrib, const char *name) {
     strncpy(&attrib->mSemanticName[0], name, MAX_SEMANTIC_NAME_LENGTH);
-//    attrib->mSemanticNameLength
+    //    attrib->mSemanticNameLength
 }
 
 void forge_init_loader(Renderer *renderer) {
@@ -231,7 +244,7 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
     //	NSView *view = [nswin contentView];
 
     _layer.drawableSize = CGSizeMake(width, height);
-    
+
     SwapChainDesc swapChainDesc = {};
     swapChainDesc.mWindowHandle.window = _view;
     swapChainDesc.mPresentQueueCount = 1;
@@ -254,13 +267,38 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
     return pSwapChain;
 }
 
-void forge_renderer_destroySwapChain( Renderer *pRenderer, SwapChain *swapChain) {
+void forge_renderer_destroySwapChain(Renderer *pRenderer, SwapChain *swapChain) {
     removeSwapChain(pRenderer, swapChain);
 }
 
-void forge_renderer_destroyRenderTarget( Renderer *pRenderer, RenderTarget *rt) {
+void forge_renderer_destroyRenderTarget(Renderer *pRenderer, RenderTarget *rt) {
     removeRenderTarget(pRenderer, rt);
 }
+
+static void disposeStaleBuffers( ) {
+     _frame++;
+    auto *last = _toDispose;
+    if (_toDispose == nullptr)
+        _toDispose = &_toDisposeA;
+    else if (_toDispose == &_toDisposeA)
+        _toDispose = &_toDisposeB;
+    else
+        _toDispose = &_toDisposeA;
+
+    _toDispose->clear();
+
+    if (last != nullptr) {
+        for (auto i = 0; i < last->size(); i++) {
+            auto &x = (*last)[i];
+            if (x.frame + 3 < _frame) { // TODO: make this configurable [RC]
+                removeResource(x.buffer);
+            } else {
+                _toDispose->push_back(x);
+            }
+        }
+    }
+}
+
 void ForgeSDLWindow::present(Queue *pGraphicsQueue, SwapChain *pSwapChain, int swapchainImageIndex, Semaphore *pRenderCompleteSemaphore) {
     QueuePresentDesc presentDesc = {};
     presentDesc.mIndex = swapchainImageIndex;
@@ -270,11 +308,13 @@ void ForgeSDLWindow::present(Queue *pGraphicsQueue, SwapChain *pSwapChain, int s
     presentDesc.mSubmitDone = true;
 
     queuePresent(pGraphicsQueue, &presentDesc);
+
+    disposeStaleBuffers();
+   
 }
 SDL_Window *forge_sdl_get_window(void *ptr) {
     return static_cast<SDL_Window *>(ptr);
 }
-
 
 Buffer *forge_sdl_buffer_load(BufferLoadDesc *bld, SyncToken *token) {
     DEBUG_PRINT("Loading buffer \n");
@@ -298,7 +338,7 @@ Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, Sync
     DEBUG_PRINT("Creating texture %s from description %d %d\n", name, tdesc->mWidth, tdesc->mHeight);
     const char *oldName = tdesc->pName;
     tdesc->pName = name;
-//    tdesc->mDescriptors = DESCRIPTOR_TYPE_TEXTURE | DESCRIPTOR_TYPE_RW_TEXTURE;
+    //    tdesc->mDescriptors = DESCRIPTOR_TYPE_TEXTURE | DESCRIPTOR_TYPE_RW_TEXTURE;
 
     TextureLoadDesc defaultLoadDesc = {};
     defaultLoadDesc.pDesc = tdesc;
@@ -325,19 +365,17 @@ void forge_sdl_buffer_load_desc_set_index_buffer(BufferLoadDesc *bld, int size, 
     //
 }
 
-
-void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT, LoadActionType color, LoadActionType depth ) {
+void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT, LoadActionType color, LoadActionType depth) {
     // simply record the screen cleaning command
     LoadActionsDesc loadActions = {};
     loadActions.mLoadActionsColor[0] = color;
     loadActions.mLoadActionDepth = depth;
 
-//    DEBUG_PRINT("RENDER CLEAR c++ BIND %f %f %f %f\n", pRenderTarget->mClearValue.r, pRenderTarget->mClearValue.g, pRenderTarget->mClearValue.b, pRenderTarget->mClearValue.a );
+    //    DEBUG_PRINT("RENDER CLEAR c++ BIND %f %f %f %f\n", pRenderTarget->mClearValue.r, pRenderTarget->mClearValue.g, pRenderTarget->mClearValue.b, pRenderTarget->mClearValue.a );
 
-
-     // This seems to trump the stuff below
-     if (pDepthStencilRT != nullptr) {
-        loadActions.mClearDepth.depth = pDepthStencilRT->mClearValue.depth ;
+    // This seems to trump the stuff below
+    if (pDepthStencilRT != nullptr) {
+        loadActions.mClearDepth.depth = pDepthStencilRT->mClearValue.depth;
         loadActions.mClearDepth.stencil = pDepthStencilRT->mClearValue.stencil;
     }
     loadActions.mClearColorValues[0].r = pRenderTarget->mClearValue.r;
@@ -345,28 +383,27 @@ void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarge
     loadActions.mClearColorValues[0].b = pRenderTarget->mClearValue.b;
     loadActions.mClearColorValues[0].a = pRenderTarget->mClearValue.a;
 
-
-    //DEBUG_PRINT("RENDER CLEAR c++ %f %f %f %f - %f %d\n", loadActions.mClearColorValues[0].r, loadActions.mClearColorValues[0].g, loadActions.mClearColorValues[0].b, loadActions.mClearColorValues[0].a,  loadActions.mClearDepth.depth, loadActions.mClearDepth.stencil);
+    // DEBUG_PRINT("RENDER CLEAR c++ %f %f %f %f - %f %d\n", loadActions.mClearColorValues[0].r, loadActions.mClearColorValues[0].g, loadActions.mClearColorValues[0].b, loadActions.mClearColorValues[0].a,  loadActions.mClearDepth.depth, loadActions.mClearDepth.stencil);
     cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
     cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
 }
-void forge_render_target_set_clear_colour( RenderTarget *rt, float r, float g, float b,float a) {
+void forge_render_target_set_clear_colour(RenderTarget *rt, float r, float g, float b, float a) {
     rt->mClearValue.r = r;
     rt->mClearValue.g = g;
     rt->mClearValue.b = b;
     rt->mClearValue.a = a;
 
-    //DEBUG_PRINT("RENDER CLEAR SET %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
+    // DEBUG_PRINT("RENDER CLEAR SET %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
 }
-void forge_render_target_set_clear_depth( RenderTarget *rt, float depth, int stencil) {
-    //DEBUG_PRINT("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
+void forge_render_target_set_clear_depth(RenderTarget *rt, float depth, int stencil) {
+    // DEBUG_PRINT("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
     rt->mClearValue.depth = depth;
     rt->mClearValue.stencil = stencil;
-    //DEBUG_PRINT("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
+    // DEBUG_PRINT("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
 }
 void forge_cmd_unbind(Cmd *cmd) {
-	cmdBindRenderTargets(cmd, 0, NULL, NULL, NULL, NULL, NULL, -1, -1);
+    cmdBindRenderTargets(cmd, 0, NULL, NULL, NULL, NULL, NULL, -1, -1);
 }
 
 void forge_renderer_wait_fence(Renderer *pRenderer, Fence *pFence) {
@@ -375,7 +412,6 @@ void forge_renderer_wait_fence(Renderer *pRenderer, Fence *pFence) {
     if (fenceStatus == FENCE_STATUS_INCOMPLETE)
         waitForFences(pRenderer, 1, &pFence);
 }
-
 
 RenderTarget *forge_swap_chain_get_render_target(SwapChain *pSwapChain, int swapchainImageIndex) {
     return pSwapChain->ppRenderTargets[swapchainImageIndex];
@@ -394,7 +430,7 @@ void forge_sdl_buffer_load_desc_set_vertex_buffer(BufferLoadDesc *bld, int size,
 }
 
 void forge_sdl_buffer_load_desc_set_uniform_buffer(BufferLoadDesc *bld, int size, void *data, bool shared) {
-     bld->mDesc.mDescriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    bld->mDesc.mDescriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     if (shared) {
         bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
     } else {
@@ -409,6 +445,11 @@ void forge_sdl_buffer_update(Buffer *buffer, void *data) {
     beginUpdateResource(&desc);
     memcpy(desc.pMappedData, data, buffer->mSize);
     endUpdateResource(&desc, NULL);
+}
+
+void forge_sdl_buffer_dispose(Buffer *buffer) {
+    if (_toDispose == nullptr) _toDispose = &_toDisposeA;
+    _toDispose->push_back(BufferDispose(buffer, _frame));
 }
 
 void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int size, int soffset) {
@@ -438,18 +479,18 @@ void forge_cmd_insert_barrier(Cmd *cmd, ResourceBarrierBuilder *barrier) {
 }
 
 void forge_cmd_wait_for_render(Cmd *cmd, RenderTarget *pRenderTarget) {
-    RenderTargetBarrier barriers[] =    // wait for resource transition
-    {
-        { pRenderTarget, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET },
-    };
+    RenderTargetBarrier barriers[] =  // wait for resource transition
+        {
+            {pRenderTarget, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET},
+        };
     cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, barriers);
 }
 
 void forge_cmd_wait_for_present(Cmd *cmd, RenderTarget *pRenderTarget) {
-    RenderTargetBarrier barriers[] =    // wait for resource transition
-    {
-        { pRenderTarget, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_PRESENT },
-    };
+    RenderTargetBarrier barriers[] =  // wait for resource transition
+        {
+            {pRenderTarget, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_PRESENT},
+        };
     cmdResourceBarrier(cmd, 0, NULL, 0, NULL, 1, barriers);
 }
 
@@ -465,7 +506,7 @@ SDL_MetalView forge_create_metal_view(SDL_Window *win) {
 
 void forge_sdl_texture_upload(Texture *tex, void *data, int dataSize) {
     TextureUpdateDesc updateDesc = {tex};
-//    updateDesc.mArrayLayer
+    //    updateDesc.mArrayLayer
     DEBUG_PRINT("TEXTURE upading texture width %d height %d\n", tex->mWidth, tex->mHeight);
     beginUpdateResource(&updateDesc);
     memcpy(updateDesc.pMappedData, data, dataSize);
@@ -488,11 +529,9 @@ void forge_texture_upload_layer_mip(Texture *tex, int layer, int mip, void *data
     endUpdateResource(&updateDesc, NULL);
 }
 
-
-
-Shader *forge_load_compute_shader_file(Renderer *pRenderer, const char *fileName ) {
+Shader *forge_load_compute_shader_file(Renderer *pRenderer, const char *fileName) {
     ShaderLoadDesc GenerateMipShaderDesc = {};
-    GenerateMipShaderDesc.mStages[0] = { fileName, NULL, 0, NULL, SHADER_STAGE_LOAD_FLAG_ENABLE_VR_MULTIVIEW };
+    GenerateMipShaderDesc.mStages[0] = {fileName, NULL, 0, NULL, SHADER_STAGE_LOAD_FLAG_ENABLE_VR_MULTIVIEW};
     Shader *tmp = nullptr;
     addShader(pRenderer, &GenerateMipShaderDesc, &tmp);
     return tmp;
@@ -548,19 +587,19 @@ std::string getFilename(const std::string &path) {
     return path.substr(lastindex + 1);
 }
 
-DescriptorSet *forge_renderer_create_descriptor_set( Renderer *pRenderer, RootSignature* pRootSignature, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex) {
+DescriptorSet *forge_renderer_create_descriptor_set(Renderer *pRenderer, RootSignature *pRootSignature, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex) {
     DescriptorSet *tmp;
     DescriptorSetDesc desc = {
-        pRootSignature, 
+        pRootSignature,
         updateFrequency,
         maxSets,
         nodeIndex};
 
-    addDescriptorSet( pRenderer, &desc, &tmp );
+    addDescriptorSet(pRenderer, &desc, &tmp);
     return tmp;
 }
 
-void forge_render_target_capture(RenderTarget*rt, Buffer *pTransferBuffer, Semaphore *semaphore) {	
+void forge_render_target_capture(RenderTarget *rt, Buffer *pTransferBuffer, Semaphore *semaphore) {
     TextureCopyDesc copyDesc = {};
     copyDesc.pTexture = rt->pTexture;
     copyDesc.pBuffer = pTransferBuffer;
@@ -571,52 +610,48 @@ void forge_render_target_capture(RenderTarget*rt, Buffer *pTransferBuffer, Semap
     copyResource(&copyDesc, st);
 }
 
-void mapRenderTarget(Renderer* pRenderer, Queue* pQueue, Cmd* pCmd, RenderTarget* pRenderTarget, ResourceState currentResourceState, void* pImageData);
+void mapRenderTarget(Renderer *pRenderer, Queue *pQueue, Cmd *pCmd, RenderTarget *pRenderTarget, ResourceState currentResourceState, void *pImageData);
 
-int forge_render_target_capture_size(RenderTarget*pRenderTarget) {
+int forge_render_target_capture_size(RenderTarget *pRenderTarget) {
     uint16_t byteSize = TinyImageFormat_BitSizeOfBlock(pRenderTarget->mFormat) / 8;
-	uint8_t  channelCount = TinyImageFormat_ChannelCount(pRenderTarget->mFormat);
+    uint8_t channelCount = TinyImageFormat_ChannelCount(pRenderTarget->mFormat);
 
     return pRenderTarget->mWidth * pRenderTarget->mHeight * byteSize;
 }
-bool forge_render_target_capture_2(Renderer *pRenderer, Cmd *pCmd, RenderTarget*pRenderTarget, Queue *pQueue,  ResourceState renderTargetCurrentState, uint8_t *alloc, int bufferSize) {
+bool forge_render_target_capture_2(Renderer *pRenderer, Cmd *pCmd, RenderTarget *pRenderTarget, Queue *pQueue, ResourceState renderTargetCurrentState, uint8_t *alloc, int bufferSize) {
     printf("CAPTURE alloc buffer is %p of size %d\n", alloc, bufferSize);
-	// Wait for queue to finish rendering.
-	waitQueueIdle(pQueue);
+    // Wait for queue to finish rendering.
+    waitQueueIdle(pQueue);
 
-	// Allocate temp space
-	uint16_t byteSize = TinyImageFormat_BitSizeOfBlock(pRenderTarget->mFormat) / 8;
-	uint8_t  channelCount = TinyImageFormat_ChannelCount(pRenderTarget->mFormat);
+    // Allocate temp space
+    uint16_t byteSize = TinyImageFormat_BitSizeOfBlock(pRenderTarget->mFormat) / 8;
+    uint8_t channelCount = TinyImageFormat_ChannelCount(pRenderTarget->mFormat);
     if (bufferSize != pRenderTarget->mWidth * pRenderTarget->mHeight * byteSize) return false;
-//	void*    alloc = tf_malloc(pRenderTarget->mWidth * pRenderTarget->mHeight * byteSize);
-//	resetCmdPool(pRenderer, pCmdPool);
+    //	void*    alloc = tf_malloc(pRenderTarget->mWidth * pRenderTarget->mHeight * byteSize);
+    //	resetCmdPool(pRenderer, pCmdPool);
 
-	// Generate image data buffer.
-	mapRenderTarget(pRenderer, pQueue, pCmd, pRenderTarget, renderTargetCurrentState, alloc);
+    // Generate image data buffer.
+    mapRenderTarget(pRenderer, pQueue, pCmd, pRenderTarget, renderTargetCurrentState, alloc);
 
-	// Flip the BGRA to RGBA
-	const bool flipRedBlueChannel = pRenderTarget->mFormat != TinyImageFormat_R8G8B8A8_UNORM;
-	if (flipRedBlueChannel)
-	{
-		int8_t* imageData = ((int8_t*)alloc);
+    // Flip the BGRA to RGBA
+    const bool flipRedBlueChannel = pRenderTarget->mFormat != TinyImageFormat_R8G8B8A8_UNORM;
+    if (flipRedBlueChannel) {
+        int8_t *imageData = ((int8_t *)alloc);
 
-		for (uint32_t h = 0; h < pRenderTarget->mHeight; ++h)
-		{
-			for (uint32_t w = 0; w < pRenderTarget->mWidth; ++w)
-			{
-				uint32_t pixelIndex = (h * pRenderTarget->mWidth + w) * channelCount;
-				int8_t*  pixel = imageData + pixelIndex;
+        for (uint32_t h = 0; h < pRenderTarget->mHeight; ++h) {
+            for (uint32_t w = 0; w < pRenderTarget->mWidth; ++w) {
+                uint32_t pixelIndex = (h * pRenderTarget->mWidth + w) * channelCount;
+                int8_t *pixel = imageData + pixelIndex;
 
-				// Swap blue and red.
-				int8_t r = pixel[0];
-				pixel[0] = pixel[2];
-				pixel[2] = r;
-			}
-		}
-	}
+                // Swap blue and red.
+                int8_t r = pixel[0];
+                pixel[0] = pixel[2];
+                pixel[2] = r;
+            }
+        }
+    }
 
     return true;
-
 }
 Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int width, int height, int nodeIndex) {
     const uint32_t rowAlignment = max(1u, rp->pActiveGpuSettings->mUploadBufferTextureRowAlignment);
@@ -637,32 +672,32 @@ Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int w
 
     return tmp;
 }
- 
-std::string forge_translate_glsl_metal( const char *source, const char *filepath, bool fragment ) {
+
+std::string forge_translate_glsl_metal(const char *source, const char *filepath, bool fragment) {
     auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
     auto spirvASM = compile_file_to_assembly(filepath, shaderKind, source, false);
     auto spvCode = assemble_to_spv(spirvASM);
-     return getMSLFromSPV(spvCode);
+    return getMSLFromSPV(spvCode);
 }
 
-bool isTargetFileOutOfDate( const std::string &source, const std::string &target ) {
+bool isTargetFileOutOfDate(const std::string &source, const std::string &target) {
     if (!std::filesystem::exists(source)) return false;
     if (!std::filesystem::exists(target)) return true;
-    auto sourceTime = std::filesystem::last_write_time(source); // read back from the filesystem
-    auto targetTime = std::filesystem::last_write_time(target); // read back from the filesystem
+    auto sourceTime = std::filesystem::last_write_time(source);  // read back from the filesystem
+    auto targetTime = std::filesystem::last_write_time(target);  // read back from the filesystem
     return sourceTime > targetTime;
 }
 
-void generateMetalShader( const std::string &glslPath, const std::string &metalPath, bool fragment ) {
+void generateMetalShader(const std::string &glslPath, const std::string &metalPath, bool fragment) {
     if (isTargetFileOutOfDate(glslPath, metalPath)) {
         auto src = getShaderSource(glslPath);
 
         if (src.length() == 0) {
             std::cout << "Could not read GLSL source: " << glslPath << std::endl;
-            return ;
+            return;
         }
-        
-        auto msl = forge_translate_glsl_metal( src.c_str(), glslPath.c_str(), fragment );
+
+        auto msl = forge_translate_glsl_metal(src.c_str(), glslPath.c_str(), fragment);
         if (fragment) {
             auto bufferspot = msl.find("spvDescriptorSet0 [[buffer(");
             if (bufferspot != std::string::npos) {
@@ -672,9 +707,7 @@ void generateMetalShader( const std::string &glslPath, const std::string &metalP
             }
         }
 
-
         writeShaderSource(metalPath, msl);
-
     }
 }
 
@@ -686,52 +719,50 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     auto vertFilePathMSL = vertFilePath + ".metal";
     auto fragFilePathMSL = fragFilePath + ".metal";
 
+    generateMetalShader(vertFilePathOriginal, vertFilePathMSL, false);
+    generateMetalShader(fragFilePathOriginal, fragFilePathMSL, true);
 
-    generateMetalShader(vertFilePathOriginal, vertFilePathMSL, false );
-    generateMetalShader(fragFilePathOriginal, fragFilePathMSL, true );
+    /*
+        auto vertSrc = getShaderSource(vertFile);
+        auto fragSrc = getShaderSource(fragFile);
 
-/*
-    auto vertSrc = getShaderSource(vertFile);
-    auto fragSrc = getShaderSource(fragFile);
+        if (vertSrc.length() == 0) {
+            std::cout << "Could not read vert source: " << vertFile << std::endl;
+            return nullptr;
+        }
 
-    if (vertSrc.length() == 0) {
-        std::cout << "Could not read vert source: " << vertFile << std::endl;
-        return nullptr;
-    }
+        auto vertMSL = forge_translate_glsl_metal( vertSrc.c_str(), vertFile, false );
+        auto fragMSL = forge_translate_glsl_metal( fragSrc.c_str(), fragFile, true );
 
-    auto vertMSL = forge_translate_glsl_metal( vertSrc.c_str(), vertFile, false );
-    auto fragMSL = forge_translate_glsl_metal( fragSrc.c_str(), fragFile, true );
-    
-//    auto vertSpirvAsm = compile_file_to_assembly(vertFile, HLFG_SHADER_VERTEX, vertSrc, false);
-  //  auto fragSpirvAsm = compile_file_to_assembly(fragFile, HLFG_SHADER_FRAGMENT, fragSrc, false);
+    //    auto vertSpirvAsm = compile_file_to_assembly(vertFile, HLFG_SHADER_VERTEX, vertSrc, false);
+      //  auto fragSpirvAsm = compile_file_to_assembly(fragFile, HLFG_SHADER_FRAGMENT, fragSrc, false);
 
 
-   
 
-    auto vertFilePathSpirv = vertFilePath + ".spirvasm";
-    auto fragFilePathSpirv = fragFilePath + ".spirvasm";
 
-//    writeShaderSource(vertFilePathSpirv, vertSpirvAsm);
-  //  writeShaderSource(fragFilePathSpirv, fragSpirvAsm);
+        auto vertFilePathSpirv = vertFilePath + ".spirvasm";
+        auto fragFilePathSpirv = fragFilePath + ".spirvasm";
 
-//    auto vertCode = assemble_to_spv(vertSpirvAsm);
-  //  auto fragCode = assemble_to_spv(fragSpirvAsm);
+    //    writeShaderSource(vertFilePathSpirv, vertSpirvAsm);
+      //  writeShaderSource(fragFilePathSpirv, fragSpirvAsm);
 
-    //writeShaderSPV(vertFilePath + ".spv", vertCode);
-    //writeShaderSPV(fragFilePath + ".spv", fragCode);
+    //    auto vertCode = assemble_to_spv(vertSpirvAsm);
+      //  auto fragCode = assemble_to_spv(fragSpirvAsm);
 
-    DEBUG_PRINT("Getting MTL\n");
-//    auto vertMSL = getMSLFromSPV(vertCode);
-//    auto fragMSL = getMSLFromSPV(fragCode);
+        //writeShaderSPV(vertFilePath + ".spv", vertCode);
+        //writeShaderSPV(fragFilePath + ".spv", fragCode);
 
-   
+        DEBUG_PRINT("Getting MTL\n");
+    //    auto vertMSL = getMSLFromSPV(vertCode);
+    //    auto fragMSL = getMSLFromSPV(fragCode);
 
-    
-    DEBUG_PRINT("writing MTL\n");
-    writeShaderSource(vertFilePathMSL, vertMSL);
-    writeShaderSource(fragFilePathMSL, fragMSL);
-*/
 
+
+
+        DEBUG_PRINT("writing MTL\n");
+        writeShaderSource(vertFilePathMSL, vertMSL);
+        writeShaderSource(fragFilePathMSL, fragMSL);
+    */
 
     auto vertFN = getFilename(vertFilePath);
     auto fragFN = getFilename(fragFilePath);
@@ -744,171 +775,184 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     Shader *tmp = nullptr;
     addShader(pRenderer, &shaderDesc, &tmp);
 
-	if (tmp->pReflection) {
-		std::stringstream ss;
+    if (tmp->pReflection) {
+        std::stringstream ss;
 
-		ss << "vertex stage index: " << tmp->pReflection->mVertexStageIndex << std::endl;
-		ss << "frag stage index: " << tmp->pReflection->mPixelStageIndex << std::endl;
+        ss << "vertex stage index: " << tmp->pReflection->mVertexStageIndex << std::endl;
+        ss << "frag stage index: " << tmp->pReflection->mPixelStageIndex << std::endl;
 
-		ss << "stage reflection count: " << tmp->pReflection->mStageReflectionCount << std::endl;
-		for (auto i = 0; i < tmp->pReflection->mStageReflectionCount;++i) {
+        ss << "stage reflection count: " << tmp->pReflection->mStageReflectionCount << std::endl;
+        for (auto i = 0; i < tmp->pReflection->mStageReflectionCount; ++i) {
             auto &s = tmp->pReflection->mStageReflections[i];
             ss << "\t" << i << " stage:" << s.mShaderStage << std::endl;
             ss << "\t" << i << " variable count:" << s.mVariableCount << std::endl;
             ss << "\t" << i << " resource count:" << s.mShaderResourceCount << std::endl;
 
             if (s.mShaderStage == SHADER_STAGE_VERT) {
-            ss << "\t" << i << " vert input counts:" << s.mVertexInputsCount << std::endl;
-             for (auto vi = 0; vi < s.mVertexInputsCount;++vi) {
-                auto &v = s.pVertexInputs[vi];
-                ss << "\t\t" << vi << " name:" << v.name << std::endl;
-                ss << "\t\t" << vi << " name size:" << v.name_size << std::endl;
-                ss << "\t\t" << vi << " size:" << v.size << std::endl;
+                ss << "\t" << i << " vert input counts:" << s.mVertexInputsCount << std::endl;
+                for (auto vi = 0; vi < s.mVertexInputsCount; ++vi) {
+                    auto &v = s.pVertexInputs[vi];
+                    ss << "\t\t" << vi << " name:" << v.name << std::endl;
+                    ss << "\t\t" << vi << " name size:" << v.name_size << std::endl;
+                    ss << "\t\t" << vi << " size:" << v.size << std::endl;
+                }
             }
-
-            }
-
-           
         }
 
-		ss << "resource count: " << tmp->pReflection->mShaderResourceCount << std::endl; 
-		for (auto i = 0; i < tmp->pReflection->mShaderResourceCount;++i) {
-			auto &r = tmp->pReflection->pShaderResources[i];
-			ss << "\t" << i << " name:" << r.name << std::endl;
-			ss << "\t" << i << " reg:" << r.reg << std::endl;
-			ss << "\t" << i << " argument buffer field:" << r.mIsArgumentBufferField << std::endl;
-			ss << "\t" << i << " used stages:" << r.used_stages << std::endl;
-			ss << "\t" << i << " set:" << r.set << std::endl;
-			ss << "\t" << i << " size:" << r.size << std::endl;
-			ss << "\t" << i << " dim:" << r.dim << std::endl;
-			ss << "\t" << i << " alignment:" << r.alignment << std::endl;
-			ss << "\t" << i << " argument descriptor index:" << r.mtlArgumentDescriptors.mArgumentIndex << std::endl;
-			ss << "\t" << i << " argument array length:" << r.mtlArgumentDescriptors.mArrayLength << std::endl;
-			ss << "\t" << i << " argument buffer index:" << r.mtlArgumentDescriptors.mBufferIndex << std::endl;
-			
-			ss << "\t" << i << " type:";
+        ss << "resource count: " << tmp->pReflection->mShaderResourceCount << std::endl;
+        for (auto i = 0; i < tmp->pReflection->mShaderResourceCount; ++i) {
+            auto &r = tmp->pReflection->pShaderResources[i];
+            ss << "\t" << i << " name:" << r.name << std::endl;
+            ss << "\t" << i << " reg:" << r.reg << std::endl;
+            ss << "\t" << i << " argument buffer field:" << r.mIsArgumentBufferField << std::endl;
+            ss << "\t" << i << " used stages:" << r.used_stages << std::endl;
+            ss << "\t" << i << " set:" << r.set << std::endl;
+            ss << "\t" << i << " size:" << r.size << std::endl;
+            ss << "\t" << i << " dim:" << r.dim << std::endl;
+            ss << "\t" << i << " alignment:" << r.alignment << std::endl;
+            ss << "\t" << i << " argument descriptor index:" << r.mtlArgumentDescriptors.mArgumentIndex << std::endl;
+            ss << "\t" << i << " argument array length:" << r.mtlArgumentDescriptors.mArrayLength << std::endl;
+            ss << "\t" << i << " argument buffer index:" << r.mtlArgumentDescriptors.mBufferIndex << std::endl;
 
-			switch(r.type) {
-				case DESCRIPTOR_TYPE_UNIFORM_BUFFER: ss << "Uniform buffer"; break;
-				case DESCRIPTOR_TYPE_SAMPLER:ss << "Sampler"; break;
-				case DESCRIPTOR_TYPE_TEXTURE:ss << "Texture"; break;
-				case DESCRIPTOR_TYPE_RW_TEXTURE:ss << "Rw Texture"; break;
-				case DESCRIPTOR_TYPE_BUFFER: ss << "Buffer"; break;
-				case DESCRIPTOR_TYPE_BUFFER_RAW: ss << "Buffer Raw"; break;
-				case DESCRIPTOR_TYPE_RW_BUFFER:ss << "RW Buffer"; break;
-				case DESCRIPTOR_TYPE_RW_BUFFER_RAW:ss << "RW Buffer Raw"; break;
-				case DESCRIPTOR_TYPE_ROOT_CONSTANT:ss << "Root constant"; break;
-				case DESCRIPTOR_TYPE_ARGUMENT_BUFFER:ss << "Argument buffer"; break;
-				case DESCRIPTOR_TYPE_INDIRECT_COMMAND_BUFFER:ss << "Indirect command buffer"; break;
-				case DESCRIPTOR_TYPE_RENDER_PIPELINE_STATE:ss << "Render pipeline buffer"; break;
-				default: ss << "Unknown: " << r.type; break;
-			}
+            ss << "\t" << i << " type:";
 
-			ss << std::endl;
-			
-		}		
-		ss << "var count: " << tmp->pReflection->mVariableCount << std::endl;
+            switch (r.type) {
+                case DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+                    ss << "Uniform buffer";
+                    break;
+                case DESCRIPTOR_TYPE_SAMPLER:
+                    ss << "Sampler";
+                    break;
+                case DESCRIPTOR_TYPE_TEXTURE:
+                    ss << "Texture";
+                    break;
+                case DESCRIPTOR_TYPE_RW_TEXTURE:
+                    ss << "Rw Texture";
+                    break;
+                case DESCRIPTOR_TYPE_BUFFER:
+                    ss << "Buffer";
+                    break;
+                case DESCRIPTOR_TYPE_BUFFER_RAW:
+                    ss << "Buffer Raw";
+                    break;
+                case DESCRIPTOR_TYPE_RW_BUFFER:
+                    ss << "RW Buffer";
+                    break;
+                case DESCRIPTOR_TYPE_RW_BUFFER_RAW:
+                    ss << "RW Buffer Raw";
+                    break;
+                case DESCRIPTOR_TYPE_ROOT_CONSTANT:
+                    ss << "Root constant";
+                    break;
+                case DESCRIPTOR_TYPE_ARGUMENT_BUFFER:
+                    ss << "Argument buffer";
+                    break;
+                case DESCRIPTOR_TYPE_INDIRECT_COMMAND_BUFFER:
+                    ss << "Indirect command buffer";
+                    break;
+                case DESCRIPTOR_TYPE_RENDER_PIPELINE_STATE:
+                    ss << "Render pipeline buffer";
+                    break;
+                default:
+                    ss << "Unknown: " << r.type;
+                    break;
+            }
 
-		for (auto i = 0; i < tmp->pReflection->mVariableCount;++i) {
-			auto &v = tmp->pReflection->pVariables[i];
-			ss << "\t" << i << " var name:" << v.name << std::endl;
-			ss << "\t" << i << " offset:" << v.offset << std::endl;
-			ss << "\t" << i << " parent:" << v.parent_index << std::endl;
-		}		
-		std::string str = ss.str();
-		writeShaderSource(vertFilePath + ".reflect", str);
-	} else {
-		DEBUG_PRINT("-->No reflection\n");
-	}
+            ss << std::endl;
+        }
+        ss << "var count: " << tmp->pReflection->mVariableCount << std::endl;
+
+        for (auto i = 0; i < tmp->pReflection->mVariableCount; ++i) {
+            auto &v = tmp->pReflection->pVariables[i];
+            ss << "\t" << i << " var name:" << v.name << std::endl;
+            ss << "\t" << i << " offset:" << v.offset << std::endl;
+            ss << "\t" << i << " parent:" << v.parent_index << std::endl;
+        }
+        std::string str = ss.str();
+        writeShaderSource(vertFilePath + ".reflect", str);
+    } else {
+        DEBUG_PRINT("-->No reflection\n");
+    }
     return tmp;
 }
 
-void hl_compile_metal_to_bin(const char* filePath, const char* outFilePath) {
+void hl_compile_metal_to_bin(const char *filePath, const char *outFilePath) {
     DEBUG_PRINT("MTL COMPILE SHADER\n");
-	char intermediateFilePath[FS_MAX_PATH] = {};
+    char intermediateFilePath[FS_MAX_PATH] = {};
     sprintf(intermediateFilePath, "%s.air", outFilePath);
 
-	const char* xcrun = "/usr/bin/xcrun";
-	std::vector<std::string> args;
-	char tmpArgs[FS_MAX_PATH + 10]{};
+    const char *xcrun = "/usr/bin/xcrun";
+    std::vector<std::string> args;
+    char tmpArgs[FS_MAX_PATH + 10]{};
 
-	// Compile the source into a temporary .air file.
-	args.push_back("-sdk");
-	args.push_back("macosx");
-	args.push_back("metal");
-	args.push_back("-frecord-sources=flat");
-	args.push_back("-c");
-	args.push_back(filePath);
-	args.push_back("-o");
-	args.push_back(intermediateFilePath);
+    // Compile the source into a temporary .air file.
+    args.push_back("-sdk");
+    args.push_back("macosx");
+    args.push_back("metal");
+    args.push_back("-frecord-sources=flat");
+    args.push_back("-c");
+    args.push_back(filePath);
+    args.push_back("-o");
+    args.push_back(intermediateFilePath);
 
-	//enable the 2 below for shader debugging on xcode
-	//args.push_back("-MO");
-	//args.push_back("-gline-tables-only");
-	args.push_back("-D");
-	args.push_back("MTL_SHADER=1");    // Add MTL_SHADER macro to differentiate structs in headers shared by app/shader code.
+    // enable the 2 below for shader debugging on xcode
+    // args.push_back("-MO");
+    // args.push_back("-gline-tables-only");
+    args.push_back("-D");
+    args.push_back("MTL_SHADER=1");  // Add MTL_SHADER macro to differentiate structs in headers shared by app/shader code.
 
-	std::vector<const char*> cArgs;
-	for (std::string& arg : args)
-	{
-		cArgs.push_back(arg.c_str());
-	}
+    std::vector<const char *> cArgs;
+    for (std::string &arg : args) {
+        cArgs.push_back(arg.c_str());
+    }
 
-	std::string params;
+    std::string params;
 
-	for (std::string& arg : args)
-	{
-		params += " " + arg;
-	}
-	
-	DEBUG_PRINT("Running %s %s\n", xcrun,params.c_str() );
-	
-	if (systemRun(xcrun, &cArgs[0], cArgs.size(), NULL) == 0)
-	{
-		// Create a .metallib file from the .air file.
-		args.clear();
-		sprintf(tmpArgs, "");
-		args.push_back("-sdk");
-		args.push_back("macosx");
-		args.push_back("metallib");
-		args.push_back(intermediateFilePath);
-		args.push_back("-o");
-		sprintf(
-			tmpArgs,
-			""
-			"%s"
-			"",
-			outFilePath);
-		args.push_back(tmpArgs);
+    for (std::string &arg : args) {
+        params += " " + arg;
+    }
 
-		cArgs.clear();
-		for (std::string& arg : args)
-		{
-			cArgs.push_back(arg.c_str());
-		}
+    DEBUG_PRINT("Running %s %s\n", xcrun, params.c_str());
 
-		if (systemRun(xcrun, &cArgs[0], cArgs.size(), NULL) == 0)
-		{
-			// Remove the temp .air file.
-			const char* nativePath = intermediateFilePath;
-			systemRun("rm", &nativePath, 1, NULL);
-		}
-		else
-		{
-			LOGF(eERROR, "Failed to assemble shader's %s .metallib file", outFilePath);
-		}
-	}
-	else
-	{
-		LOGF(eERROR, "Failed to compile shader %s", filePath);
-	}
+    if (systemRun(xcrun, &cArgs[0], cArgs.size(), NULL) == 0) {
+        // Create a .metallib file from the .air file.
+        args.clear();
+        sprintf(tmpArgs, "");
+        args.push_back("-sdk");
+        args.push_back("macosx");
+        args.push_back("metallib");
+        args.push_back(intermediateFilePath);
+        args.push_back("-o");
+        sprintf(
+            tmpArgs,
+            ""
+            "%s"
+            "",
+            outFilePath);
+        args.push_back(tmpArgs);
+
+        cArgs.clear();
+        for (std::string &arg : args) {
+            cArgs.push_back(arg.c_str());
+        }
+
+        if (systemRun(xcrun, &cArgs[0], cArgs.size(), NULL) == 0) {
+            // Remove the temp .air file.
+            const char *nativePath = intermediateFilePath;
+            systemRun("rm", &nativePath, 1, NULL);
+        } else {
+            LOGF(eERROR, "Failed to assemble shader's %s .metallib file", outFilePath);
+        }
+    } else {
+        LOGF(eERROR, "Failed to compile shader %s", filePath);
+    }
 }
 /*
 // On Metal, on the other hand, we can compile from code into a MTLLibrary, but cannot save this
 // object's bytecode to disk. We instead use the xcbuild bash tool to compile the shaders.
 void mtl_compileShader(	Renderer* pRenderer, const char* fileName, const char* outFile, uint32_t macroCount, ShaderMacro* pMacros, BinaryShaderStageDesc* pOut, const char*entrypoint )
 {
-	
+
 }
 */
 RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Shader *shader) {
@@ -917,7 +961,6 @@ RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Sha
     RootSignatureDesc rootDesc = {&shader, 1, 0, nullptr, nullptr, 0};
     addRootSignature(pRenderer, &rootDesc, &tmp);
 
-
     for (auto i = 0; i < tmp->mDescriptorCount; i++) {
         DEBUG_PRINT("\tRENDER Descriptor %d is %s\n", i, tmp->pDescriptors[i].pName);
     }
@@ -925,10 +968,10 @@ RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Sha
 }
 
 RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSignatureFactory *desc) {
-    return desc->create(pRenderer );
+    return desc->create(pRenderer);
 }
 
-Texture *forge_render_target_get_texture( RenderTarget *rt) {
+Texture *forge_render_target_get_texture(RenderTarget *rt) {
     return rt->pTexture;
 }
 
@@ -937,9 +980,9 @@ Texture *forge_render_target_get_texture( RenderTarget *rt) {
 static XXH64_state_t *_state;
 
 uint64_t StateBuilder::getSignature(int shaderID, RenderTarget *rt, RenderTarget *depth) {
-    //memset(this, 0, sizeof(StateBuilder));
+    // memset(this, 0, sizeof(StateBuilder));
     if (_state == NULL) _state = XXH64_createState();
-    
+
     XXH64_hash_t const seed = 0xf1ebd85245909a37;
     XXH64_reset(_state, seed);
     XXH64_update(_state, this, sizeof(StateBuilder));
@@ -955,59 +998,55 @@ uint64_t StateBuilder::getSignature(int shaderID, RenderTarget *rt, RenderTarget
     }
     XXH64_hash_t const hash = XXH64_digest(_state);
 
-//    *l = (int)(hash & 0x00000000ffffffff);
-  //  *h = (int)((hash >> 32) & 0x00000000ffffffff);
+    //    *l = (int)(hash & 0x00000000ffffffff);
+    //  *h = (int)((hash >> 32) & 0x00000000ffffffff);
 
-//    DEBUG_PRINT("Signature HASH %llu\n", hash);
-    
+    //    DEBUG_PRINT("Signature HASH %llu\n", hash);
+
     //*h = y == x ? 1 : 0;
     return hash;
 }
 
 ///////
 RootSignatureFactory::RootSignatureFactory() {
-	
 }
 RootSignatureFactory::~RootSignatureFactory() {
-
 }
 
 /*
 Shader**           ppShaders;
-	uint32_t           mShaderCount;
-	uint32_t           mMaxBindlessTextures;
-	const char**       ppStaticSamplerNames;
-	Sampler**          ppStaticSamplers;
-	uint32_t           mStaticSamplerCount;
-	RootSignatureFlags mFlags;
+        uint32_t           mShaderCount;
+        uint32_t           mMaxBindlessTextures;
+        const char**       ppStaticSamplerNames;
+        Sampler**          ppStaticSamplers;
+        uint32_t           mStaticSamplerCount;
+        RootSignatureFlags mFlags;
 */
 RootSignature *RootSignatureFactory::create(Renderer *pRenderer) {
-	RootSignature *tmp;
+    RootSignature *tmp;
 
-/*
-Shader**           ppShaders;
-	uint32_t           mShaderCount;
-	uint32_t           mMaxBindlessTextures;
-	const char**       ppStaticSamplerNames;
-	Sampler**          ppStaticSamplers;
-	uint32_t           mStaticSamplerCount;
-	RootSignatureFlags mFlags;
-*/
-    const char **pointers = (const char **)alloca( sizeof(char *) * _names.size());
+    /*
+    Shader**           ppShaders;
+            uint32_t           mShaderCount;
+            uint32_t           mMaxBindlessTextures;
+            const char**       ppStaticSamplerNames;
+            Sampler**          ppStaticSamplers;
+            uint32_t           mStaticSamplerCount;
+            RootSignatureFlags mFlags;
+    */
+    const char **pointers = (const char **)alloca(sizeof(char *) * _names.size());
 
     for (int i = 0; i < _names.size(); i++) {
         pointers[i] = _names[i].c_str();
     }
     RootSignatureDesc rootDesc = {
-        &_shaders[0], 
+        &_shaders[0],
         (uint32_t)_shaders.size(),
         0,
         pointers,
         &_samplers[0],
-        (uint32_t)_samplers.size()
-         };
-    
-	
+        (uint32_t)_samplers.size()};
+
     addRootSignature(pRenderer, &rootDesc, &tmp);
 
     for (auto i = 0; i < tmp->mDescriptorCount; i++) {
@@ -1015,13 +1054,13 @@ Shader**           ppShaders;
         DEBUG_PRINT("\tRENDER Descriptor %d is %s hi %d dim %d size %d static %d type %d\n", i, info.pName, info.mHandleIndex, info.mDim, info.mSize, info.mStaticSampler, info.mType);
     }
 
-	return tmp;
+    return tmp;
 }
-void RootSignatureFactory::addShader( Shader *pShader ) {
-	_shaders.push_back(pShader);
+void RootSignatureFactory::addShader(Shader *pShader) {
+    _shaders.push_back(pShader);
 }
-void RootSignatureFactory::addSampler( Sampler * sampler, const char *name ) {
-	_samplers.push_back(sampler);
+void RootSignatureFactory::addSampler(Sampler *sampler, const char *name) {
+    _samplers.push_back(sampler);
     _names.push_back(name);
 }
 ///// boilerplate

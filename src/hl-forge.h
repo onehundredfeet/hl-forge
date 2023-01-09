@@ -256,7 +256,7 @@ class DescriptorDataBuilder {
         _uavMipSlices.push_back(0);
         return _names.size() - 1;
     }
-    
+
     void setSlotBindName(int slot, const std::string &name) {
         _names[slot] = name;
         _data[slot].mBindByIndex = false;
@@ -830,6 +830,7 @@ void forge_sdl_buffer_load_desc_set_uniform_buffer(BufferLoadDesc *bld, int size
 Buffer *forge_sdl_buffer_load(BufferLoadDesc *bld, SyncToken *token);
 // Buffer
 void forge_sdl_buffer_update(Buffer *buffer, void *data);
+void forge_sdl_buffer_dispose(Buffer *buffer);
 void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int size, int soffset);
 inline unsigned char *forge_buffer_get_cpu_address(Buffer *buffer) {
     return (unsigned char *)(buffer->pCpuMappedAddress);
