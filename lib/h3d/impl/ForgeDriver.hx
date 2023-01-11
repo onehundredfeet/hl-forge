@@ -13,6 +13,7 @@ import forge.Native.ColorMask as ColorMask;
 import forge.Native.StateBuilder as StateBuilder;
 import forge.Forge;
 import forge.DynamicUniformBuffer;
+import h3d.impl.GraphicsDriver;
 
 private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
@@ -29,9 +30,10 @@ private class CompiledShader {
 	public var params:DescriptorIndex;
 	public var globalsLength:Int;
 	public var paramsLength:Int;
+	public var bufferCount: Int;
 	public var textures:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
 	public var texturesCubes:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
-	public var buffers:Array<Int>;
+	public var buffers:Array<DescriptorIndex>;
 	public var shader:hxsl.RuntimeShader.RuntimeShaderData;
 	public var textureIndex:DescriptorIndex;
 	public var textureCubeIndex:DescriptorIndex;
@@ -57,6 +59,8 @@ private class CompiledShader {
 		this.s = s;
 		this.vertex = vertex;
 		this.shader = shader;
+		this.bufferCount = shader.bufferCount;
+		shader.buffers;
 	}
 }
 typedef ComputePipeline = {pipeline: forge.Native.Pipeline, rootconstant: Int, shader: forge.Native.Shader, rootsig: forge.Native.RootSignature};
@@ -516,8 +520,16 @@ class ForgeDriver extends h3d.impl.Driver {
 		placeHolder.resize(byteCount);
 
 		var desc = new forge.Native.BufferLoadDesc();
-		desc.setVertexBuffer(byteCount, hl.Bytes.getArray(placeHolder));
 		desc.setUsage(true);
+
+		if (m.flags.has(Dynamic))
+			desc.setDynamic(3);
+
+		if (m.flags.has(UniformBuffer))
+			desc.setUniformBuffer(byteCount, hl.Bytes.getArray(placeHolder));
+		else
+			desc.setVertexBuffer(byteCount, hl.Bytes.getArray(placeHolder));
+
 		/*
 			var bits = is32 ? 2 : 1;
 			var placeHolder = new Array<hl.UI8>();
@@ -962,6 +974,65 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		return {glsl:glslsource, metal:vertmetalsrc, metal_bin: sys.io.File.getBytes( binPath ) };						
 	}
 
+	function initShader(p : CompiledProgram, s : CompiledShader, shader : hxsl.RuntimeShader.RuntimeShaderData, rt : hxsl.RuntimeShader) {
+		#if reference_is_code
+		var prefix = s.vertex ? "vertex" : "fragment";
+		s.globals = gl.getUniformLocation(p.p, prefix + "Globals");
+		s.params = gl.getUniformLocation(p.p, prefix + "Params");
+		s.textures = [];
+		var index = 0;
+		var curT = null;
+		var mode = 0;
+		var name = "";
+		var t = shader.textures;
+		while( t != null ) {
+			var tt = t.type;
+			var count = 1;
+			switch( tt ) {
+			case TChannel(_): tt = TSampler2D;
+			case TArray(t,SConst(n)): tt = t; count = n;
+			default:
+			}
+			if( tt != curT ) {
+				curT = tt;
+				name = switch( tt ) {
+				case TSampler2D: mode = GL.TEXTURE_2D; "Textures";
+				case TSamplerCube: mode = GL.TEXTURE_CUBE_MAP; "TexturesCube";
+				case TSampler2DArray: mode = GL.TEXTURE_2D_ARRAY; "TexturesArray";
+				default: throw "Unsupported texture type "+tt;
+				}
+				index = 0;
+			}
+			for( i in 0...count ) {
+				var loc = gl.getUniformLocation(p.p, prefix+name+"["+index+"]");
+				/*
+					This is a texture that is used in HxSL but has been optimized out by GLSL compiler.
+					While some drivers will correctly report `null` here, some others (AMD) will instead
+					return a uniform but still mismatch the texture slot, leading to swapped textures or
+					incorrect rendering. We also don't handle texture skipping in DirectX.
+
+					Fix is to make sure HxSL will optimize the texture out.
+					Alternate fix is to improve HxSL so he does it on its own.
+				*/
+				if( loc == null )
+					throw "Texture "+rt.spec.instances[t.instance].shader.data.name+"."+t.name+" is missing from generated shader";
+				s.textures.push({ u : loc, t : curT, mode : mode });
+				index++;
+			}
+			t = t.next;
+		}
+		
+	
+
+		if( shader.bufferCount > 0 ) {
+			s.buffers = [for( i in 0...shader.bufferCount ) ];//gl.getUniformBlockIndex(p.p,(shader.vertex?"vertex_":"")+"uniform_buffer"+i)];
+			var start = 0;
+			if( !s.vertex ) start = rt.vertex.bufferCount;
+			for( i in 0...shader.bufferCount )
+				gl.uniformBlockBinding(p.p,s.buffers[i],i + start);
+		}
+		#end
+	}
 	public function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
 		var vertTranscoder = new forge.GLSLTranscoder();
 		var fragTranscoder = new forge.GLSLTranscoder();
@@ -1122,6 +1193,7 @@ struct spvDescriptorSetBuffer0
 		debugTrace('RENDER TEXTURE tdi ${p.fragment.textureIndex} tsi ${p.fragment.samplerIndex} tcdi ${p.fragment.textureCubeIndex} tcsi ${p.fragment.samplerCubeIndex}'); 
 		debugTrace('PARAMS Indices vg ${p.vertex.constantsIndex} vp ${p.vertex.params} fg ${p.fragment.constantsIndex} fp ${p.fragment.params}');
 
+		//initShader(p, shader, rootSig);
 		var attribNames = [];
 		p.attribs = [];
 		p.hasAttribIndex = [];
@@ -1380,6 +1452,7 @@ struct spvDescriptorSetBuffer0
 			case Buffers:  
 				debugTrace ('RENDER BUFFERS Upload Buffers v ${buf.vertex.buffers} f ${buf.fragment.buffers}'); 
 
+				//throw ('Maybe ${_curShader} has buffers?');
 			if( _curShader.vertex.buffers != null ) {
 				throw ("Not supported");
 				//debugTrace('Vertex buffers length ${ _curShader.vertex.buffers}');
