@@ -2321,6 +2321,11 @@ HL_PRIM HL_CONST void HL_NAME(Renderer_destroyRenderTarget1)(pref<Renderer>* _th
 }
 DEFINE_PRIM(_VOID, Renderer_destroyRenderTarget1, _IDL _IDL);
 
+HL_PRIM void HL_NAME(Renderer_fillDescriptorSet4)(pref<Renderer>* _this, pref<BufferExt>* buf, pref<DescriptorSet>* ds, int mode, int slotIndex) {
+	(forge_renderer_fill_descriptor_set( _unref(_this) , _unref_ptr_safe(buf), _unref_ptr_safe(ds), DescriptorSlotMode__values[mode], slotIndex));
+}
+DEFINE_PRIM(_VOID, Renderer_fillDescriptorSet4, _IDL _IDL _IDL _I32 _I32);
+
 HL_PRIM pref<ForgeSDLWindow>* HL_NAME(ForgeSDLWindow_new1)(pref<SDL_Window>* sdlWindow) {
 	return alloc_ref((new ForgeSDLWindow(_unref_ptr_safe(sdlWindow))),ForgeSDLWindow);
 }
@@ -2365,6 +2370,16 @@ HL_PRIM int HL_NAME(Buffer_getSize0)(pref<BufferExt>* _this) {
 	return (_unref(_this)->getSize());
 }
 DEFINE_PRIM(_I32, Buffer_getSize0, _IDL);
+
+HL_PRIM int HL_NAME(Buffer_next0)(pref<BufferExt>* _this) {
+	return (_unref(_this)->next());
+}
+DEFINE_PRIM(_I32, Buffer_next0, _IDL);
+
+HL_PRIM int HL_NAME(Buffer_currentIdx0)(pref<BufferExt>* _this) {
+	return (_unref(_this)->currentIdx());
+}
+DEFINE_PRIM(_I32, Buffer_currentIdx0, _IDL);
 
 HL_PRIM pref<BufferLoadDescExt>* HL_NAME(BufferLoadDesc_new0)() {
 	auto ___retvalue = alloc_ref((new BufferLoadDescExt()),BufferLoadDesc);

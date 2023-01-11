@@ -946,6 +946,17 @@ Texture *forge_render_target_get_texture(RenderTarget *rt) {
     return rt->pTexture;
 }
 
+void forge_renderer_fill_descriptor_set(Renderer *pRenderer, BufferExt *buf, DescriptorSet *pDS, DescriptorSlotMode mode, int slotIndex) {
+        for( int i = 0; i < buf->_buffers.size(); ++i ) {
+            DescriptorDataBuilder builder;
+            auto s = builder.addSlot( mode );        
+            builder.setSlotBindIndex(s, slotIndex);
+//            _buffers.setCurrent(0);
+            builder.addSlotData( s, buf->_buffers[i] );
+            builder.update( pRenderer, i, pDS);
+        }
+    }
+
 ////
 
 static XXH64_state_t *_state;

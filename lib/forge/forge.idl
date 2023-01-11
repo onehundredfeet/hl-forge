@@ -966,6 +966,8 @@ interface Renderer {
 	[CObject,Internal="forge_renderer_destroySwapChain", Const] void destroySwapChain(SwapChain swapChain);
 	[CObject,Internal="forge_renderer_destroyRenderTarget", Const] void destroyRenderTarget(RenderTarget swapChain);
 
+	[CObject, Internal="forge_renderer_fill_descriptor_set"] void fillDescriptorSet( Buffer buf, DescriptorSet ds, DescriptorSlotMode mode, int slotIndex);
+
 };
 
 
@@ -995,6 +997,8 @@ interface Buffer {
 	void dispose();
 	bytes getCpuAddress();
 	int getSize();
+	int next();
+	int currentIdx();
 };
 
 

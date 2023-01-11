@@ -29,6 +29,7 @@ bool hlForgeInitialize(const char *name);
 #include <Renderer/IRenderer.h>
 #include <Renderer/IResourceLoader.h>
 
+
 class ForgeSDLWindow {
    public:
     ForgeSDLWindow(SDL_Window *window);
@@ -104,8 +105,9 @@ class BufferExt {
         return _buffers[_idx];
     }
 
-    inline void next() {
+    inline int next() {
         _idx = (_idx + 1) % _buffers.size();
+        return _idx;
     }
 
     inline void setCurrent(int idx) {
@@ -140,7 +142,18 @@ class BufferExt {
         return current()->mSize;
     }
 
+
+    inline int currentIdx() {
+        return _idx;
+    }
+
     static void bindAsIndex(Cmd *cmd, BufferExt *b, IndexType it, int offset);
+};
+
+enum DescriptorSlotMode {
+    DBM_TEXTURES,
+    DBM_SAMPLERS,
+    DBM_UNIFORMS
 };
 
 class BufferLoadDescExt : public BufferLoadDesc {
@@ -324,11 +337,7 @@ class HlForgePipelineDesc : public PipelineDesc {
     std::string _name;
 };
 
-enum DescriptorSlotMode {
-    DBM_TEXTURES,
-    DBM_SAMPLERS,
-    DBM_UNIFORMS
-};
+
 
 class DescriptorDataBuilder {
     //    DescriptorSet *_set;
@@ -390,7 +399,9 @@ class DescriptorDataBuilder {
     void addSlotData(int slot, BufferExt *bp) {
         _dataPointers[slot]->push_back(bp->current());
     }
-
+    void addSlotData(int slot, Buffer *bp) {
+        _dataPointers[slot]->push_back(bp);
+    }
     void setSlotUAVMipSlice(int slot, int idx) {
         _data[slot].mUAVMipSlice = idx;
     }
@@ -933,6 +944,9 @@ Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int w
 bool forge_render_target_capture_2(Renderer *pRenderer, Cmd *pCmd, RenderTarget *pRenderTarget, Queue *pQueue, ResourceState renderTargetCurrentState, uint8_t *alloc, int bufferSize);
 void forge_renderer_destroySwapChain(Renderer *pRenderer, SwapChain *swapChain);
 void forge_renderer_destroyRenderTarget(Renderer *pRenderer, RenderTarget *rt);
+void forge_renderer_fill_descriptor_set(Renderer *pRenderer, BufferExt *buf, DescriptorSet *pDS, DescriptorSlotMode mode, int slotIndex);
+
+
 // Tools
 std::string forge_translate_glsl_metal(const char *source, const char *filepath, bool fragment);
 void hl_compile_metal_to_bin(const char *fileName, const char *outFile);
