@@ -51,7 +51,6 @@ class DynamicUniformBuffer {
 		var ds = renderer.addDescriptorSet( setDesc );
         
         for( i in 0..._buffers.length ) {
-            trace('Buffer length ${i} / ${_buffers.length}}');
             var builder = new forge.Native.DescriptorDataBuilder();
             var s = builder.addSlot( DescriptorSlotMode.DBM_UNIFORMS);        
             builder.setSlotBindIndex(s, slotIndex);
