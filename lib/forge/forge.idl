@@ -663,7 +663,7 @@ interface RenderTarget {
 	[CObject, Internal="forge_render_target_set_clear_colour"] void setClearColor( float r, float g, float b,float a);
 	[CObject, Internal="forge_render_target_set_clear_depth"] void setClearDepthNormalized( float depth, int stencil );
 
-	[CObject, Internal="forge_render_target_capture"] void captureAsBuffer(Buffer pTransferBuffer,  Semaphore semaphore);
+	[CObject, Internal="forge_render_target_capture"] void captureAsBuffer(TransferBuffer pTransferBuffer,  Semaphore semaphore);
 	[CObject,Internal="forge_render_target_capture_size"] int captureSize();
 };
 
@@ -718,8 +718,6 @@ interface BufferBinder {
 
 	void reset();
 	int add(Buffer buf, int stride, int offset);
-
-
 };
 
 interface ResourceBarrierBuilder {
@@ -736,8 +734,8 @@ interface Cmd {
 	[CObject,  Internal="beginCmd"] void begin();
 	[CObject,  Internal="endCmd"] void end();
 	[CObject,  Internal="cmdBindPushConstants"] void pushConstants(RootSignature rs, int index, bytes data);
-	[CObject,  Internal="cmdBindIndexBuffer"] void bindIndexBuffer(Buffer b, IndexType format , int offset);
-	[CObject, Internal="BufferBinder::bind"] void bindVertexBuffer( BufferBinder binder );
+	[CObject,  Internal="BufferExt::bindAsIndex"] void bindIndexBuffer(Buffer b, IndexType format , int offset);
+	[CObject, Internal="BufferBinder::bindAsVertex"] void bindVertexBuffer( BufferBinder binder );
 	[CObject,  Internal="cmdDrawIndexed"] void drawIndexed( int vertCount, uint first_index, uint first_vertex);
 	[CObject, Internal="cmdBindPipeline"] void bindPipeline( Pipeline pipeline );
 	[CObject, Internal="cmdBindDescriptorSet"] void bindDescriptorSet(int index, DescriptorSet set);
@@ -924,6 +922,11 @@ interface RootSignatureDesc {
 
 };
 
+[Internal="Buffer", NoDelete]
+interface TransferBuffer {
+
+};
+
 [NoDelete]
 interface Renderer {
 	//Const is a hack to get it to not generate a finalizer
@@ -958,7 +961,7 @@ interface Renderer {
 	[CObject,Internal="forge_renderer_createRootSignature", Const] RootSignature createRootSig(RootSignatureDesc desc);
 
 	[CObject,Internal="::toggleVSync"] void toggleVSync([AddressOf] SwapChain sc);
-	[CObject,Internal="forge_create_transfer_buffer", Const] Buffer createTransferBuffer(TinyImageFormat format, int width, int height, int nodeIndex);
+	[CObject,Internal="forge_create_transfer_buffer", Const] TransferBuffer createTransferBuffer(TinyImageFormat format, int width, int height, int nodeIndex);
 
 	[CObject,Internal="forge_renderer_destroySwapChain", Const] void destroySwapChain(SwapChain swapChain);
 	[CObject,Internal="forge_renderer_destroyRenderTarget", Const] void destroyRenderTarget(RenderTarget swapChain);
@@ -985,19 +988,17 @@ interface SyncToken {
 
 };
 
-[NoDelete]
+[Internal="BufferExt"]
 interface Buffer {
-	[CObject, Internal="forge_sdl_buffer_update_region"] void updateRegion(bytes data, int toffset, int size, int soffset);
-	[CObject, Internal="forge_sdl_buffer_update"] void update(bytes data);
-	[CObject, Internal="forge_sdl_buffer_dispose"]  void dispose();
-	
-	[CObject, Internal="forge_buffer_get_cpu_address"] bytes getCpuAddress();
-	[CObject, Internal="mSize"] attribute uint size;
-
-	//stagingBuffer->pCpuMappedAddress, stagingBuffer->mSize
-
+	void updateRegion(bytes data, int toffset, int size, int soffset);
+	void update(bytes data);
+	void dispose();
+	bytes getCpuAddress();
+	int getSize();
 };
 
+
+[Internal="BufferLoadDescExt"]
 interface BufferLoadDesc {
 //	Buffer**    ppBuffer;
 //	const void* pData;
@@ -1010,12 +1011,18 @@ interface BufferLoadDesc {
 	[Internal="mForceReset"] attribute bool forceReset;
 	//[Internal="pData"] attribute VoidPtr data;
 	//[Cast="Buffer**", Internal="ppBuffer"] attribute VoidPtr buffer;
-	[CObject, Internal="forge_sdl_buffer_load",Const]Buffer load(SyncToken syncToken);
+	Buffer load(SyncToken syncToken);
 
-	[CObject, Internal="forge_sdl_buffer_load_desc_set_index_buffer"] void setIndexbuffer( int size, bytes data, bool shared );
-	[CObject, Internal="forge_sdl_buffer_load_desc_set_vertex_buffer"] void setVertexbuffer( int size, bytes data, bool shared );
-	[CObject, Internal="forge_sdl_buffer_load_desc_set_uniform_buffer"] void setUniformBuffer( int size, bytes data, bool shared );
+	void setIndexBuffer( int size, bytes data );
+	void setVertexBuffer( int size, bytes data );
+	void setUniformBuffer( int size, bytes data );
+	void setDynamic( int depth );
+	void setUsage(bool shared);
 
+	// [CObject, Internal="forge_sdl_buffer_load_desc_set_index_buffer"] void setIndexbuffer( int size, bytes data, bool shared );
+	// [CObject, Internal="forge_sdl_buffer_load_desc_set_vertex_buffer"] void setVertexbuffer( int size, bytes data, bool shared );
+	// [CObject, Internal="forge_sdl_buffer_load_desc_set_uniform_buffer"] void setUniformBuffer( int size, bytes data, bool shared );
+//	[CObject, Internal="forge_sdl_buffer_load_desc_set_dynamic"] void setDynamic( bool isDynamic );
 };
 
 [NoDelete]

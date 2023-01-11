@@ -795,8 +795,13 @@ HL_PRIM void HL_NAME(SyncToken_delete)( pref<SyncToken>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, SyncToken_delete, _IDL);
-static void finalize_BufferLoadDesc( pref<BufferLoadDesc>* _this ) { free_ref(_this ); }
-HL_PRIM void HL_NAME(BufferLoadDesc_delete)( pref<BufferLoadDesc>* _this ) {
+static void finalize_Buffer( pref<BufferExt>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(Buffer_delete)( pref<BufferExt>* _this ) {
+	free_ref(_this );
+}
+DEFINE_PRIM(_VOID, Buffer_delete, _IDL);
+static void finalize_BufferLoadDesc( pref<BufferLoadDescExt>* _this ) { free_ref(_this ); }
+HL_PRIM void HL_NAME(BufferLoadDesc_delete)( pref<BufferLoadDescExt>* _this ) {
 	free_ref(_this );
 }
 DEFINE_PRIM(_VOID, BufferLoadDesc_delete, _IDL);
@@ -1657,7 +1662,7 @@ HL_PRIM void HL_NAME(BufferBinder_reset0)(pref<BufferBinder>* _this) {
 }
 DEFINE_PRIM(_VOID, BufferBinder_reset0, _IDL);
 
-HL_PRIM int HL_NAME(BufferBinder_add3)(pref<BufferBinder>* _this, pref<Buffer>* buf, int stride, int offset) {
+HL_PRIM int HL_NAME(BufferBinder_add3)(pref<BufferBinder>* _this, pref<BufferExt>* buf, int stride, int offset) {
 	return (_unref(_this)->add(_unref_ptr_safe(buf), stride, offset));
 }
 DEFINE_PRIM(_I32, BufferBinder_add3, _IDL _IDL _I32 _I32);
@@ -1702,13 +1707,13 @@ HL_PRIM void HL_NAME(Cmd_pushConstants3)(pref<Cmd>* _this, pref<RootSignature>* 
 }
 DEFINE_PRIM(_VOID, Cmd_pushConstants3, _IDL _IDL _I32 _BYTES);
 
-HL_PRIM void HL_NAME(Cmd_bindIndexBuffer3)(pref<Cmd>* _this, pref<Buffer>* b, int format, int offset) {
-	(cmdBindIndexBuffer( _unref(_this) , _unref_ptr_safe(b), IndexType__values[format], offset));
+HL_PRIM void HL_NAME(Cmd_bindIndexBuffer3)(pref<Cmd>* _this, pref<BufferExt>* b, int format, int offset) {
+	(BufferExt::bindAsIndex( _unref(_this) , _unref_ptr_safe(b), IndexType__values[format], offset));
 }
 DEFINE_PRIM(_VOID, Cmd_bindIndexBuffer3, _IDL _IDL _I32 _I32);
 
 HL_PRIM void HL_NAME(Cmd_bindVertexBuffer1)(pref<Cmd>* _this, pref<BufferBinder>* binder) {
-	(BufferBinder::bind( _unref(_this) , _unref_ptr_safe(binder)));
+	(BufferBinder::bindAsVertex( _unref(_this) , _unref_ptr_safe(binder)));
 }
 DEFINE_PRIM(_VOID, Cmd_bindVertexBuffer1, _IDL _IDL);
 
@@ -2147,7 +2152,7 @@ HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotSampler2)(pref<DescriptorDataB
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotSampler2, _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotUniformBuffer2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Buffer>* uniformBuffer) {
+HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotUniformBuffer2)(pref<DescriptorDataBuilder>* _this, int slot, pref<BufferExt>* uniformBuffer) {
 	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(uniformBuffer)));
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotUniformBuffer2, _IDL _I32 _IDL);
@@ -2302,7 +2307,7 @@ HL_PRIM void HL_NAME(Renderer_toggleVSync1)(pref<Renderer>* _this, pref<SwapChai
 DEFINE_PRIM(_VOID, Renderer_toggleVSync1, _IDL _IDL);
 
 HL_PRIM HL_CONST pref<Buffer>* HL_NAME(Renderer_createTransferBuffer4)(pref<Renderer>* _this, int format, int width, int height, int nodeIndex) {
-	return alloc_ref_const((forge_create_transfer_buffer( _unref(_this) , TinyImageFormat__values[format], width, height, nodeIndex)),Buffer);
+	return alloc_ref_const((forge_create_transfer_buffer( _unref(_this) , TinyImageFormat__values[format], width, height, nodeIndex)),TransferBuffer);
 }
 DEFINE_PRIM(_IDL, Renderer_createTransferBuffer4, _IDL _I32 _I32 _I32 _I32);
 
@@ -2336,72 +2341,77 @@ HL_PRIM void HL_NAME(ForgeSDLWindow_present4)(pref<ForgeSDLWindow>* _this, pref<
 }
 DEFINE_PRIM(_VOID, ForgeSDLWindow_present4, _IDL _IDL _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(Buffer_updateRegion4)(pref<Buffer>* _this, vbyte* data, int toffset, int size, int soffset) {
-	(forge_sdl_buffer_update_region( _unref(_this) , data, toffset, size, soffset));
+HL_PRIM void HL_NAME(Buffer_updateRegion4)(pref<BufferExt>* _this, vbyte* data, int toffset, int size, int soffset) {
+	(_unref(_this)->updateRegion(data, toffset, size, soffset));
 }
 DEFINE_PRIM(_VOID, Buffer_updateRegion4, _IDL _BYTES _I32 _I32 _I32);
 
-HL_PRIM void HL_NAME(Buffer_update1)(pref<Buffer>* _this, vbyte* data) {
-	(forge_sdl_buffer_update( _unref(_this) , data));
+HL_PRIM void HL_NAME(Buffer_update1)(pref<BufferExt>* _this, vbyte* data) {
+	(_unref(_this)->update(data));
 }
 DEFINE_PRIM(_VOID, Buffer_update1, _IDL _BYTES);
 
-HL_PRIM void HL_NAME(Buffer_dispose0)(pref<Buffer>* _this) {
-	(forge_sdl_buffer_dispose( _unref(_this) ));
+HL_PRIM void HL_NAME(Buffer_dispose0)(pref<BufferExt>* _this) {
+	(_unref(_this)->dispose());
 }
 DEFINE_PRIM(_VOID, Buffer_dispose0, _IDL);
 
-HL_PRIM vbyte* HL_NAME(Buffer_getCpuAddress0)(pref<Buffer>* _this) {
-	return (forge_buffer_get_cpu_address( _unref(_this) ));
+HL_PRIM vbyte* HL_NAME(Buffer_getCpuAddress0)(pref<BufferExt>* _this) {
+	return (_unref(_this)->getCpuAddress());
 }
 DEFINE_PRIM(_BYTES, Buffer_getCpuAddress0, _IDL);
 
-HL_PRIM unsigned int HL_NAME(Buffer_get_size)( pref<Buffer>* _this ) {
-	return _unref(_this)->mSize;
+HL_PRIM int HL_NAME(Buffer_getSize0)(pref<BufferExt>* _this) {
+	return (_unref(_this)->getSize());
 }
-DEFINE_PRIM(_I32,Buffer_get_size,_IDL);
-HL_PRIM unsigned int HL_NAME(Buffer_set_size)( pref<Buffer>* _this, unsigned int value ) {
-	_unref(_this)->mSize = (value);
-	return value;
-}
-DEFINE_PRIM(_I32,Buffer_set_size,_IDL _I32);
+DEFINE_PRIM(_I32, Buffer_getSize0, _IDL);
 
-HL_PRIM pref<BufferLoadDesc>* HL_NAME(BufferLoadDesc_new0)() {
-	auto ___retvalue = alloc_ref((new BufferLoadDesc()),BufferLoadDesc);
+HL_PRIM pref<BufferLoadDescExt>* HL_NAME(BufferLoadDesc_new0)() {
+	auto ___retvalue = alloc_ref((new BufferLoadDescExt()),BufferLoadDesc);
 	*(___retvalue->value) = {};
 	return (___retvalue);
 }
 DEFINE_PRIM(_IDL, BufferLoadDesc_new0,);
 
-HL_PRIM bool HL_NAME(BufferLoadDesc_get_forceReset)( pref<BufferLoadDesc>* _this ) {
+HL_PRIM bool HL_NAME(BufferLoadDesc_get_forceReset)( pref<BufferLoadDescExt>* _this ) {
 	return _unref(_this)->mForceReset;
 }
 DEFINE_PRIM(_BOOL,BufferLoadDesc_get_forceReset,_IDL);
-HL_PRIM bool HL_NAME(BufferLoadDesc_set_forceReset)( pref<BufferLoadDesc>* _this, bool value ) {
+HL_PRIM bool HL_NAME(BufferLoadDesc_set_forceReset)( pref<BufferLoadDescExt>* _this, bool value ) {
 	_unref(_this)->mForceReset = (value);
 	return value;
 }
 DEFINE_PRIM(_BOOL,BufferLoadDesc_set_forceReset,_IDL _BOOL);
 
-HL_PRIM HL_CONST pref<Buffer>* HL_NAME(BufferLoadDesc_load1)(pref<BufferLoadDesc>* _this, pref<SyncToken>* syncToken) {
-	return alloc_ref_const((forge_sdl_buffer_load( _unref(_this) , _unref_ptr_safe(syncToken))),Buffer);
+HL_PRIM pref<BufferExt>* HL_NAME(BufferLoadDesc_load1)(pref<BufferLoadDescExt>* _this, pref<SyncToken>* syncToken) {
+	return alloc_ref((_unref(_this)->load(_unref_ptr_safe(syncToken))),Buffer);
 }
 DEFINE_PRIM(_IDL, BufferLoadDesc_load1, _IDL _IDL);
 
-HL_PRIM void HL_NAME(BufferLoadDesc_setIndexbuffer3)(pref<BufferLoadDesc>* _this, int size, vbyte* data, bool shared) {
-	(forge_sdl_buffer_load_desc_set_index_buffer( _unref(_this) , size, data, shared));
+HL_PRIM void HL_NAME(BufferLoadDesc_setIndexBuffer2)(pref<BufferLoadDescExt>* _this, int size, vbyte* data) {
+	(_unref(_this)->setIndexBuffer(size, data));
 }
-DEFINE_PRIM(_VOID, BufferLoadDesc_setIndexbuffer3, _IDL _I32 _BYTES _BOOL);
+DEFINE_PRIM(_VOID, BufferLoadDesc_setIndexBuffer2, _IDL _I32 _BYTES);
 
-HL_PRIM void HL_NAME(BufferLoadDesc_setVertexbuffer3)(pref<BufferLoadDesc>* _this, int size, vbyte* data, bool shared) {
-	(forge_sdl_buffer_load_desc_set_vertex_buffer( _unref(_this) , size, data, shared));
+HL_PRIM void HL_NAME(BufferLoadDesc_setVertexBuffer2)(pref<BufferLoadDescExt>* _this, int size, vbyte* data) {
+	(_unref(_this)->setVertexBuffer(size, data));
 }
-DEFINE_PRIM(_VOID, BufferLoadDesc_setVertexbuffer3, _IDL _I32 _BYTES _BOOL);
+DEFINE_PRIM(_VOID, BufferLoadDesc_setVertexBuffer2, _IDL _I32 _BYTES);
 
-HL_PRIM void HL_NAME(BufferLoadDesc_setUniformBuffer3)(pref<BufferLoadDesc>* _this, int size, vbyte* data, bool shared) {
-	(forge_sdl_buffer_load_desc_set_uniform_buffer( _unref(_this) , size, data, shared));
+HL_PRIM void HL_NAME(BufferLoadDesc_setUniformBuffer2)(pref<BufferLoadDescExt>* _this, int size, vbyte* data) {
+	(_unref(_this)->setUniformBuffer(size, data));
 }
-DEFINE_PRIM(_VOID, BufferLoadDesc_setUniformBuffer3, _IDL _I32 _BYTES _BOOL);
+DEFINE_PRIM(_VOID, BufferLoadDesc_setUniformBuffer2, _IDL _I32 _BYTES);
+
+HL_PRIM void HL_NAME(BufferLoadDesc_setDynamic1)(pref<BufferLoadDescExt>* _this, int depth) {
+	(_unref(_this)->setDynamic(depth));
+}
+DEFINE_PRIM(_VOID, BufferLoadDesc_setDynamic1, _IDL _I32);
+
+HL_PRIM void HL_NAME(BufferLoadDesc_setUsage1)(pref<BufferLoadDescExt>* _this, bool shared) {
+	(_unref(_this)->setUsage(shared));
+}
+DEFINE_PRIM(_VOID, BufferLoadDesc_setUsage1, _IDL _BOOL);
 
 HL_PRIM void HL_NAME(Texture_upload2)(pref<Texture>* _this, vbyte* data, int size) {
 	(forge_sdl_texture_upload( _unref(_this) , data, size));

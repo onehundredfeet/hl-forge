@@ -329,7 +329,9 @@ class ForgeDriver extends h3d.impl.Driver {
 		var placeHolder = new Array<hl.UI8>();
 		placeHolder.resize(count << bits);
 
-		desc.setIndexbuffer(count << bits, hl.Bytes.getArray(placeHolder), true);
+		desc.setIndexBuffer(count << bits, hl.Bytes.getArray(placeHolder));
+		desc.setUsage(true);
+
 		var buff = desc.load(null);
 
 		return {b: buff, is32: is32};
@@ -514,13 +516,14 @@ class ForgeDriver extends h3d.impl.Driver {
 		placeHolder.resize(byteCount);
 
 		var desc = new forge.Native.BufferLoadDesc();
-		desc.setVertexbuffer(byteCount, hl.Bytes.getArray(placeHolder), true);
+		desc.setVertexBuffer(byteCount, hl.Bytes.getArray(placeHolder));
+		desc.setUsage(true);
 		/*
 			var bits = is32 ? 2 : 1;
 			var placeHolder = new Array<hl.UI8>();
 			placeHolder.resize(count << bits);
 
-			desc.setIndexbuffer(count << bits, hl.Bytes.getArray(placeHolder), true);
+			desc.setIndexBuffer(count << bits, hl.Bytes.getArray(placeHolder), true);
 
 
 			return {b: buff, is32: is32};

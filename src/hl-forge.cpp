@@ -23,8 +23,7 @@
 #include "hl-forge-meta.h"
 #include "hl-forge.h"
 
-// #define DEBUG_PRINT(...) printf(__VA_ARGS__)
-#define DEBUG_PRINT(...)
+
 
 struct BufferDispose {
     BufferDispose(Buffer *buffer, uint64_t frame) {
@@ -35,6 +34,17 @@ struct BufferDispose {
     uint64_t frame;
 };
 
+BufferLoadDescExt::BufferLoadDescExt() : _depth(1) {
+
+    this->ppBuffer = nullptr;
+    this->pData = nullptr;
+    this->mForceReset = false;
+    this->mDesc = {};
+}
+
+BufferLoadDescExt::~BufferLoadDescExt() {
+
+}
 static CpuInfo gCpu;
 // This needs to be renderer relative? or window relative?
 static int64 _frame = 0;
@@ -316,14 +326,6 @@ SDL_Window *forge_sdl_get_window(void *ptr) {
     return static_cast<SDL_Window *>(ptr);
 }
 
-Buffer *forge_sdl_buffer_load(BufferLoadDesc *bld, SyncToken *token) {
-    DEBUG_PRINT("Loading buffer \n");
-    Buffer *tmp = nullptr;
-    bld->ppBuffer = &tmp;
-    DEBUG_PRINT("adding resource %p %p\n", bld, token);
-    addResource(bld, token);
-    return tmp;
-}
 
 Texture *forge_texture_load(TextureLoadDesc *desc, SyncToken *token) {
     DEBUG_PRINT("Loading texture \n");
@@ -353,17 +355,7 @@ Texture *forge_texture_load_from_desc(TextureDesc *tdesc, const char *name, Sync
 void forge_texture_set_file_name(TextureLoadDesc *desc, const char *path) {
 }
 
-void forge_sdl_buffer_load_desc_set_index_buffer(BufferLoadDesc *bld, int size, void *data, bool shared) {
-    bld->mDesc.mDescriptors = DESCRIPTOR_TYPE_INDEX_BUFFER;
-    if (shared) {
-        bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
-    } else {
-        bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
-    }
-    bld->mDesc.mSize = size;
-    bld->pData = data;
-    //
-}
+
 
 void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarget *pDepthStencilRT, LoadActionType color, LoadActionType depth) {
     // simply record the screen cleaning command
@@ -417,49 +409,11 @@ RenderTarget *forge_swap_chain_get_render_target(SwapChain *pSwapChain, int swap
     return pSwapChain->ppRenderTargets[swapchainImageIndex];
 }
 
-void forge_sdl_buffer_load_desc_set_vertex_buffer(BufferLoadDesc *bld, int size, void *data, bool shared) {
-    bld->mDesc.mDescriptors = DESCRIPTOR_TYPE_VERTEX_BUFFER;
-    if (shared) {
-        bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
-    } else {
-        bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
-    }
-    bld->mDesc.mSize = size;
-    bld->pData = data;
-    //
-}
 
-void forge_sdl_buffer_load_desc_set_uniform_buffer(BufferLoadDesc *bld, int size, void *data, bool shared) {
-    bld->mDesc.mDescriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    if (shared) {
-        bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
-    } else {
-        bld->mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
-    }
-    bld->mDesc.mSize = size;
-    bld->pData = data;
-}
 
-void forge_sdl_buffer_update(Buffer *buffer, void *data) {
-    BufferUpdateDesc desc = {buffer};
-    beginUpdateResource(&desc);
-    memcpy(desc.pMappedData, data, buffer->mSize);
-    endUpdateResource(&desc, NULL);
-}
 
-void forge_sdl_buffer_dispose(Buffer *buffer) {
-    if (_toDispose == nullptr) _toDispose = &_toDisposeA;
-    _toDispose->push_back(BufferDispose(buffer, _frame));
-}
 
-void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int size, int soffset) {
-    BufferUpdateDesc desc = {buffer};
-    desc.mDstOffset = toffset;
-    desc.mSize = size;
-    beginUpdateResource(&desc);
-    memcpy(desc.pMappedData, &((char *)data)[soffset], size);
-    endUpdateResource(&desc, NULL);
-}
+
 
 /*
 RenderTargetBarrier barriers[] = { { pRenderTarget, RESOURCE_STATE_PRESENT, RESOURCE_STATE_RENDER_TARGET },
@@ -671,6 +625,23 @@ Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int w
     addResource(&bufferDesc, NULL);
 
     return tmp;
+}
+
+void BufferExt::dispose() {
+    if (_toDispose == nullptr) _toDispose = &_toDisposeA;
+    for (int i = 0; i < _buffers.size(); i++) {
+        _toDispose->push_back(BufferDispose(_buffers[i], _frame));
+    }
+}
+
+/*
+HL_PRIM void HL_NAME(Cmd_bindIndexBuffer3)(pref<Cmd>* _this, pref<BufferExt>* b, int format, int offset) {
+	(cmdBindIndexBuffer( _unref(_this) , _unref_ptr_safe(b), IndexType__values[format], offset));
+}
+*/
+
+void BufferExt::bindAsIndex(Cmd *cmd, BufferExt *b, IndexType it, int offset) {
+    cmdBindIndexBuffer(cmd, b->current(),  it, offset);
 }
 
 std::string forge_translate_glsl_metal(const char *source, const char *filepath, bool fragment) {

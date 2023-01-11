@@ -14,6 +14,9 @@
 #error "SDL2 SDK not found in hl/include/sdl/"
 #endif
 
+// #define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...)
+
 #include <meshoptimizer/src/meshoptimizer.h>
 
 #define TWIN _ABSTRACT(sdl_window)
@@ -89,6 +92,111 @@ class RootSignatureFactory {
     std::vector<std::string> _names;
 };
 
+class BufferExt {
+   public:
+    inline BufferExt() : _idx(0) {}
+    inline ~BufferExt() {}
+
+    int _idx;
+    std::vector<Buffer *> _buffers;
+
+    inline Buffer *current() {
+        return _buffers[_idx];
+    }
+
+    inline void next() {
+        _idx = (_idx + 1) % _buffers.size();
+    }
+
+    inline void setCurrent(int idx) {
+        _idx = idx % _buffers.size();
+    }
+
+    inline void updateRegion(void *data, int toffset, int size, int soffset) {
+        BufferUpdateDesc desc = {};
+        desc.pBuffer = current();
+        desc.mDstOffset = toffset;
+        desc.mSize = size;
+        beginUpdateResource(&desc);
+        memcpy(desc.pMappedData, &((char *)data)[soffset], size);
+        endUpdateResource(&desc, NULL);
+    }
+
+    inline void update(void *data) {
+        BufferUpdateDesc desc = {};
+        desc.pBuffer = current();
+        beginUpdateResource(&desc);
+        memcpy(desc.pMappedData, data, desc.pBuffer->mSize);
+        endUpdateResource(&desc, NULL);
+    }
+
+    void dispose();
+
+    inline unsigned char *getCpuAddress() {
+        return (unsigned char *)(current()->pCpuMappedAddress);
+    }
+
+    inline 	int getSize() {
+        return current()->mSize;
+    }
+
+    static void bindAsIndex(Cmd *cmd, BufferExt *b, IndexType it, int offset);
+};
+
+class BufferLoadDescExt : public BufferLoadDesc {
+   public:
+    BufferLoadDescExt();
+    ~BufferLoadDescExt();
+
+    void setIndexBuffer(int size, void *data) {
+        mDesc.mDescriptors = DESCRIPTOR_TYPE_INDEX_BUFFER;
+        mDesc.mSize = size;
+        pData = data;
+    }
+    void setVertexBuffer(int size, void *data) {
+        mDesc.mDescriptors = DESCRIPTOR_TYPE_VERTEX_BUFFER;
+        mDesc.mSize = size;
+        pData = data;
+        //
+    }
+    void setUniformBuffer(int size, void *data) {
+        mDesc.mDescriptors = DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        mDesc.mSize = size;
+        pData = data;
+    }
+
+    void setUsage(bool shared) {
+        if (shared) {
+            mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_CPU_TO_GPU;
+        } else {
+            mDesc.mMemoryUsage = RESOURCE_MEMORY_USAGE_GPU_ONLY;
+        }
+    }
+
+    int _depth;
+
+    void setDynamic(int depth) {
+        _depth = depth;
+    }
+
+    BufferExt *load(SyncToken *token) {
+        BufferExt *ext = new BufferExt();
+        for (int i = 0; i < _depth; i++) {
+            Buffer *tmp = nullptr;
+            ppBuffer = &tmp;
+
+            if (i == _depth - 1)
+                addResource(this, token); // this may not work, but I don't want to make multiple sync tokens
+            else
+                addResource(this, nullptr);
+
+            ext->_buffers.push_back(tmp);
+        }
+        ext->setCurrent(0);
+        return ext;
+    }
+};
+
 class StateBuilder {
    public:
     StateBuilder() { reset(); }
@@ -112,7 +220,8 @@ class StateBuilder {
 };
 
 class BufferBinder {
-    std::vector<Buffer *> _buffers;
+    std::vector<BufferExt *> _buffers;
+    std::vector<Buffer *> _buffersTmp;
     std::vector<uint32_t> _strides;
     std::vector<uint64_t> _offsets;
 
@@ -124,21 +233,26 @@ class BufferBinder {
         _buffers.clear();
         _strides.clear();
         _offsets.clear();
+        _buffersTmp.clear();
     }
 
-    int add(Buffer *b, int stride, int offset) {
+    int add(BufferExt *b, int stride, int offset) {
         _buffers.push_back(b);
+        _buffersTmp.push_back(nullptr);
         _strides.push_back(stride);
         _offsets.push_back(offset);
         return _buffers.size() - 1;
     }
 
-    static void bind(Cmd *cmd, BufferBinder *binder) {
-        if (binder->_buffers.size() == 0) {
+    static void bindAsVertex(Cmd *cmd, BufferBinder *This) {
+        if (This->_buffers.size() == 0) {
             printf("Warning: binding 0 size buffer\n");
         }
+        for (int i = 0; i < This->_buffers.size(); i++) {
+            This->_buffersTmp[i] = This->_buffers[i]->current();
+        }
         // these strides don't seem to matter on Metal ENABLE_DRAW_INDEX_BASE_VERTEX_FALLBACK
-        cmdBindVertexBuffer(cmd, binder->_buffers.size(), &binder->_buffers[0], &binder->_strides[0], &binder->_offsets[0]);
+        cmdBindVertexBuffer(cmd, This->_buffers.size(), &This->_buffersTmp[0], &This->_strides[0], &This->_offsets[0]);
     }
 };
 
@@ -261,14 +375,22 @@ class DescriptorDataBuilder {
         _names[slot] = name;
         _data[slot].mBindByIndex = false;
     }
-	void setSlotBindIndex(int slot, int index) {
+    void setSlotBindIndex(int slot, int index) {
         _data[slot].mIndex = index;
         _data[slot].mBindByIndex = true;
     }
 
-    void addSlotData(int slot, void *data) {
+
+    void addSlotData(int slot, Texture *data) {
         _dataPointers[slot]->push_back(data);
     }
+    void addSlotData(int slot, Sampler *data) {
+        _dataPointers[slot]->push_back(data);
+    }
+    void addSlotData(int slot, BufferExt *bp) {
+        _dataPointers[slot]->push_back(bp->current());
+    }
+
     void setSlotUAVMipSlice(int slot, int idx) {
         _data[slot].mUAVMipSlice = idx;
     }
@@ -289,10 +411,10 @@ class DescriptorDataBuilder {
                 default:
                     break;
             }
-            _data[i].mCount = _dataPointers[i]->size();
+            _data[i].mCount = (unsigned int)_dataPointers[i]->size();
         }
 
-        updateDescriptorSet(pRenderer, index, set, _names.size(), &_data[0]);
+        updateDescriptorSet(pRenderer, index, set, (unsigned int)_names.size(), &_data[0]);
     }
 
     void bind(Cmd *cmd, int index, DescriptorSet *set) {
@@ -392,10 +514,8 @@ class PolyMesh {
         void set(int idx, double *v, int count) {
             auto offset = binarySize * idx;
 
-            if (offset > data.size())
-            {
+            if (offset > data.size()) {
                 printf("ERROR: Index %d is out of bounds\n", idx);
-                
             }
             u_int8_t *d = &data[offset];
 
@@ -477,10 +597,10 @@ class PolyMesh {
 
    public:
     PolyMesh(int targetCapacity = 100) : _begun(false), _targetCapacity(targetCapacity), _numVerts(0), _currentPolygonPolyNode(0) {
-        //printf("CREATING POLYMESH\n");
+        // printf("CREATING POLYMESH\n");
     }
     ~PolyMesh() {
-        //printf("DELETING POLY MESH\n");
+        // printf("DELETING POLY MESH\n");
     }
     void reserve(int polynodes) {
         _targetCapacity = polynodes;
@@ -511,12 +631,12 @@ class PolyMesh {
 
     int beginPolyNode() {
         _indices.push_back(_numVerts);
-        
+
         for (int i = 0; i < _attributes.size(); i++) {
             auto &a = _attributes[i];
-            a.data.resize( a.data.size() + a.binarySize );
+            a.data.resize(a.data.size() + a.binarySize);
         }
-        
+
         return _currentPolygonPolyNode;
     }
     void setNodeAddtribute1f(int attr, float x) {
@@ -733,7 +853,7 @@ class PolyMesh {
         return accum;
     }
 
-	int getAttributeIndexBySemantic( AttributeSemantic semantic ) {
+    int getAttributeIndexBySemantic(AttributeSemantic semantic) {
         for (int i = 0; i < _attributes.size(); i++) {
             auto &a = _attributes[i];
             if (a.semantic == semantic) return i;
@@ -742,7 +862,7 @@ class PolyMesh {
         return -1;
     }
 
-	int getAttributeOffset( int index ) {
+    int getAttributeOffset(int index) {
         auto accum = 0;
         for (int i = 0; i < index; i++) {
             auto &a = _attributes[i];
@@ -752,26 +872,25 @@ class PolyMesh {
         return accum;
     }
 
-	AttributeSemantic getAttributeSemantic( int index ) {
-        return  _attributes[index].semantic;
+    AttributeSemantic getAttributeSemantic(int index) {
+        return _attributes[index].semantic;
     }
-	AttributeType getAttributeType( int index ) {
-        return  _attributes[index].type;
+    AttributeType getAttributeType(int index) {
+        return _attributes[index].type;
     }
-	int getAttributeDimensions( int index ) {
-        return  _attributes[index].dimensions;
-    }
-
-    int numAttributes(  ) {
-        return  _attributes.size();
+    int getAttributeDimensions(int index) {
+        return _attributes[index].dimensions;
     }
 
-    const std::string &getAttributeName( int index ) {
+    int numAttributes() {
+        return _attributes.size();
+    }
+
+    const std::string &getAttributeName(int index) {
         return _attributes[index].name;
     }
 
     void getInterleavedVertices(void *ptr) {
-
         uint8_t *data = (uint8_t *)ptr;
 
         for (int v = 0; v < _numVerts; v++) {
@@ -812,8 +931,8 @@ RootSignature *forge_renderer_createRootSignature(Renderer *pRenderer, RootSigna
 Shader *forge_load_compute_shader_file(Renderer *pRenderer, const char *fileName);
 Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int width, int height, int nodeIndex);
 bool forge_render_target_capture_2(Renderer *pRenderer, Cmd *pCmd, RenderTarget *pRenderTarget, Queue *pQueue, ResourceState renderTargetCurrentState, uint8_t *alloc, int bufferSize);
-void forge_renderer_destroySwapChain( Renderer *pRenderer, SwapChain *swapChain);
-void forge_renderer_destroyRenderTarget( Renderer *pRenderer, RenderTarget *rt);
+void forge_renderer_destroySwapChain(Renderer *pRenderer, SwapChain *swapChain);
+void forge_renderer_destroyRenderTarget(Renderer *pRenderer, RenderTarget *rt);
 // Tools
 std::string forge_translate_glsl_metal(const char *source, const char *filepath, bool fragment);
 void hl_compile_metal_to_bin(const char *fileName, const char *outFile);
@@ -822,19 +941,18 @@ void hl_compile_metal_to_bin(const char *fileName, const char *outFile);
 void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence);
 
 // Buffer Load
+/*
 void forge_sdl_buffer_load_desc_set_index_buffer(BufferLoadDesc *bld, int size, void *data, bool shared);
 void forge_sdl_buffer_load_desc_set_vertex_buffer(BufferLoadDesc *bld, int size, void *data, bool shared);
 void forge_sdl_buffer_load_desc_set_uniform_buffer(BufferLoadDesc *bld, int size, void *data, bool shared);
-
+void forge_sdl_buffer_load_desc_set_dynamic(BufferLoadDesc *bold, bool isDynamic);
 
 Buffer *forge_sdl_buffer_load(BufferLoadDesc *bld, SyncToken *token);
 // Buffer
 void forge_sdl_buffer_update(Buffer *buffer, void *data);
 void forge_sdl_buffer_dispose(Buffer *buffer);
 void forge_sdl_buffer_update_region(Buffer *buffer, void *data, int toffset, int size, int soffset);
-inline unsigned char *forge_buffer_get_cpu_address(Buffer *buffer) {
-    return (unsigned char *)(buffer->pCpuMappedAddress);
-}
+*/
 
 // Cmd
 void forge_cmd_unbind(Cmd *);
