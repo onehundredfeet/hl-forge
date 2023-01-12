@@ -1,5 +1,6 @@
 package forge;
 
+import format.abc.Data.ABCData;
 import hxsl.Ast;
 import hxsl.Printer;
 
@@ -56,7 +57,7 @@ class GLSLTranscoder {
 	var outIndexes : Map<Int, Int>;
     var varBuffer : Map<String,String>;
 	var _bufferCount = 0;
-
+	var bufferNameLookup : Map<String,String>;
 	var isES(get,never) : Bool;
 	var isES2(get,never) : Bool;
 	var uniformBuffer : Int = 0;
@@ -104,7 +105,7 @@ class GLSLTranscoder {
 					case TSamplerCube: varName(v);
                     case TArray(t, size):
                         (t == TSampler2D || t == TSamplerCube) ? varName(v) :(isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
-					case TBuffer(t, size):varName(v);
+					case TBuffer(t, size):bufferNameLookup.get(v.name) + "." + varName(v); 
                     default:
                         (isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
                 }
@@ -208,12 +209,15 @@ class GLSLTranscoder {
 			add("]");
 //			trace('Added size ${size} for ${v}');
 		case TBuffer(t, size):
-			add((isVertex ? "vertex_" : "") + "uniform_buffer"+(uniformBuffer++));
+			add((isVertex ? "vertex_" : "") + "UniformBuffer"+(uniformBuffer));
 			add(" { ");
 			v.type = TArray(t,size);
 			addVar(v);
 			v.type = TBuffer(t,size);
-			add("; }");
+			add("; } _uniformBuffer"+(uniformBuffer));
+			if (bufferNameLookup == null) bufferNameLookup = new haxe.ds.StringMap();
+			bufferNameLookup.set(v.name, "_uniformBuffer"+(uniformBuffer));
+			uniformBuffer++;
 		default:
 			addType(v.type);
 			add(" ");

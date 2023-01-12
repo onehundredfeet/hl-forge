@@ -116,7 +116,7 @@ private class CompiledMaterial {
 }
 
 inline function debugTrace(s : String) {
-	//trace("DEBUG " + s);
+	trace("DEBUG " + s);
 }
 
 @:access(h3d.impl.Shader)
@@ -155,7 +155,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _fragmentTextures = new Array<h3d.mat.Texture>();
 	var _fragmentTextureCubes = new Array<h3d.mat.Texture>();
 	var _swapRenderTargets = new Array<RenderTarget>();
-
+	var _fragmentUniformBuffers = new Array<VertexBufferExt>();
 	
 //	var defaultDepthInst : h3d.mat.DepthBuffer;
 
@@ -544,7 +544,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		var buff = desc.load(null);
 
 		debugTrace ('STRIDE FILTER - Allocating vertex buffer ${m.size} with stride ${m.stride} total bytecount  ${byteCount}');
-		return {b: buff, strideBytes: m.strideBytes, stride: m.stride #if multidriver, driver: this #end};
+		return {b: buff, strideBytes: m.strideBytes, stride: m.stride, descriptorMap : null #if multidriver, driver: this #end};
 	}
 
 	function getTinyTextureFormat(f:h3d.mat.Data.TextureFormat) : forge.Native.TinyImageFormat{
@@ -974,7 +974,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		return {glsl:glslsource, metal:vertmetalsrc, metal_bin: sys.io.File.getBytes( binPath ) };						
 	}
 
-	function initShader(p : CompiledProgram, s : CompiledShader, shader : hxsl.RuntimeShader.RuntimeShaderData, rt : hxsl.RuntimeShader) {
+	function initShader(p : CompiledProgram, s : CompiledShader, shader : hxsl.RuntimeShader.RuntimeShaderData, rt : hxsl.RuntimeShader, rootsig : forge.Native.RootSignature) {
 		#if reference_is_code
 		var prefix = s.vertex ? "vertex" : "fragment";
 		s.globals = gl.getUniformLocation(p.p, prefix + "Globals");
@@ -1022,16 +1022,36 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			t = t.next;
 		}
 		
-	
+		#end
 
 		if( shader.bufferCount > 0 ) {
-			s.buffers = [for( i in 0...shader.bufferCount ) ];//gl.getUniformBlockIndex(p.p,(shader.vertex?"vertex_":"")+"uniform_buffer"+i)];
+			var x= shader.buffers;
+			var i = 0;
+			var buffersDescIndicies: Array<DescriptorIndex>= [];
+			while ( x != null ) {
+				var descName = '_uniformBuffer${i}';
+				var descIdx = rootsig.getDescriptorIndexFromName(descName);
+				if (descIdx != -1) {
+					trace('buffer called  ${x.name} has descripter ${descIdx} under name ${descName}');
+				} else {
+					throw('buffer shader name ${x.name} not found under ${descName}');
+				}
+				buffersDescIndicies.push(descIdx);
+				x = x.next;
+				i++;
+			}
+
+			s.buffers = buffersDescIndicies;
+
+			/*
+			s.buffers = [for( i in 0...shader.bufferCount )  ];//gl.getUniformBlockIndex(p.p,(shader.vertex?"vertex_":"")+"uniform_buffer"+i)];
 			var start = 0;
 			if( !s.vertex ) start = rt.vertex.bufferCount;
 			for( i in 0...shader.bufferCount )
 				gl.uniformBlockBinding(p.p,s.buffers[i],i + start);
+			*/
 		}
-		#end
+		trace('Done init shader');
 	}
 	public function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
 		var vertTranscoder = new forge.GLSLTranscoder();
@@ -1193,7 +1213,8 @@ struct spvDescriptorSetBuffer0
 		debugTrace('RENDER TEXTURE tdi ${p.fragment.textureIndex} tsi ${p.fragment.samplerIndex} tcdi ${p.fragment.textureCubeIndex} tcsi ${p.fragment.samplerCubeIndex}'); 
 		debugTrace('PARAMS Indices vg ${p.vertex.constantsIndex} vp ${p.vertex.params} fg ${p.fragment.constantsIndex} fp ${p.fragment.params}');
 
-		//initShader(p, shader, rootSig);
+		initShader(p, p.vertex, shader.vertex, shader, rootSig);
+		initShader(p, p.fragment, shader.fragment, shader, rootSig);
 		var attribNames = [];
 		p.attribs = [];
 		p.hasAttribIndex = [];
@@ -1269,6 +1290,7 @@ struct spvDescriptorSetBuffer0
 		p.inputs = InputNames.get(attribNames);
 		p.naturalLayout = buildLayoutFromShader(p);
 
+		trace('Done compiling shader ${shader.id}');
 		return p;
 	}
 
@@ -1452,15 +1474,24 @@ struct spvDescriptorSetBuffer0
 			case Buffers:  
 				debugTrace ('RENDER BUFFERS Upload Buffers v ${buf.vertex.buffers} f ${buf.fragment.buffers}'); 
 
+				
 				//throw ('Maybe ${_curShader} has buffers?');
 			if( _curShader.vertex.buffers != null ) {
-				throw ("Not supported");
-				//debugTrace('Vertex buffers length ${ _curShader.vertex.buffers}');
+//				throw ("Not supported");
+				debugTrace('Vertex buffers length ${ _curShader.vertex.buffers}');
 			}
+			
+			_fragmentUniformBuffers.resize(0);
 			if (_curShader.fragment.buffers != null) {
-				throw ("Not supported");
-				//debugTrace('Fragment buffers length ${ _curShader.fragment.buffers}');
-			}
+				if (buf.fragment.buffers == null) throw "Buffers not allocated";
+				debugTrace('Fragment buffers length ${ _curShader.fragment.buffers}');
+
+				for (i in 0...buf.fragment.buffers.length) {
+					var hbuf = @:privateAccess buf.fragment.buffers[i].buffer.vbuf;
+					_fragmentUniformBuffers.push(hbuf);
+				}
+			} 
+
 
 		}
 
@@ -2037,6 +2068,37 @@ var offset = 8;
 		}
 	}
 
+	function bindBuffers() {
+		debugTrace("RENDER CALLSTACK bindBuffers");
+
+		if (_fragmentUniformBuffers.length > 0 && _curShader.fragment.bufferCount > 0){
+			for (i in 0..._fragmentUniformBuffers.length) {
+				var hbuf = _fragmentUniformBuffers[i];
+
+				if (hbuf.descriptorMap == null) hbuf.descriptorMap = new Map<Int, forge.Native.DescriptorSet>();
+				if (_currentPipeline == null) throw "No current pipeline";
+				var ds = hbuf.descriptorMap.get(_currentPipeline._id);
+				if (ds == null) {
+					var setDesc = new forge.Native.DescriptorSetDesc();
+					setDesc.pRootSignature = _curShader.rootSig;
+					setDesc.updateFrequency = DESCRIPTOR_UPDATE_FREQ_PER_DRAW;
+					setDesc.maxSets = 3; // TODO: make this configurable
+					ds = _renderer.addDescriptorSet( setDesc );
+					var in_buf : sdl.Forge.Buffer = @:privateAccess hbuf.b;
+					
+					_renderer.fillDescriptorSet( in_buf, ds, DBM_UNIFORMS, _curShader.fragment.buffers[i]);
+					
+					hbuf.descriptorMap[_currentPipeline._id] = ds;
+				}				
+
+				if (ds == null) throw 'no descriptor set for buffer ${i}';
+				debugTrace('RENDER CALLSTACK BINDING BUFFER ${i} to ${hbuf.b.currentIdx()}');
+				_currentCmd.bindDescriptorSet(hbuf.b.currentIdx(),ds );
+			}
+//			_currentCmd.bindDescriptorSet(_curShader.fragment.globalsBuffer.currentIdx(), _curShader.fragment.globalDescriptorSet);						
+		}
+
+	}
 
 	static inline final TBDT_2D = 0x1;
 	static inline final  TBDT_CUBE = 0x2;
@@ -2361,6 +2423,7 @@ var offset = 8;
 		bindPipeline();
 		pushParameters();
 		bindTextures();
+		bindBuffers();
 		if (_curBuffer != null) bindBuffer();
 		else if (_curMultiBuffer != null) bindMultiBuffers();
 		else
