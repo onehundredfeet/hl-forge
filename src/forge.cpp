@@ -2381,6 +2381,11 @@ HL_PRIM int HL_NAME(Buffer_currentIdx0)(pref<BufferExt>* _this) {
 }
 DEFINE_PRIM(_I32, Buffer_currentIdx0, _IDL);
 
+HL_PRIM void HL_NAME(Buffer_setCurrent1)(pref<BufferExt>* _this, int idx) {
+	(_unref(_this)->setCurrent(idx));
+}
+DEFINE_PRIM(_VOID, Buffer_setCurrent1, _IDL _I32);
+
 HL_PRIM pref<BufferLoadDescExt>* HL_NAME(BufferLoadDesc_new0)() {
 	auto ___retvalue = alloc_ref((new BufferLoadDescExt()),BufferLoadDesc);
 	*(___retvalue->value) = {};

@@ -999,6 +999,7 @@ interface Buffer {
 	int getSize();
 	int next();
 	int currentIdx();
+	void setCurrent(int idx);
 };
 
 
