@@ -116,7 +116,7 @@ private class CompiledMaterial {
 }
 
 inline function debugTrace(s : String) {
-	trace("DEBUG " + s);
+	//trace("DEBUG " + s);
 }
 
 @:access(h3d.impl.Shader)
