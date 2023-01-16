@@ -1032,7 +1032,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 				var descName = '_uniformBuffer${i}';
 				var descIdx = rootsig.getDescriptorIndexFromName(descName);
 				if (descIdx != -1) {
-					trace('buffer called  ${x.name} has descripter ${descIdx} under name ${descName}');
+					//trace('buffer called  ${x.name} has descripter ${descIdx} under name ${descName}');
 				} else {
 					throw('buffer shader name ${x.name} not found under ${descName}');
 				}
@@ -1051,7 +1051,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 				gl.uniformBlockBinding(p.p,s.buffers[i],i + start);
 			*/
 		}
-		trace('Done init shader');
+		//trace('Done init shader');
 	}
 	public function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
 		var vertTranscoder = new forge.GLSLTranscoder();
@@ -1290,7 +1290,7 @@ struct spvDescriptorSetBuffer0
 		p.inputs = InputNames.get(attribNames);
 		p.naturalLayout = buildLayoutFromShader(p);
 
-		trace('Done compiling shader ${shader.id}');
+		//trace('Done compiling shader ${shader.id}');
 		return p;
 	}
 

@@ -21,6 +21,7 @@ abstract WindowHandle(sdl.Window) {
 
     
 	public function setMouseMode(mode : MouseMode) {
+        sdl.Sdl.setRelativeMouseMode(mode != Absolute);
     }
 
 
