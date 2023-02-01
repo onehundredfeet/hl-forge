@@ -96,7 +96,7 @@ class GLSLTranscoder {
 		add(varName(v));
 	}
     
-    inline function identLookup( v : TVar ) {
+    function identLookup( v : TVar ) {
         var n = switch(v.kind) {
             case  VarKind.Global:(isVertex ? "_vertrootglobalsPerFrame." : "_fragrootglobalsPerFrame." ) + varName(v);
             case  VarKind.Param: 
@@ -105,7 +105,9 @@ class GLSLTranscoder {
 					case TSamplerCube: varName(v);
                     case TArray(t, size):
                         (t == TSampler2D || t == TSamplerCube) ? varName(v) :(isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
-					case TBuffer(t, size):bufferNameLookup.get(v.name) + "." + varName(v); 
+					case TBuffer(t, size):
+						if (bufferNameLookup == null) throw "Buffer names are null";
+						bufferNameLookup.get(v.name) + "." + varName(v); 
                     default:
                         (isVertex ? "_vertrootconstants." : "_fragrootconstants." ) + varName(v);
                 }
@@ -658,6 +660,7 @@ class GLSLTranscoder {
 				add('layout(location=${outIndex++}) ');
 			add("out ");
 		case Function:
+			add('// Function - ${v.name} : ${v.kind} \n');
 			return;
 		case Local:
 		}
@@ -673,7 +676,7 @@ class GLSLTranscoder {
 				default:
 				}
 		addVar(v);
-		add(";\n");
+		add(';  // ${v.name} : ${v.kind} \n');
 	}
 
     /*
@@ -792,9 +795,10 @@ class GLSLTranscoder {
         for( v in s.vars ) if (v.kind == VarKind.Local)initVar(v);
         
 
-        add("// Function Locals ");
+        add("// Function Locals\n");
         for( v in s.vars ) if (v.kind == VarKind.Function)initVar(v);
 
+		add("// Other Locals\n");
 		for( v in s.vars ) {
             switch( v.kind ) {
                 case Param, Global, Input, Output, Local, Var, Function:
@@ -809,6 +813,8 @@ class GLSLTranscoder {
 			outIndexes = null;
 		else if( !isVertex && isES2 )
 			decl("#extension GL_EXT_draw_buffers : enable");
+
+		add("// Done variable declaration\n");
 	}
 
 	public function run( s : ShaderData ) {
@@ -856,9 +862,10 @@ class GLSLTranscoder {
 
 		var locals = Lambda.array(locals);
 		locals.sort(function(v1, v2) return Reflect.compare(v1.name, v2.name));
+		add('// Locals\n');
 		for( v in locals ) {
 			addVar(v);
-			add(";\n");
+			add(';\n');
 		}
 		add("\n");
 
