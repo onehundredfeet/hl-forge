@@ -14,6 +14,7 @@ import forge.Native.StateBuilder as StateBuilder;
 import forge.Forge;
 import forge.DynamicUniformBuffer;
 import h3d.impl.GraphicsDriver;
+import forge.Native.TextureCreationFlags;
 
 private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
@@ -449,7 +450,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		} else {
 			depthRT.format = TinyImageFormat_D32_SFLOAT;
 		}
-		depthRT.flags = forge.Native.TextureCreationFlags.TEXTURE_CREATION_FLAG_ON_TILE.toValue() | forge.Native.TextureCreationFlags.TEXTURE_CREATION_FLAG_VR_MULTIVIEW.toValue();
+		depthRT.flags = TEXTURE_CREATION_FLAG_ON_TILE.toValue() | TEXTURE_CREATION_FLAG_VR_MULTIVIEW.toValue();
 
 		/*
 		RenderTargetDesc depthRT = {};
@@ -653,7 +654,8 @@ class ForgeDriver extends h3d.impl.Driver {
 			ftd.mipLevels = mips;
 			ftd.sampleCount = SAMPLE_COUNT_1;
 			ftd.startState = RESOURCE_STATE_COMMON;
-			ftd.flags = TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT;
+			var forceFlag : Int = isCube ? 0 : TEXTURE_CREATION_FLAG_FORCE_2D.toValue();
+			ftd.flags = TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT.toValue() | forceFlag;
 
 			if (t.flags.has(Cube))  {
 				ftd.descriptors = forge.Native.DescriptorType.DESCRIPTOR_TYPE_TEXTURE_CUBE.toValue();

@@ -1,20 +1,41 @@
 #!/bin/sh
 
-if [ -z "$1" ]
-then
-      CONFIG=Debug
-else
-      CONFIG=$1
+
+#!/bin/sh
+ARCH=x86_64
+#ARCH=arm64
+BUILDER="ninja"
+TARGET=hl
+#TARGET=jvm
+CONFIG=Debug
+
+
+while getopts p:b:c:a:t: flag
+do
+    case "${flag}" in
+        b) BUILDER=${OPTARG};;
+        c) CONFIG=${OPTARG};;
+        a) ARCH=${OPTARG};;
+        t) TARGET=${OPTARG};;
+    esac
+done
+
+GENERATOR=${BUILDER}
+
+if [ ${BUILDER} = "make" ]; then
+    GENERATOR="Unix Makefiles"
 fi
 
-PROJECT=forge
-BUILDER=Xcode
+if [ ${BUILDER} = "ninja" ]; then
+    GENERATOR="Ninja"
+fi
 
-mkdir -p build/${CONFIG}
-mkdir -p installed/${CONFIG}
 
-mkdir -p build/${CONFIG}/hl-${PROJECT}
-pushd build/${CONFIG}/hl-${PROJECT}
-cmake -G${BUILDER} -DCMAKE_BUILD_TYPE=${CONFIG} -DCMAKE_INSTALL_PREFIX=../../../installed/${CONFIG} ../../.. 
+
+mkdir -p build/${TARGET}/${ARCH}/${CONFIG}
+mkdir -p installed/${TARGET}/${ARCH}/${CONFIG}
+
+mkdir -p build/${TARGET}/${ARCH}/${CONFIG}
+pushd build/${TARGET}/${ARCH}/${CONFIG}
+cmake -G"${GENERATOR}" -DTARGET_ARCH=${ARCH} -DTARGET_HOST=${TARGET} -DCMAKE_BUILD_TYPE=${CONFIG} -DCMAKE_INSTALL_PREFIX=../../../../installed/${TARGET}/${ARCH}/${CONFIG} ../../../.. 
 popd
-

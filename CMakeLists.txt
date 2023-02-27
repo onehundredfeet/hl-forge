@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project (forge C CXX )
 
 if(APPLE)
+    message("Enabling Apple languages")
     enable_language(OBJC)
     enable_language(OBJCXX)
 endif()
@@ -52,17 +53,20 @@ if (NOT FORGE_LIB_DIR)
 endif()
 
 
-set( FORGE_OS_SRCS 
+set( FORGE_OS_C_SRCS 
     ${FORGE_OS_SRC}/Logging/Log.c
     ${FORGE_OS_SRC}/Darwin/DarwinThread.c
     ${FORGE_OS_SRC}/Darwin/DarwinLog.c
-    ${FORGE_OS_SRC}/Darwin/CocoaFileSystem.mm
-    ${FORGE_OS_SRC}/FileSystem/FileSystem.cpp
-    ${FORGE_OS_SRC}/FileSystem/UnixFileSystem.cpp
-    ${FORGE_OS_SRC}/FileSystem/SystemRun.cpp
     ${FORGE_OS_SRC}/MemoryTracking/MemoryTracking.c
-    ${FORGE_OS_SRC}/Core/Screenshot.cpp
 )
+set( FORGE_OS_CPP_SRCS
+${FORGE_OS_SRC}/Darwin/CocoaFileSystem.mm
+${FORGE_OS_SRC}/FileSystem/FileSystem.cpp
+${FORGE_OS_SRC}/FileSystem/UnixFileSystem.cpp
+${FORGE_OS_SRC}/FileSystem/SystemRun.cpp
+${FORGE_OS_SRC}/Core/Screenshot.cpp
+)
+
 
 set ( FORGE_MW_SRCS
     ${FORGE_MW_SRC}/ParallelPrimitives/ParallelPrimitives.cpp
@@ -96,20 +100,29 @@ set(FORGE_EASTL_SRCS
 #    ${FORGE_EASTL_DIR}/allocator_eastl.cpp
 )
 
-add_library(forge.hdll SHARED
-src/forge.cpp
-src/hl-forge.cpp
-src/hl-forge-shaders.cpp
-src/hl-forge-metal.mm
-${FORGE_OS_SRCS}
+set(ALL_C_SOURCES
+${XXHASH_ROOT_DIR}/xxhash.c
+${FORGE_OS_C_SRCS}
+)
+set(ALL_CPP_SOURCES
+${FORGE_OS_CPP_SRCS}
 ${FORGE_TP_SRCS}
 ${FORGE_RENDERER_SRCS}
 ${FORGE_MW_SRCS}
 ${FORGE_EASTL_SRCS}
-${XXHASH_ROOT_DIR}/xxhash.c
+src/hl-forge.cpp
+src/hl-forge-shaders.cpp
+src/hl-forge-metal.mm
+src/idl_hl.cpp
+)
+set_source_files_properties(${ALL_C_SOURCES}  PROPERTIES COMPILE_FLAGS "-x objective-c")
+set_source_files_properties(${ALL_CPP_SOURCES}  PROPERTIES COMPILE_FLAGS "-x objective-c++")
+
+add_library(forge.hdll SHARED
+${ALL_C_SOURCES}
+${ALL_CPP_SOURCES}
 )
 
-set_source_files_properties(${FORGE_RENDERER_SRCS} ${FORGE_MW_SRCS} ${FORGE_OS_SRCS} src/forge.cpp src/hl-forge.cpp PROPERTIES COMPILE_FLAGS "-x objective-c++ -std=c++17")
 
 
 set_target_properties(forge.hdll
@@ -149,7 +162,7 @@ find_library( SPIRVCROSS_GLSLLIB spirv-cross-glsl)
 
 if (UNIX)
     # Some special flags are needed for GNU GCC compiler
-    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -fPIC -fpermissive")
+    SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fpermissive")
     #not sure why the ${HL_LIB_DIR} is necessary given the above.
     SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -shared  ")
 

@@ -13,18 +13,22 @@ vstring * hl_utf8_to_hlstr( const std::string &str);
 
 
 // Float vector
-struct _hl_float2 {
+struct _h_float2 {
 	float x;
 	float y;
 };
+typedef _h_float2 *h_float2;
+typedef _h_float2 *h_float2_array;
 
-struct _hl_float3 {
+struct _h_float3 {
 	float x;
 	float y;
 	float z;
 };
+typedef _h_float3 *h_float3;
+typedef _h_float3 *h_float3_array;
 
-struct _hl_float4 {
+struct _h_float4 {
 	float x;
 	float y;
 	float z;
@@ -32,18 +36,21 @@ struct _hl_float4 {
 };
 
 // int vector
-struct _hl_int2 {
+struct _h_int2 {
 	int x;
 	int y;
-};
 
-struct _hl_int3 {
+};
+typedef _h_int2 *h_int2;
+typedef _h_int2 *h_int2_array;
+
+struct _h_int3 {
 	int x;
 	int y;
 	int z;
 };
 
-struct _hl_int4 {
+struct _h_int4 {
 	int x;
 	int y;
 	int z;
@@ -51,18 +58,18 @@ struct _hl_int4 {
 };
 
 // double vector
-struct _hl_double2 {
+struct _h_double2 {
 	double x;
 	double y;
 };
 
-struct _hl_double3 {
+struct _h_double3 {
 	double x;
 	double y;
 	double z;
 };
 
-struct _hl_double4 {
+struct _h_double4 {
 	double x;
 	double y;
 	double z;

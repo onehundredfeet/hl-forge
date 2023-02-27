@@ -1,6 +1,8 @@
 #ifndef __HL_FORGE_H_
 #define __HL_FORGE_H_
 #pragma once
+#include <Foundation/Foundation.h>
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
 #include <fp16.h>

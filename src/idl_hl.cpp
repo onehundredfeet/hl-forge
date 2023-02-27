@@ -54,6 +54,21 @@ HL_PRIM vstring * HL_NAME(getdllversion)(vstring * haxeversion) {
 	return haxeversion;
 }
 DEFINE_PRIM(_STRING, getdllversion, _STRING);
+
+class HNativeBuffer {
+    unsigned char *_ptr;
+    int _size;
+
+   public:
+   inline unsigned char * ptr() { return _ptr; }
+   inline int size() { return _size; }
+   HNativeBuffer(unsigned char *ptr, int size) : _ptr(ptr), _size(size) {}
+   HNativeBuffer(int size) : _ptr(new unsigned char[size]), _size(size) {}
+    ~HNativeBuffer() {
+        if (_ptr != nullptr)
+            delete [] _ptr;
+    }
+};
 template <typename T> struct pref {
 	void (*finalize)( pref<T> * );
 	T *value;
@@ -80,7 +95,7 @@ template<typename T> void free_ref( pref<T> *r, void (*deleteFunc)(T*) ) {
 	r->finalize = NULL;
 }
 
-inline void testvector(_hl_float3 *v) {
+inline void testvector(_h_float3 *v) {
   printf("v: %f %f %f\n", v->x, v->y, v->z);
 }
 template<typename T> pref<T> *_alloc_ref( T *value, void (*finalize)( pref<T> * ) ) {
@@ -266,11 +281,11 @@ extern "C" {
 
 static SampleCount SampleCount__values[] = { SAMPLE_COUNT_1,SAMPLE_COUNT_2,SAMPLE_COUNT_4,SAMPLE_COUNT_8,SAMPLE_COUNT_16 };
 HL_PRIM int HL_NAME(SampleCount_toValue0)( int idx ) {
-	return SampleCount__values[idx];
+	return (int)SampleCount__values[idx];
 }
 DEFINE_PRIM(_I32, SampleCount_toValue0, _I32);
 HL_PRIM int HL_NAME(SampleCount_indexToValue1)( int idx ) {
-	return SampleCount__values[idx];
+	return (int)SampleCount__values[idx];
 }
 DEFINE_PRIM(_I32, SampleCount_indexToValue1, _I32);
 HL_PRIM int HL_NAME(SampleCount_valueToIndex1)( int value ) {
@@ -285,11 +300,11 @@ HL_PRIM int HL_NAME(SampleCount_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, SampleCount_fromIndex1, _I32);
 static ResourceState ResourceState__values[] = { RESOURCE_STATE_UNDEFINED,RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,RESOURCE_STATE_INDEX_BUFFER,RESOURCE_STATE_RENDER_TARGET,RESOURCE_STATE_UNORDERED_ACCESS,RESOURCE_STATE_DEPTH_WRITE,RESOURCE_STATE_DEPTH_READ,RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,RESOURCE_STATE_PIXEL_SHADER_RESOURCE,RESOURCE_STATE_SHADER_RESOURCE,RESOURCE_STATE_STREAM_OUT,RESOURCE_STATE_INDIRECT_ARGUMENT,RESOURCE_STATE_COPY_DEST,RESOURCE_STATE_COPY_SOURCE,RESOURCE_STATE_GENERIC_READ,RESOURCE_STATE_PRESENT,RESOURCE_STATE_COMMON,RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,RESOURCE_STATE_SHADING_RATE_SOURCE };
 HL_PRIM int HL_NAME(ResourceState_toValue0)( int idx ) {
-	return ResourceState__values[idx];
+	return (int)ResourceState__values[idx];
 }
 DEFINE_PRIM(_I32, ResourceState_toValue0, _I32);
 HL_PRIM int HL_NAME(ResourceState_indexToValue1)( int idx ) {
-	return ResourceState__values[idx];
+	return (int)ResourceState__values[idx];
 }
 DEFINE_PRIM(_I32, ResourceState_indexToValue1, _I32);
 HL_PRIM int HL_NAME(ResourceState_valueToIndex1)( int value ) {
@@ -304,11 +319,11 @@ HL_PRIM int HL_NAME(ResourceState_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, ResourceState_fromIndex1, _I32);
 static TinyImageFormat TinyImageFormat__values[] = { TinyImageFormat_UNDEFINED,TinyImageFormat_R1_UNORM,TinyImageFormat_R2_UNORM,TinyImageFormat_R4_UNORM,TinyImageFormat_R4G4_UNORM,TinyImageFormat_G4R4_UNORM,TinyImageFormat_A8_UNORM,TinyImageFormat_R8_UNORM,TinyImageFormat_R8_SNORM,TinyImageFormat_R8_UINT,TinyImageFormat_R8_SINT,TinyImageFormat_R8_SRGB,TinyImageFormat_B2G3R3_UNORM,TinyImageFormat_R4G4B4A4_UNORM,TinyImageFormat_R4G4B4X4_UNORM,TinyImageFormat_B4G4R4A4_UNORM,TinyImageFormat_B4G4R4X4_UNORM,TinyImageFormat_A4R4G4B4_UNORM,TinyImageFormat_X4R4G4B4_UNORM,TinyImageFormat_A4B4G4R4_UNORM,TinyImageFormat_X4B4G4R4_UNORM,TinyImageFormat_R5G6B5_UNORM,TinyImageFormat_B5G6R5_UNORM,TinyImageFormat_R5G5B5A1_UNORM,TinyImageFormat_B5G5R5A1_UNORM,TinyImageFormat_A1B5G5R5_UNORM,TinyImageFormat_A1R5G5B5_UNORM,TinyImageFormat_R5G5B5X1_UNORM,TinyImageFormat_B5G5R5X1_UNORM,TinyImageFormat_X1R5G5B5_UNORM,TinyImageFormat_X1B5G5R5_UNORM,TinyImageFormat_B2G3R3A8_UNORM,TinyImageFormat_R8G8_UNORM,TinyImageFormat_R8G8_SNORM,TinyImageFormat_G8R8_UNORM,TinyImageFormat_G8R8_SNORM,TinyImageFormat_R8G8_UINT,TinyImageFormat_R8G8_SINT,TinyImageFormat_R8G8_SRGB,TinyImageFormat_R16_UNORM,TinyImageFormat_R16_SNORM,TinyImageFormat_R16_UINT,TinyImageFormat_R16_SINT,TinyImageFormat_R16_SFLOAT,TinyImageFormat_R16_SBFLOAT,TinyImageFormat_R8G8B8_UNORM,TinyImageFormat_R8G8B8_SNORM,TinyImageFormat_R8G8B8_UINT,TinyImageFormat_R8G8B8_SINT,TinyImageFormat_R8G8B8_SRGB,TinyImageFormat_B8G8R8_UNORM,TinyImageFormat_B8G8R8_SNORM,TinyImageFormat_B8G8R8_UINT,TinyImageFormat_B8G8R8_SINT,TinyImageFormat_B8G8R8_SRGB,TinyImageFormat_R8G8B8A8_UNORM,TinyImageFormat_R8G8B8A8_SNORM,TinyImageFormat_R8G8B8A8_UINT,TinyImageFormat_R8G8B8A8_SINT,TinyImageFormat_R8G8B8A8_SRGB,TinyImageFormat_B8G8R8A8_UNORM,TinyImageFormat_B8G8R8A8_SNORM,TinyImageFormat_B8G8R8A8_UINT,TinyImageFormat_B8G8R8A8_SINT,TinyImageFormat_B8G8R8A8_SRGB,TinyImageFormat_R8G8B8X8_UNORM,TinyImageFormat_B8G8R8X8_UNORM,TinyImageFormat_R16G16_UNORM,TinyImageFormat_G16R16_UNORM,TinyImageFormat_R16G16_SNORM,TinyImageFormat_G16R16_SNORM,TinyImageFormat_R16G16_UINT,TinyImageFormat_R16G16_SINT,TinyImageFormat_R16G16_SFLOAT,TinyImageFormat_R16G16_SBFLOAT,TinyImageFormat_R32_UINT,TinyImageFormat_R32_SINT,TinyImageFormat_R32_SFLOAT,TinyImageFormat_A2R10G10B10_UNORM,TinyImageFormat_A2R10G10B10_UINT,TinyImageFormat_A2R10G10B10_SNORM,TinyImageFormat_A2R10G10B10_SINT,TinyImageFormat_A2B10G10R10_UNORM,TinyImageFormat_A2B10G10R10_UINT,TinyImageFormat_A2B10G10R10_SNORM,TinyImageFormat_A2B10G10R10_SINT,TinyImageFormat_R10G10B10A2_UNORM,TinyImageFormat_R10G10B10A2_UINT,TinyImageFormat_R10G10B10A2_SNORM,TinyImageFormat_R10G10B10A2_SINT,TinyImageFormat_B10G10R10A2_UNORM,TinyImageFormat_B10G10R10A2_UINT,TinyImageFormat_B10G10R10A2_SNORM,TinyImageFormat_B10G10R10A2_SINT,TinyImageFormat_B10G11R11_UFLOAT,TinyImageFormat_E5B9G9R9_UFLOAT,TinyImageFormat_R16G16B16_UNORM,TinyImageFormat_R16G16B16_SNORM,TinyImageFormat_R16G16B16_UINT,TinyImageFormat_R16G16B16_SINT,TinyImageFormat_R16G16B16_SFLOAT,TinyImageFormat_R16G16B16_SBFLOAT,TinyImageFormat_R16G16B16A16_UNORM,TinyImageFormat_R16G16B16A16_SNORM,TinyImageFormat_R16G16B16A16_UINT,TinyImageFormat_R16G16B16A16_SINT,TinyImageFormat_R16G16B16A16_SFLOAT,TinyImageFormat_R16G16B16A16_SBFLOAT,TinyImageFormat_R32G32_UINT,TinyImageFormat_R32G32_SINT,TinyImageFormat_R32G32_SFLOAT,TinyImageFormat_R32G32B32_UINT,TinyImageFormat_R32G32B32_SINT,TinyImageFormat_R32G32B32_SFLOAT,TinyImageFormat_R32G32B32A32_UINT,TinyImageFormat_R32G32B32A32_SINT,TinyImageFormat_R32G32B32A32_SFLOAT,TinyImageFormat_R64_UINT,TinyImageFormat_R64_SINT,TinyImageFormat_R64_SFLOAT,TinyImageFormat_R64G64_UINT,TinyImageFormat_R64G64_SINT,TinyImageFormat_R64G64_SFLOAT,TinyImageFormat_R64G64B64_UINT,TinyImageFormat_R64G64B64_SINT,TinyImageFormat_R64G64B64_SFLOAT,TinyImageFormat_R64G64B64A64_UINT,TinyImageFormat_R64G64B64A64_SINT,TinyImageFormat_R64G64B64A64_SFLOAT,TinyImageFormat_D16_UNORM,TinyImageFormat_X8_D24_UNORM,TinyImageFormat_D32_SFLOAT,TinyImageFormat_S8_UINT,TinyImageFormat_D16_UNORM_S8_UINT,TinyImageFormat_D24_UNORM_S8_UINT,TinyImageFormat_D32_SFLOAT_S8_UINT,TinyImageFormat_DXBC1_RGB_UNORM,TinyImageFormat_DXBC1_RGB_SRGB,TinyImageFormat_DXBC1_RGBA_UNORM,TinyImageFormat_DXBC1_RGBA_SRGB,TinyImageFormat_DXBC2_UNORM,TinyImageFormat_DXBC2_SRGB,TinyImageFormat_DXBC3_UNORM,TinyImageFormat_DXBC3_SRGB,TinyImageFormat_DXBC4_UNORM,TinyImageFormat_DXBC4_SNORM,TinyImageFormat_DXBC5_UNORM,TinyImageFormat_DXBC5_SNORM,TinyImageFormat_DXBC6H_UFLOAT,TinyImageFormat_DXBC6H_SFLOAT,TinyImageFormat_DXBC7_UNORM,TinyImageFormat_DXBC7_SRGB,TinyImageFormat_PVRTC1_2BPP_UNORM,TinyImageFormat_PVRTC1_4BPP_UNORM,TinyImageFormat_PVRTC2_2BPP_UNORM,TinyImageFormat_PVRTC2_4BPP_UNORM,TinyImageFormat_PVRTC1_2BPP_SRGB,TinyImageFormat_PVRTC1_4BPP_SRGB,TinyImageFormat_PVRTC2_2BPP_SRGB,TinyImageFormat_PVRTC2_4BPP_SRGB,TinyImageFormat_ETC2_R8G8B8_UNORM,TinyImageFormat_ETC2_R8G8B8_SRGB,TinyImageFormat_ETC2_R8G8B8A1_UNORM,TinyImageFormat_ETC2_R8G8B8A1_SRGB,TinyImageFormat_ETC2_R8G8B8A8_UNORM,TinyImageFormat_ETC2_R8G8B8A8_SRGB,TinyImageFormat_ETC2_EAC_R11_UNORM,TinyImageFormat_ETC2_EAC_R11_SNORM,TinyImageFormat_ETC2_EAC_R11G11_UNORM,TinyImageFormat_ETC2_EAC_R11G11_SNORM,TinyImageFormat_ASTC_4x4_UNORM,TinyImageFormat_ASTC_4x4_SRGB,TinyImageFormat_ASTC_5x4_UNORM,TinyImageFormat_ASTC_5x4_SRGB,TinyImageFormat_ASTC_5x5_UNORM,TinyImageFormat_ASTC_5x5_SRGB,TinyImageFormat_ASTC_6x5_UNORM,TinyImageFormat_ASTC_6x5_SRGB,TinyImageFormat_ASTC_6x6_UNORM,TinyImageFormat_ASTC_6x6_SRGB,TinyImageFormat_ASTC_8x5_UNORM,TinyImageFormat_ASTC_8x5_SRGB,TinyImageFormat_ASTC_8x6_UNORM,TinyImageFormat_ASTC_8x6_SRGB,TinyImageFormat_ASTC_8x8_UNORM,TinyImageFormat_ASTC_8x8_SRGB,TinyImageFormat_ASTC_10x5_UNORM,TinyImageFormat_ASTC_10x5_SRGB,TinyImageFormat_ASTC_10x6_UNORM,TinyImageFormat_ASTC_10x6_SRGB,TinyImageFormat_ASTC_10x8_UNORM,TinyImageFormat_ASTC_10x8_SRGB,TinyImageFormat_ASTC_10x10_UNORM,TinyImageFormat_ASTC_10x10_SRGB,TinyImageFormat_ASTC_12x10_UNORM,TinyImageFormat_ASTC_12x10_SRGB,TinyImageFormat_ASTC_12x12_UNORM,TinyImageFormat_ASTC_12x12_SRGB,TinyImageFormat_CLUT_P4,TinyImageFormat_CLUT_P4A4,TinyImageFormat_CLUT_P8,TinyImageFormat_CLUT_P8A8,TinyImageFormat_R4G4B4A4_UNORM_PACK16,TinyImageFormat_B4G4R4A4_UNORM_PACK16,TinyImageFormat_R5G6B5_UNORM_PACK16,TinyImageFormat_B5G6R5_UNORM_PACK16,TinyImageFormat_R5G5B5A1_UNORM_PACK16,TinyImageFormat_B5G5R5A1_UNORM_PACK16,TinyImageFormat_A1R5G5B5_UNORM_PACK16,TinyImageFormat_G16B16G16R16_422_UNORM,TinyImageFormat_B16G16R16G16_422_UNORM,TinyImageFormat_R12X4G12X4B12X4A12X4_UNORM_4PACK16,TinyImageFormat_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16,TinyImageFormat_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16,TinyImageFormat_R10X6G10X6B10X6A10X6_UNORM_4PACK16,TinyImageFormat_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16,TinyImageFormat_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16,TinyImageFormat_G8B8G8R8_422_UNORM,TinyImageFormat_B8G8R8G8_422_UNORM,TinyImageFormat_G8_B8_R8_3PLANE_420_UNORM,TinyImageFormat_G8_B8R8_2PLANE_420_UNORM,TinyImageFormat_G8_B8_R8_3PLANE_422_UNORM,TinyImageFormat_G8_B8R8_2PLANE_422_UNORM,TinyImageFormat_G8_B8_R8_3PLANE_444_UNORM,TinyImageFormat_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16,TinyImageFormat_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16,TinyImageFormat_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16,TinyImageFormat_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16,TinyImageFormat_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16,TinyImageFormat_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16,TinyImageFormat_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16,TinyImageFormat_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16,TinyImageFormat_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16,TinyImageFormat_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16,TinyImageFormat_G16_B16_R16_3PLANE_420_UNORM,TinyImageFormat_G16_B16_R16_3PLANE_422_UNORM,TinyImageFormat_G16_B16_R16_3PLANE_444_UNORM,TinyImageFormat_G16_B16R16_2PLANE_420_UNORM,TinyImageFormat_G16_B16R16_2PLANE_422_UNORM };
 HL_PRIM int HL_NAME(TinyImageFormat_toValue0)( int idx ) {
-	return TinyImageFormat__values[idx];
+	return (int)TinyImageFormat__values[idx];
 }
 DEFINE_PRIM(_I32, TinyImageFormat_toValue0, _I32);
 HL_PRIM int HL_NAME(TinyImageFormat_indexToValue1)( int idx ) {
-	return TinyImageFormat__values[idx];
+	return (int)TinyImageFormat__values[idx];
 }
 DEFINE_PRIM(_I32, TinyImageFormat_indexToValue1, _I32);
 HL_PRIM int HL_NAME(TinyImageFormat_valueToIndex1)( int value ) {
@@ -323,11 +338,11 @@ HL_PRIM int HL_NAME(TinyImageFormat_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, TinyImageFormat_fromIndex1, _I32);
 static TextureCreationFlags TextureCreationFlags__values[] = { TEXTURE_CREATION_FLAG_NONE,TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT,TEXTURE_CREATION_FLAG_EXPORT_BIT,TEXTURE_CREATION_FLAG_EXPORT_ADAPTER_BIT,TEXTURE_CREATION_FLAG_IMPORT_BIT,TEXTURE_CREATION_FLAG_ESRAM,TEXTURE_CREATION_FLAG_ON_TILE,TEXTURE_CREATION_FLAG_NO_COMPRESSION,TEXTURE_CREATION_FLAG_FORCE_2D,TEXTURE_CREATION_FLAG_FORCE_3D,TEXTURE_CREATION_FLAG_ALLOW_DISPLAY_TARGET,TEXTURE_CREATION_FLAG_SRGB,TEXTURE_CREATION_FLAG_NORMAL_MAP,TEXTURE_CREATION_FLAG_FAST_CLEAR,TEXTURE_CREATION_FLAG_FRAG_MASK,TEXTURE_CREATION_FLAG_VR_MULTIVIEW,TEXTURE_CREATION_FLAG_VR_FOVEATED_RENDERING };
 HL_PRIM int HL_NAME(TextureCreationFlags_toValue0)( int idx ) {
-	return TextureCreationFlags__values[idx];
+	return (int)TextureCreationFlags__values[idx];
 }
 DEFINE_PRIM(_I32, TextureCreationFlags_toValue0, _I32);
 HL_PRIM int HL_NAME(TextureCreationFlags_indexToValue1)( int idx ) {
-	return TextureCreationFlags__values[idx];
+	return (int)TextureCreationFlags__values[idx];
 }
 DEFINE_PRIM(_I32, TextureCreationFlags_indexToValue1, _I32);
 HL_PRIM int HL_NAME(TextureCreationFlags_valueToIndex1)( int value ) {
@@ -342,11 +357,11 @@ HL_PRIM int HL_NAME(TextureCreationFlags_fromIndex1)( int index ) {return index;
 DEFINE_PRIM(_I32, TextureCreationFlags_fromIndex1, _I32);
 static BlendStateTargets BlendStateTargets__values[] = { BLEND_STATE_TARGET_0,BLEND_STATE_TARGET_1,BLEND_STATE_TARGET_2,BLEND_STATE_TARGET_3,BLEND_STATE_TARGET_4,BLEND_STATE_TARGET_5,BLEND_STATE_TARGET_6,BLEND_STATE_TARGET_7,BLEND_STATE_TARGET_ALL };
 HL_PRIM int HL_NAME(BlendStateTargets_toValue0)( int idx ) {
-	return BlendStateTargets__values[idx];
+	return (int)BlendStateTargets__values[idx];
 }
 DEFINE_PRIM(_I32, BlendStateTargets_toValue0, _I32);
 HL_PRIM int HL_NAME(BlendStateTargets_indexToValue1)( int idx ) {
-	return BlendStateTargets__values[idx];
+	return (int)BlendStateTargets__values[idx];
 }
 DEFINE_PRIM(_I32, BlendStateTargets_indexToValue1, _I32);
 HL_PRIM int HL_NAME(BlendStateTargets_valueToIndex1)( int value ) {
@@ -361,11 +376,11 @@ HL_PRIM int HL_NAME(BlendStateTargets_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, BlendStateTargets_fromIndex1, _I32);
 static CullMode CullMode__values[] = { CULL_MODE_NONE,CULL_MODE_BACK,CULL_MODE_FRONT,CULL_MODE_BOTH,MAX_CULL_MODES };
 HL_PRIM int HL_NAME(CullMode_toValue0)( int idx ) {
-	return CullMode__values[idx];
+	return (int)CullMode__values[idx];
 }
 DEFINE_PRIM(_I32, CullMode_toValue0, _I32);
 HL_PRIM int HL_NAME(CullMode_indexToValue1)( int idx ) {
-	return CullMode__values[idx];
+	return (int)CullMode__values[idx];
 }
 DEFINE_PRIM(_I32, CullMode_indexToValue1, _I32);
 HL_PRIM int HL_NAME(CullMode_valueToIndex1)( int value ) {
@@ -380,11 +395,11 @@ HL_PRIM int HL_NAME(CullMode_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, CullMode_fromIndex1, _I32);
 static FrontFace FrontFace__values[] = { FRONT_FACE_CCW,FRONT_FACE_CW };
 HL_PRIM int HL_NAME(FrontFace_toValue0)( int idx ) {
-	return FrontFace__values[idx];
+	return (int)FrontFace__values[idx];
 }
 DEFINE_PRIM(_I32, FrontFace_toValue0, _I32);
 HL_PRIM int HL_NAME(FrontFace_indexToValue1)( int idx ) {
-	return FrontFace__values[idx];
+	return (int)FrontFace__values[idx];
 }
 DEFINE_PRIM(_I32, FrontFace_indexToValue1, _I32);
 HL_PRIM int HL_NAME(FrontFace_valueToIndex1)( int value ) {
@@ -399,11 +414,11 @@ HL_PRIM int HL_NAME(FrontFace_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, FrontFace_fromIndex1, _I32);
 static FillMode FillMode__values[] = { FILL_MODE_SOLID,FILL_MODE_WIREFRAME,MAX_FILL_MODES };
 HL_PRIM int HL_NAME(FillMode_toValue0)( int idx ) {
-	return FillMode__values[idx];
+	return (int)FillMode__values[idx];
 }
 DEFINE_PRIM(_I32, FillMode_toValue0, _I32);
 HL_PRIM int HL_NAME(FillMode_indexToValue1)( int idx ) {
-	return FillMode__values[idx];
+	return (int)FillMode__values[idx];
 }
 DEFINE_PRIM(_I32, FillMode_indexToValue1, _I32);
 HL_PRIM int HL_NAME(FillMode_valueToIndex1)( int value ) {
@@ -418,11 +433,11 @@ HL_PRIM int HL_NAME(FillMode_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, FillMode_fromIndex1, _I32);
 static PipelineType PipelineType__values[] = { PIPELINE_TYPE_UNDEFINED,PIPELINE_TYPE_COMPUTE,PIPELINE_TYPE_GRAPHICS,PIPELINE_TYPE_RAYTRACING,PIPELINE_TYPE_COUNT };
 HL_PRIM int HL_NAME(PipelineType_toValue0)( int idx ) {
-	return PipelineType__values[idx];
+	return (int)PipelineType__values[idx];
 }
 DEFINE_PRIM(_I32, PipelineType_toValue0, _I32);
 HL_PRIM int HL_NAME(PipelineType_indexToValue1)( int idx ) {
-	return PipelineType__values[idx];
+	return (int)PipelineType__values[idx];
 }
 DEFINE_PRIM(_I32, PipelineType_indexToValue1, _I32);
 HL_PRIM int HL_NAME(PipelineType_valueToIndex1)( int value ) {
@@ -437,11 +452,11 @@ HL_PRIM int HL_NAME(PipelineType_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, PipelineType_fromIndex1, _I32);
 static FilterType FilterType__values[] = { FILTER_NEAREST,FILTER_LINEAR };
 HL_PRIM int HL_NAME(FilterType_toValue0)( int idx ) {
-	return FilterType__values[idx];
+	return (int)FilterType__values[idx];
 }
 DEFINE_PRIM(_I32, FilterType_toValue0, _I32);
 HL_PRIM int HL_NAME(FilterType_indexToValue1)( int idx ) {
-	return FilterType__values[idx];
+	return (int)FilterType__values[idx];
 }
 DEFINE_PRIM(_I32, FilterType_indexToValue1, _I32);
 HL_PRIM int HL_NAME(FilterType_valueToIndex1)( int value ) {
@@ -456,11 +471,11 @@ HL_PRIM int HL_NAME(FilterType_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, FilterType_fromIndex1, _I32);
 static AddressMode AddressMode__values[] = { ADDRESS_MODE_MIRROR,ADDRESS_MODE_REPEAT,ADDRESS_MODE_CLAMP_TO_EDGE,ADDRESS_MODE_CLAMP_TO_BORDER };
 HL_PRIM int HL_NAME(AddressMode_toValue0)( int idx ) {
-	return AddressMode__values[idx];
+	return (int)AddressMode__values[idx];
 }
 DEFINE_PRIM(_I32, AddressMode_toValue0, _I32);
 HL_PRIM int HL_NAME(AddressMode_indexToValue1)( int idx ) {
-	return AddressMode__values[idx];
+	return (int)AddressMode__values[idx];
 }
 DEFINE_PRIM(_I32, AddressMode_indexToValue1, _I32);
 HL_PRIM int HL_NAME(AddressMode_valueToIndex1)( int value ) {
@@ -475,11 +490,11 @@ HL_PRIM int HL_NAME(AddressMode_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, AddressMode_fromIndex1, _I32);
 static MipMapMode MipMapMode__values[] = { MIPMAP_MODE_NEAREST,MIPMAP_MODE_LINEAR };
 HL_PRIM int HL_NAME(MipMapMode_toValue0)( int idx ) {
-	return MipMapMode__values[idx];
+	return (int)MipMapMode__values[idx];
 }
 DEFINE_PRIM(_I32, MipMapMode_toValue0, _I32);
 HL_PRIM int HL_NAME(MipMapMode_indexToValue1)( int idx ) {
-	return MipMapMode__values[idx];
+	return (int)MipMapMode__values[idx];
 }
 DEFINE_PRIM(_I32, MipMapMode_indexToValue1, _I32);
 HL_PRIM int HL_NAME(MipMapMode_valueToIndex1)( int value ) {
@@ -494,11 +509,11 @@ HL_PRIM int HL_NAME(MipMapMode_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, MipMapMode_fromIndex1, _I32);
 static PrimitiveTopology PrimitiveTopology__values[] = { PRIMITIVE_TOPO_POINT_LIST,PRIMITIVE_TOPO_LINE_LIST,PRIMITIVE_TOPO_LINE_STRIP,PRIMITIVE_TOPO_TRI_LIST,PRIMITIVE_TOPO_TRI_STRIP,PRIMITIVE_TOPO_PATCH_LIST,PRIMITIVE_TOPO_COUNT };
 HL_PRIM int HL_NAME(PrimitiveTopology_toValue0)( int idx ) {
-	return PrimitiveTopology__values[idx];
+	return (int)PrimitiveTopology__values[idx];
 }
 DEFINE_PRIM(_I32, PrimitiveTopology_toValue0, _I32);
 HL_PRIM int HL_NAME(PrimitiveTopology_indexToValue1)( int idx ) {
-	return PrimitiveTopology__values[idx];
+	return (int)PrimitiveTopology__values[idx];
 }
 DEFINE_PRIM(_I32, PrimitiveTopology_indexToValue1, _I32);
 HL_PRIM int HL_NAME(PrimitiveTopology_valueToIndex1)( int value ) {
@@ -513,11 +528,11 @@ HL_PRIM int HL_NAME(PrimitiveTopology_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, PrimitiveTopology_fromIndex1, _I32);
 static IndexType IndexType__values[] = { INDEX_TYPE_UINT32,INDEX_TYPE_UINT16 };
 HL_PRIM int HL_NAME(IndexType_toValue0)( int idx ) {
-	return IndexType__values[idx];
+	return (int)IndexType__values[idx];
 }
 DEFINE_PRIM(_I32, IndexType_toValue0, _I32);
 HL_PRIM int HL_NAME(IndexType_indexToValue1)( int idx ) {
-	return IndexType__values[idx];
+	return (int)IndexType__values[idx];
 }
 DEFINE_PRIM(_I32, IndexType_indexToValue1, _I32);
 HL_PRIM int HL_NAME(IndexType_valueToIndex1)( int value ) {
@@ -532,11 +547,11 @@ HL_PRIM int HL_NAME(IndexType_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, IndexType_fromIndex1, _I32);
 static ShaderSemantic ShaderSemantic__values[] = { SEMANTIC_UNDEFINED,SEMANTIC_POSITION,SEMANTIC_NORMAL,SEMANTIC_COLOR,SEMANTIC_TANGENT,SEMANTIC_BITANGENT,SEMANTIC_JOINTS,SEMANTIC_WEIGHTS,SEMANTIC_SHADING_RATE,SEMANTIC_TEXCOORD0,SEMANTIC_TEXCOORD1,SEMANTIC_TEXCOORD2,SEMANTIC_TEXCOORD3,SEMANTIC_TEXCOORD4,SEMANTIC_TEXCOORD5,SEMANTIC_TEXCOORD6,SEMANTIC_TEXCOORD7,SEMANTIC_TEXCOORD8,SEMANTIC_TEXCOORD9 };
 HL_PRIM int HL_NAME(ShaderSemantic_toValue0)( int idx ) {
-	return ShaderSemantic__values[idx];
+	return (int)ShaderSemantic__values[idx];
 }
 DEFINE_PRIM(_I32, ShaderSemantic_toValue0, _I32);
 HL_PRIM int HL_NAME(ShaderSemantic_indexToValue1)( int idx ) {
-	return ShaderSemantic__values[idx];
+	return (int)ShaderSemantic__values[idx];
 }
 DEFINE_PRIM(_I32, ShaderSemantic_indexToValue1, _I32);
 HL_PRIM int HL_NAME(ShaderSemantic_valueToIndex1)( int value ) {
@@ -551,11 +566,11 @@ HL_PRIM int HL_NAME(ShaderSemantic_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, ShaderSemantic_fromIndex1, _I32);
 static BlendConstant BlendConstant__values[] = { BC_ZERO,BC_ONE,BC_SRC_COLOR,BC_ONE_MINUS_SRC_COLOR,BC_DST_COLOR,BC_ONE_MINUS_DST_COLOR,BC_SRC_ALPHA,BC_ONE_MINUS_SRC_ALPHA,BC_DST_ALPHA,BC_ONE_MINUS_DST_ALPHA,BC_SRC_ALPHA_SATURATE,BC_BLEND_FACTOR,BC_ONE_MINUS_BLEND_FACTOR,MAX_BLEND_CONSTANTS };
 HL_PRIM int HL_NAME(BlendConstant_toValue0)( int idx ) {
-	return BlendConstant__values[idx];
+	return (int)BlendConstant__values[idx];
 }
 DEFINE_PRIM(_I32, BlendConstant_toValue0, _I32);
 HL_PRIM int HL_NAME(BlendConstant_indexToValue1)( int idx ) {
-	return BlendConstant__values[idx];
+	return (int)BlendConstant__values[idx];
 }
 DEFINE_PRIM(_I32, BlendConstant_indexToValue1, _I32);
 HL_PRIM int HL_NAME(BlendConstant_valueToIndex1)( int value ) {
@@ -570,11 +585,11 @@ HL_PRIM int HL_NAME(BlendConstant_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, BlendConstant_fromIndex1, _I32);
 static BlendMode BlendMode__values[] = { BM_ADD,BM_SUBTRACT,BM_REVERSE_SUBTRACT,BM_MIN,BM_MAX,MAX_BLEND_MODES };
 HL_PRIM int HL_NAME(BlendMode_toValue0)( int idx ) {
-	return BlendMode__values[idx];
+	return (int)BlendMode__values[idx];
 }
 DEFINE_PRIM(_I32, BlendMode_toValue0, _I32);
 HL_PRIM int HL_NAME(BlendMode_indexToValue1)( int idx ) {
-	return BlendMode__values[idx];
+	return (int)BlendMode__values[idx];
 }
 DEFINE_PRIM(_I32, BlendMode_indexToValue1, _I32);
 HL_PRIM int HL_NAME(BlendMode_valueToIndex1)( int value ) {
@@ -589,11 +604,11 @@ HL_PRIM int HL_NAME(BlendMode_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, BlendMode_fromIndex1, _I32);
 static CompareMode CompareMode__values[] = { CMP_NEVER,CMP_LESS,CMP_EQUAL,CMP_LEQUAL,CMP_GREATER,CMP_NOTEQUAL,CMP_GEQUAL,CMP_ALWAYS,MAX_COMPARE_MODES };
 HL_PRIM int HL_NAME(CompareMode_toValue0)( int idx ) {
-	return CompareMode__values[idx];
+	return (int)CompareMode__values[idx];
 }
 DEFINE_PRIM(_I32, CompareMode_toValue0, _I32);
 HL_PRIM int HL_NAME(CompareMode_indexToValue1)( int idx ) {
-	return CompareMode__values[idx];
+	return (int)CompareMode__values[idx];
 }
 DEFINE_PRIM(_I32, CompareMode_indexToValue1, _I32);
 HL_PRIM int HL_NAME(CompareMode_valueToIndex1)( int value ) {
@@ -608,11 +623,11 @@ HL_PRIM int HL_NAME(CompareMode_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, CompareMode_fromIndex1, _I32);
 static StencilOp StencilOp__values[] = { STENCIL_OP_KEEP,STENCIL_OP_SET_ZERO,STENCIL_OP_REPLACE,STENCIL_OP_INVERT,STENCIL_OP_INCR,STENCIL_OP_DECR,STENCIL_OP_INCR_SAT,STENCIL_OP_DECR_SAT,MAX_STENCIL_OPS };
 HL_PRIM int HL_NAME(StencilOp_toValue0)( int idx ) {
-	return StencilOp__values[idx];
+	return (int)StencilOp__values[idx];
 }
 DEFINE_PRIM(_I32, StencilOp_toValue0, _I32);
 HL_PRIM int HL_NAME(StencilOp_indexToValue1)( int idx ) {
-	return StencilOp__values[idx];
+	return (int)StencilOp__values[idx];
 }
 DEFINE_PRIM(_I32, StencilOp_indexToValue1, _I32);
 HL_PRIM int HL_NAME(StencilOp_valueToIndex1)( int value ) {
@@ -627,11 +642,11 @@ HL_PRIM int HL_NAME(StencilOp_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, StencilOp_fromIndex1, _I32);
 static DescriptorUpdateFrequency DescriptorUpdateFrequency__values[] = { DESCRIPTOR_UPDATE_FREQ_NONE,DESCRIPTOR_UPDATE_FREQ_PER_FRAME,DESCRIPTOR_UPDATE_FREQ_PER_BATCH,DESCRIPTOR_UPDATE_FREQ_PER_DRAW,DESCRIPTOR_UPDATE_FREQ_COUNT };
 HL_PRIM int HL_NAME(DescriptorUpdateFrequency_toValue0)( int idx ) {
-	return DescriptorUpdateFrequency__values[idx];
+	return (int)DescriptorUpdateFrequency__values[idx];
 }
 DEFINE_PRIM(_I32, DescriptorUpdateFrequency_toValue0, _I32);
 HL_PRIM int HL_NAME(DescriptorUpdateFrequency_indexToValue1)( int idx ) {
-	return DescriptorUpdateFrequency__values[idx];
+	return (int)DescriptorUpdateFrequency__values[idx];
 }
 DEFINE_PRIM(_I32, DescriptorUpdateFrequency_indexToValue1, _I32);
 HL_PRIM int HL_NAME(DescriptorUpdateFrequency_valueToIndex1)( int value ) {
@@ -646,11 +661,11 @@ HL_PRIM int HL_NAME(DescriptorUpdateFrequency_fromIndex1)( int index ) {return i
 DEFINE_PRIM(_I32, DescriptorUpdateFrequency_fromIndex1, _I32);
 static DescriptorType DescriptorType__values[] = { DESCRIPTOR_TYPE_UNDEFINED,DESCRIPTOR_TYPE_SAMPLER,DESCRIPTOR_TYPE_TEXTURE,DESCRIPTOR_TYPE_RW_TEXTURE,DESCRIPTOR_TYPE_BUFFER,DESCRIPTOR_TYPE_RW_BUFFER,DESCRIPTOR_TYPE_UNIFORM_BUFFER,DESCRIPTOR_TYPE_ROOT_CONSTANT,DESCRIPTOR_TYPE_VERTEX_BUFFER,DESCRIPTOR_TYPE_INDEX_BUFFER,DESCRIPTOR_TYPE_INDIRECT_BUFFER,DESCRIPTOR_TYPE_TEXTURE_CUBE };
 HL_PRIM int HL_NAME(DescriptorType_toValue0)( int idx ) {
-	return DescriptorType__values[idx];
+	return (int)DescriptorType__values[idx];
 }
 DEFINE_PRIM(_I32, DescriptorType_toValue0, _I32);
 HL_PRIM int HL_NAME(DescriptorType_indexToValue1)( int idx ) {
-	return DescriptorType__values[idx];
+	return (int)DescriptorType__values[idx];
 }
 DEFINE_PRIM(_I32, DescriptorType_indexToValue1, _I32);
 HL_PRIM int HL_NAME(DescriptorType_valueToIndex1)( int value ) {
@@ -665,11 +680,11 @@ HL_PRIM int HL_NAME(DescriptorType_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, DescriptorType_fromIndex1, _I32);
 static LoadActionType LoadActionType__values[] = { LOAD_ACTION_DONTCARE,LOAD_ACTION_LOAD,LOAD_ACTION_CLEAR,MAX_LOAD_ACTION };
 HL_PRIM int HL_NAME(LoadActionType_toValue0)( int idx ) {
-	return LoadActionType__values[idx];
+	return (int)LoadActionType__values[idx];
 }
 DEFINE_PRIM(_I32, LoadActionType_toValue0, _I32);
 HL_PRIM int HL_NAME(LoadActionType_indexToValue1)( int idx ) {
-	return LoadActionType__values[idx];
+	return (int)LoadActionType__values[idx];
 }
 DEFINE_PRIM(_I32, LoadActionType_indexToValue1, _I32);
 HL_PRIM int HL_NAME(LoadActionType_valueToIndex1)( int value ) {
@@ -694,11 +709,11 @@ HL_PRIM void HL_NAME(StateBuilder_delete)( pref<StateBuilder>* _this ) {
 DEFINE_PRIM(_VOID, StateBuilder_delete, _IDL);
 static VertexAttribRate VertexAttribRate__values[] = { VERTEX_ATTRIB_RATE_VERTEX,VERTEX_ATTRIB_RATE_INSTANCE,VERTEX_ATTRIB_RATE_COUNT };
 HL_PRIM int HL_NAME(VertexAttribRate_toValue0)( int idx ) {
-	return VertexAttribRate__values[idx];
+	return (int)VertexAttribRate__values[idx];
 }
 DEFINE_PRIM(_I32, VertexAttribRate_toValue0, _I32);
 HL_PRIM int HL_NAME(VertexAttribRate_indexToValue1)( int idx ) {
-	return VertexAttribRate__values[idx];
+	return (int)VertexAttribRate__values[idx];
 }
 DEFINE_PRIM(_I32, VertexAttribRate_indexToValue1, _I32);
 HL_PRIM int HL_NAME(VertexAttribRate_valueToIndex1)( int value ) {
@@ -758,11 +773,11 @@ HL_PRIM void HL_NAME(DescriptorSetDesc_delete)( pref<DescriptorSetDesc>* _this )
 DEFINE_PRIM(_VOID, DescriptorSetDesc_delete, _IDL);
 static DescriptorSlotMode DescriptorSlotMode__values[] = { DBM_TEXTURES,DBM_SAMPLERS,DBM_UNIFORMS };
 HL_PRIM int HL_NAME(DescriptorSlotMode_toValue0)( int idx ) {
-	return DescriptorSlotMode__values[idx];
+	return (int)DescriptorSlotMode__values[idx];
 }
 DEFINE_PRIM(_I32, DescriptorSlotMode_toValue0, _I32);
 HL_PRIM int HL_NAME(DescriptorSlotMode_indexToValue1)( int idx ) {
-	return DescriptorSlotMode__values[idx];
+	return (int)DescriptorSlotMode__values[idx];
 }
 DEFINE_PRIM(_I32, DescriptorSlotMode_indexToValue1, _I32);
 HL_PRIM int HL_NAME(DescriptorSlotMode_valueToIndex1)( int value ) {
@@ -817,11 +832,11 @@ HL_PRIM void HL_NAME(TextureLoadDesc_delete)( pref<TextureLoadDesc>* _this ) {
 DEFINE_PRIM(_VOID, TextureLoadDesc_delete, _IDL);
 static AttributeSemantic AttributeSemantic__values[] = { POSITION,NORMAL,TANGENT,BITANGENT,UV0,UV1,UV2,UV3,UV4,UV5,UV6,UV7,COLOR,USER0,USER1,USER2,USER3,USER4,USER5,USER6,USER7 };
 HL_PRIM int HL_NAME(AttributeSemantic_toValue0)( int idx ) {
-	return AttributeSemantic__values[idx];
+	return (int)AttributeSemantic__values[idx];
 }
 DEFINE_PRIM(_I32, AttributeSemantic_toValue0, _I32);
 HL_PRIM int HL_NAME(AttributeSemantic_indexToValue1)( int idx ) {
-	return AttributeSemantic__values[idx];
+	return (int)AttributeSemantic__values[idx];
 }
 DEFINE_PRIM(_I32, AttributeSemantic_indexToValue1, _I32);
 HL_PRIM int HL_NAME(AttributeSemantic_valueToIndex1)( int value ) {
@@ -836,11 +851,11 @@ HL_PRIM int HL_NAME(AttributeSemantic_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, AttributeSemantic_fromIndex1, _I32);
 static AttributeType AttributeType__values[] = { FLOAT16,FLOAT32,FLOAT64,UINT8,UINT16,UINT32,UINT64 };
 HL_PRIM int HL_NAME(AttributeType_toValue0)( int idx ) {
-	return AttributeType__values[idx];
+	return (int)AttributeType__values[idx];
 }
 DEFINE_PRIM(_I32, AttributeType_toValue0, _I32);
 HL_PRIM int HL_NAME(AttributeType_indexToValue1)( int idx ) {
-	return AttributeType__values[idx];
+	return (int)AttributeType__values[idx];
 }
 DEFINE_PRIM(_I32, AttributeType_indexToValue1, _I32);
 HL_PRIM int HL_NAME(AttributeType_valueToIndex1)( int value ) {
@@ -2477,12 +2492,12 @@ HL_PRIM void* HL_NAME(TextureDesc_set_nativeHandle)( pref<TextureDesc>* _this, v
 }
 DEFINE_PRIM(_BYTES,TextureDesc_set_nativeHandle,_IDL _BYTES);
 
-HL_PRIM int HL_NAME(TextureDesc_get_flags)( pref<TextureDesc>* _this ) {
-	return HL_NAME(TextureCreationFlags_valueToIndex1)(_unref(_this)->mFlags);
+HL_PRIM unsigned int HL_NAME(TextureDesc_get_flags)( pref<TextureDesc>* _this ) {
+	return _unref(_this)->mFlags;
 }
 DEFINE_PRIM(_I32,TextureDesc_get_flags,_IDL);
-HL_PRIM int HL_NAME(TextureDesc_set_flags)( pref<TextureDesc>* _this, int value ) {
-	_unref(_this)->mFlags = (TextureCreationFlags)HL_NAME(TextureCreationFlags_indexToValue1)(value);
+HL_PRIM unsigned int HL_NAME(TextureDesc_set_flags)( pref<TextureDesc>* _this, unsigned int value ) {
+	_unref(_this)->mFlags = (TextureCreationFlags)(value);
 	return value;
 }
 DEFINE_PRIM(_I32,TextureDesc_set_flags,_IDL _I32);

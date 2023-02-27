@@ -1053,7 +1053,7 @@ interface TextureDesc {
 	/// GPU indices to share this texture
 	//uint32_t* pSharedNodeIndices;
 	/// Texture creation flags (decides memory allocation strategy, sharing access,...)
-	[Internal="mFlags"] attribute TextureCreationFlags flags;
+	[Internal="mFlags", SetCast="TextureCreationFlags"] attribute uint flags;
 	/// Width
 	[Internal="mWidth"] attribute uint width;
 	/// Height
