@@ -87,6 +87,8 @@ bool hlForgeInitialize(const char *name) {
 
     FileSystemInitDesc fsDesc = {};
     fsDesc.pAppName = name;
+    fsDesc.pResourceMounts[RM_CONTENT] = ".";
+    
     DEBUG_PRINT("Intializing file system\n");
 
     // init file system
@@ -127,8 +129,8 @@ bool hlForgeInitialize(const char *name) {
 #endif
 #if defined(VULKAN)
         case RENDERER_API_VULKAN:
-            fsSetPathForResourceDir(pSystemFileIO, RM_CONTENT, RD_SHADER_SOURCES, "shaders/vulkan/");
-            fsSetPathForResourceDir(pSystemFileIO, RM_CONTENT, RD_SHADER_BINARIES, "shaders/vulkan/binary/");
+            fsSetPathForResourceDir(pSystemFileIO, RM_CONTENT, RD_SHADER_SOURCES, "shadercache/vulkan/");
+            fsSetPathForResourceDir(pSystemFileIO, RM_CONTENT, RD_SHADER_BINARIES, "shadercache/vulkan/binary/");
             break;
 #endif
 #if defined(METAL)
@@ -228,8 +230,73 @@ ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
     _layer.wantsExtendedDynamicRangeContent = false ? true : false;
     _layer.drawableSize = CGSizeMake(wmInfo.info.cocoa.window.frame.size.width, wmInfo.info.cocoa.window.frame.size.height);
 
-    #else
+    #elif defined( _WINDOWS )
 
+
+    DEBUG_PRINT("NSWindow %p %p %p\n", wmInfo.info.win.window, wmInfo.info.win.hdc, wmInfo.info.win.hinstance);
+    auto window_flags = SDL_GetWindowFlags(window);
+    if (!(window_flags & SDL_WINDOW_VULKAN)) {
+        assert(false && "WTF - Vulkan isn't supported by the window");
+    }
+    RendererDesc rendererDesc = {};
+    /*
+    mVulkan.
+    			const char** ppInstanceLayers;
+			const char** ppInstanceExtensions;
+			const char** ppDeviceExtensions;
+			uint32_t     mInstanceLayerCount;
+			uint32_t     mInstanceExtensionCount;
+			uint32_t     mDeviceExtensionCount;
+	LogFn        pLogFn;
+	ShaderTarget mShaderTarget;
+	GpuMode      mGpuMode;
+
+	/// Required when creating unlinked multiple renderers. Optional otherwise, can be used for explicit GPU selection.
+	RendererContext* pContext;
+	uint32_t         mGpuIndex;
+
+	/// This results in new validation not possible during API calls on the CPU, by creating patched shaders that have validation added directly to the shader.
+	/// However, it can slow things down a lot, especially for applications with numerous PSOs. Time to see the first render frame may take several minutes
+	bool mEnableGPUBasedValidation;
+
+	bool mD3D11Supported;
+	bool mGLESSupported;
+    */
+    rendererDesc.mEnableGPUBasedValidation = true;
+    _renderer = nullptr;
+    initRenderer("haxe_forge", &rendererDesc, &_renderer);
+
+    #else
+        void *view = getNSViewFromNSWindow(wmInfo.info.cocoa.window);
+    DEBUG_PRINT("NSVIew %p\n", view);
+
+    if (IsMetalAvailable(&wmInfo) != 0) {
+        DEBUG_PRINT("Metal is not avaialble!!!\n");
+    }
+
+    _view = GetWindowView(window);
+    if (_view == nil) {
+        _view = SDL_Metal_CreateView(window);
+    }
+
+#ifdef __MACOSX__
+    _layer = (CAMetalLayer *)[(__bridge NSView *)_view layer];
+#else
+    _layer = (CAMetalLayer *)[(__bridge UIView *)_view layer];
+#endif
+
+    rendererDesc.mEnableGPUBasedValidation = true;
+    _renderer = nullptr;
+    initRenderer("haxe_forge", &rendererDesc, &_renderer);
+
+    _layer.device = _renderer->pDevice;
+
+    ///    _layer.framebufferOnly = NO;
+    _layer.framebufferOnly = YES;  // todo: optimized way
+    _layer.pixelFormat = false ? MTLPixelFormatRGBA16Float : MTLPixelFormatBGRA8Unorm;
+    _layer.wantsExtendedDynamicRangeContent = false ? true : false;
+    _layer.drawableSize = CGSizeMake(wmInfo.info.cocoa.window.frame.size.width, wmInfo.info.cocoa.window.frame.size.height);
+    
     #endif
    
 }
