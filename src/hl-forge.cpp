@@ -1076,6 +1076,13 @@ DEFINE_PRIM(_IDL, Window_getWindow1, _BYTES);
 
 DEFINE_PRIM(_BYTES, unpackSDLWindow, TWIN);
 
+// WINDOWS CALLBACKS
 void onDeviceLost() {
 
 }
+
+void onRequestReload() {
+
+}
+
+CustomMessageProcessor sCustomProc = nullptr;
