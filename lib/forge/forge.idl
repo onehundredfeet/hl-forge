@@ -1120,6 +1120,7 @@ enum AttributeSemantic {
 	"USER7"
 };
 
+[Prefix="ATTR_"]
 enum AttributeType {
 	"FLOAT16",
 	"FLOAT32",

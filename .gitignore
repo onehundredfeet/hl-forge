@@ -8,3 +8,6 @@ shadercache
 log
 example/res/.tmp
 build.debug
+ext/include
+ext/lib
+ext/sdl2
