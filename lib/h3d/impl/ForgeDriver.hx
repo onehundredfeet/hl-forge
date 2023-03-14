@@ -15,6 +15,7 @@ import forge.Forge;
 import forge.DynamicUniformBuffer;
 import h3d.impl.GraphicsDriver;
 import forge.Native.TextureCreationFlags;
+import haxe.CallStack;
 
 private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
@@ -117,7 +118,7 @@ private class CompiledMaterial {
 }
 
 inline function debugTrace(s : String) {
-	//trace("DEBUG " + s);
+	trace("DEBUG " + s);
 }
 
 @:access(h3d.impl.Shader)
@@ -169,6 +170,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		debugTrace('CWD Driver IS ${FileSystem.absolutePath('')}');
 
 		reset();
+	}
+
+	inline function renderReady() {
+		return true;
+//		return _queueResize == false && _queueAttach == false;
 	}
 
 	var _forgeSDLWin:forge.Native.ForgeSDLWindow;
@@ -282,11 +288,15 @@ class ForgeDriver extends h3d.impl.Driver {
 
 
 	function attach() {
+		trace('Attaching...');
 		if (_sc == null) {
 			trace('Creating swap achain with ${_width} x ${_height}');
 			_sc = _forgeSDLWin.createSwapChain(_renderer, _queue, _width, _height, _swap_count, _hdr);
+			if (_sc == null) throw "Couldn\'t create swap chain";
+			trace('Adding swap count ${_swap_count} RT size ${_swapRenderTargets.length}');
 			for(i in 0..._swap_count) {
 				var rt = _sc.getRenderTarget(i);
+				if (rt == null) throw "Render target is null";
 				var inBarrier = new forge.Native.ResourceBarrierBuilder();
 				inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_RENDER_TARGET);
 				var outBarrier = new forge.Native.ResourceBarrierBuilder();
@@ -298,13 +308,11 @@ class ForgeDriver extends h3d.impl.Driver {
 	
 				_swapRenderTargets.push({rt:rt,inBarrier:inBarrier, outBarrier:outBarrier, begin:begin, present:present, captureBuffer : null });
 			}
-			if (_sc == null) {
-				throw "Swapchain is null";
-			}
 		} else {
 			debugTrace('Duplicate attach');
 		}
 
+		trace('Done attaching swap chain');
 		if (!addDepthBuffer())
 			return false;
 
@@ -312,8 +320,12 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	function detach() {
+		
+
+		trace('Detatching...');
 		if (_sc != null) {
 			_queue.waitIdle();
+			trace('Destroying swap chain...');
 			_renderer.destroySwapChain( _sc );
 			_sc = null;	
 		}
@@ -387,14 +399,15 @@ class ForgeDriver extends h3d.impl.Driver {
 		}
 	}
 
+	var _queueResize = false;
 	public override function resize(width:Int, height:Int) {
 		trace('Resizing ${width} ${height}');
 		debugTrace('----> SC IS ${_sc}');
 		
+	
 		_width = width;
 		_height = height;
-		detach();
-		attach();
+		_queueResize = true;
 	}
 
 
@@ -846,7 +859,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 	*/
 	public override function uploadVertexBuffer(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:hxd.FloatBuffer, bufPos:Int) {
-		
+		if (!renderReady()) return;
 		/*
 		void glBufferSubData( 
 			GLenum target, 
@@ -888,6 +901,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	
 
 	public override function present() {
+		if(!renderReady()) return;
 //		debugTrace('Presenting');
 		if (_frameBegun) {
 			if (_sc != null) {
@@ -904,9 +918,16 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	public override function begin(frame:Int) {
 		// Check for VSYNC
 		debugTrace('RENDERING BEGIN CLEAR Begin');
+		if (_queueResize) {
+			detach();
+			attach();
+			_queueResize = false;
+		}
+
 		if (_sc.isVSync() != true) {
-			_queue.waitIdle();
-			_renderer.toggleVSync(_sc);
+//			_queue.waitIdle();
+// TODO [RC] Fix vsync for vulkan
+//			_renderer.toggleVSync(_sc); // This destroys the swap chain on vulkan!
 		}
 		/*
 			if (pSwapChain->mEnableVsync != mSettings.mVSyncEnabled)
@@ -933,6 +954,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		_currentCmd = _swapCmds[_frameIndex];
 
 		_currentCmd.begin();
+		trace('Inserting current RT begin ${_currentRT} ${_currentSwapIndex}'); // Crashes here
 		_currentCmd.insertBarrier( _currentRT.begin );
 //		_currentCmd.renderBarrier( _currentRT.rt );
 		_frameBegun = true;
@@ -1078,13 +1100,20 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		//debugTrace('shader cache exists ${FileSystem.exists('shadercache')}');
 		//debugTrace('cwd ${FileSystem.absolutePath('')}');
 
-		var vertpath = 'shadercache/shader_${vert_md5}.vert';
-		var fragpath = 'shadercache/shader_${frag_md5}.frag';
+		var platform = switch( Sys.systemName()) {
+            case "Mac": "metal";
+            case "Windows": "vulkan";
+            default:"";
+        } ;
+
+		var vertpath = 'shadercache/${platform}/shader_${vert_md5}.vert';
+		var fragpath = 'shadercache/${platform}/shader_${frag_md5}.frag';
 
 		forge.FileDependency.overwriteIfDifferentString(vertpath + ".glsl", vert_glsl);
 		forge.FileDependency.overwriteIfDifferentString(fragpath + ".glsl", frag_glsl);
 //		sys.io.File.saveContent(vertpath + ".glsl", vert_glsl);
 //		sys.io.File.saveContent(fragpath + ".glsl", frag_glsl);
+		trace('Creating shader....');
 		var fgShader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
 		p.forgeShader = fgShader;
 		p.vertex = new CompiledShader(fgShader, true, shader.vertex);
@@ -1298,13 +1327,15 @@ struct spvDescriptorSetBuffer0
 		return p;
 	}
 
+	var _emptyNames = @:privateAccess new InputNames([]);
 	public override function getShaderInputNames():InputNames {
+		if (_curShader == null) _emptyNames;
 		return _curShader.inputs;
 	}
 
 	public override function selectShader(shader:hxsl.RuntimeShader) {
 		debugTrace('RENDER MATERIAL SHADER selectShader ${shader.id}');
-
+		if (!renderReady()) return true;
 		var p = _shaders.get(shader.id);
 		if (_curShader!= p) {
 			_currentPipeline = null;
@@ -1354,6 +1385,8 @@ struct spvDescriptorSetBuffer0
 
 
 	public override function uploadShaderBuffers(buf:h3d.shader.Buffers, which:h3d.shader.Buffers.BufferKind) {
+		if (!renderReady())return;
+
 		debugTrace('RENDER CALLSTACK uploadShaderBuffers ${which}');
 
 		switch (which) {
@@ -1950,6 +1983,7 @@ var offset = 8;
 	var _pipelineSeed = Int64.make( 0x41843714, 0x85913423);
 
 	function bindPipeline() {
+		if(!renderReady()) return;
 		debugTrace("RENDER CALLSTACK bindPipeline");
 
 		if (_currentPass == null) {throw "can't build a pipeline without a pass";}
@@ -2463,6 +2497,7 @@ var offset = 8;
 	}
 
 	public  function bindBuffer() {
+		if (!renderReady()) return;
 		debugTrace('RENDER CALLSTACK bindBuffer');
 
 		if (_currentPipeline == null) throw "No pipeline defined";
@@ -2552,8 +2587,10 @@ var offset = 8;
 		}
 	}
 
+
 	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
 		debugTrace('RENDER CALLSTACK TARGET CLEAR bind and clear ${_currentRT} and ${_currentDepth} ${color} ${depth} ${stencil}');
+		if (!renderReady()) return;
 
 		if (color != null) {
 			var x : h3d.Vector = color;
@@ -2578,8 +2615,11 @@ var offset = 8;
 	}
 	
 	public override function end() {
+
 		debugTrace('RENDER CALLSTACK TARGET end');
 		_currentCmd.unbindRenderTarget();
+		trace('Inserting current RT present');
+
 		_currentCmd.insertBarrier( _currentRT.present );
 		_currentRT = null;
 		_currentDepth = null;
@@ -2642,6 +2682,7 @@ var offset = 8;
 	var _currentDepth : h3d.mat.DepthBuffer;
 
 	function setRenderTargetsInternal( textures:Array<h3d.mat.Texture>, layer : Int, mipLevel : Int) {
+		if(!renderReady()) return;
 		debugTrace('RENDER TARGET CALLSTACK setRenderTargetsInternal');
 
 		if (_currentCmd == null) {
@@ -2649,6 +2690,8 @@ var offset = 8;
 			_currentCmd.begin();
 		} else {
 			_currentCmd.unbindRenderTarget();
+			trace('Inserting current RT out');
+
 			_currentCmd.insertBarrier(_currentRT.outBarrier);	
 		}
 
@@ -2700,6 +2743,7 @@ var offset = 8;
 
 		_currentDepth = @:privateAccess (tex.depthBuffer == null ? null : tex.depthBuffer);
 		debugTrace('RENDER TARGET  setting depth buffer target to existing ${_currentDepth} ${_currentDepth != null ? _currentDepth.width : null} ${_currentDepth != null ? _currentDepth.height : null}');
+		trace('Inserting current RT in barrier');
 		_currentCmd.insertBarrier(_currentRT.inBarrier);
 		
 		if( !tex.flags.has(WasCleared) ) {
@@ -2806,8 +2850,10 @@ var offset = 8;
 	var _currentTargets = new Array<forge.Native.RenderTarget>();
 	function setDefaultRenderTarget() {
 		debugTrace('RENDER CALLSTACK TARGET CLEAR setDefaultRenderTarget ');
-		
+		if(!renderReady()) return;
+
 		_currentCmd.unbindRenderTarget();
+		trace('Inserting current RT out');
 		_currentCmd.insertBarrier( _currentRT.outBarrier );
 		_currentDepth = _defaultDepth;
 		_targetsCount = 1;

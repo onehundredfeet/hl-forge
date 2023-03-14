@@ -129,8 +129,8 @@ bool hlForgeInitialize(const char *name) {
 #endif
 #if defined(VULKAN)
         case RENDERER_API_VULKAN:
-            fsSetPathForResourceDir(pSystemFileIO, RM_CONTENT, RD_SHADER_SOURCES, "shadercache/vulkan/");
-            fsSetPathForResourceDir(pSystemFileIO, RM_CONTENT, RD_SHADER_BINARIES, "shadercache/vulkan/binary/");
+            fsSetPathForResourceDir(pSystemFileIO, RM_CONTENT, RD_SHADER_SOURCES, "shadercache/"); // it post-pends vulkan anyway
+            fsSetPathForResourceDir(pSystemFileIO, RM_CONTENT, RD_SHADER_BINARIES, "shadercache/binary/");
             break;
 #endif
 #if defined(METAL)
@@ -239,30 +239,9 @@ ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
         assert(false && "WTF - Vulkan isn't supported by the window");
     }
     RendererDesc rendererDesc = {};
-    /*
-    mVulkan.
-    			const char** ppInstanceLayers;
-			const char** ppInstanceExtensions;
-			const char** ppDeviceExtensions;
-			uint32_t     mInstanceLayerCount;
-			uint32_t     mInstanceExtensionCount;
-			uint32_t     mDeviceExtensionCount;
-	LogFn        pLogFn;
-	ShaderTarget mShaderTarget;
-	GpuMode      mGpuMode;
 
-	/// Required when creating unlinked multiple renderers. Optional otherwise, can be used for explicit GPU selection.
-	RendererContext* pContext;
-	uint32_t         mGpuIndex;
-
-	/// This results in new validation not possible during API calls on the CPU, by creating patched shaders that have validation added directly to the shader.
-	/// However, it can slow things down a lot, especially for applications with numerous PSOs. Time to see the first render frame may take several minutes
-	bool mEnableGPUBasedValidation;
-
-	bool mD3D11Supported;
-	bool mGLESSupported;
-    */
     rendererDesc.mEnableGPUBasedValidation = true;
+    rendererDesc.mD3D11Supported = false;
     _renderer = nullptr;
     initRenderer("haxe_forge", &rendererDesc, &_renderer);
 
@@ -326,7 +305,7 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
     swapChainDesc.mHeight = height;
     swapChainDesc.mImageCount = chainCount;
 
-    printf("ForgeSDLWindow::createSwapChain - Swap chain dimensions %d %d\n", width, height);
+    printf("ForgeSDLWindow::createSwapChain - Swap chain dimensions %d %d handle %p \n", width, height, swapChainDesc.mWindowHandle.window);
 
     if (hdr10)
         swapChainDesc.mColorFormat = TinyImageFormat_R10G10B10A2_UNORM;
@@ -746,8 +725,11 @@ void generateMetalShader(const std::string &glslPath, const std::string &metalPa
 }
 
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile) {
+
     std::string vertFilePathOriginal(vertFile);
     std::string fragFilePathOriginal(fragFile);
+
+    #if __APPLE__
     std::string vertFilePath = removeExtension(vertFilePathOriginal);
     std::string fragFilePath = removeExtension(fragFilePathOriginal);
     auto vertFilePathMSL = vertFilePath + ".metal";
@@ -755,6 +737,13 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
 
     generateMetalShader(vertFilePathOriginal, vertFilePathMSL, false);
     generateMetalShader(fragFilePathOriginal, fragFilePathMSL, true);
+     auto vertFN = getFilename(vertFilePath);
+    auto fragFN = getFilename(fragFilePath);
+    #elif _WINDOWS
+     auto vertFN = getFilename(vertFile);
+    auto fragFN = getFilename(fragFile);
+    std::string vertFilePath = vertFilePathOriginal;
+    #endif
 
     /*
         auto vertSrc = getShaderSource(vertFile);
@@ -798,8 +787,7 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
         writeShaderSource(fragFilePathMSL, fragMSL);
     */
 
-    auto vertFN = getFilename(vertFilePath);
-    auto fragFN = getFilename(fragFilePath);
+   
     //
 
     ShaderLoadDesc shaderDesc = {};
@@ -1147,11 +1135,11 @@ DEFINE_PRIM(_BYTES, unpackSDLWindow, TWIN);
 
 // WINDOWS CALLBACKS
 void onDeviceLost() {
-
+    printf("!!!!!!!!!!!!!!!!!! DEVICE LOST !!!!!!!!!!!!!!!!\n");
 }
 
 void onRequestReload() {
-
+    printf("!!!!!!!!!!!!!!!!!! REQUEST RELOAD !!!!!!!!!!!!!!!!\n");
 }
 
 CustomMessageProcessor sCustomProc = nullptr;

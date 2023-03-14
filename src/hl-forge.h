@@ -463,6 +463,13 @@ class ResourceBarrierBuilder {
 
    public:
     int addRTBarrier(RenderTarget *rt, ResourceState src, ResourceState dst) {
+        if (rt != nullptr) {
+            printf("render target %p - texture %p\n", rt, rt->pTexture);
+            if (rt->pTexture ==(void *)(0xdeadbeefdeadbeef)) {
+                printf("Texture is invalid on reder target");
+                exit(-1);
+            }
+        }
         _rtBarriers.push_back({rt, src, dst});
         return _rtBarriers.size() - 1;
     }
@@ -475,6 +482,14 @@ class ResourceBarrierBuilder {
         if (_buffBarriers.size()) bbp = &_buffBarriers[0];
         if (_texBarriers.size()) tbp = &_texBarriers[0];
 
+        if (_rtBarriers.size()) {
+            RenderTarget *rt = rtbp[0].pRenderTarget;
+            if (rt->pTexture ==(void *)(0xdeadbeefdeadbeef)) {
+                 printf("render target %p - texture %p\n", rt, rt->pTexture);
+                printf("Texture is invalid on reder target");
+                exit(-1);
+            }
+        }
         cmdResourceBarrier(cmd, _buffBarriers.size(), bbp, _texBarriers.size(), tbp, _rtBarriers.size(), rtbp);
     }
 };
