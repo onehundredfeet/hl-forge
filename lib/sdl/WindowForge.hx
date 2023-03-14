@@ -19,7 +19,14 @@ class WindowForge extends sdl.Window {
     public function new( title : String, width : Int, height : Int, x : Int = Window.SDL_WINDOWPOS_CENTERED, y : Int = Window.SDL_WINDOWPOS_CENTERED, sdlFlags : Int = Window.SDL_WINDOW_SHOWN | Window.SDL_WINDOW_RESIZABLE) {
 
         // Need to choose the render that aligns with what's built in forge
-        win = sdl.Window.winCreateEx(x, y, width, height, sdlFlags | Window.SDL_WINDOW_METAL );
+        
+        var backend = switch( Sys.systemName()) {
+            case "Mac":Window.SDL_WINDOW_METAL;
+            case "Windows": Window.SDL_WINDOW_VULKAN;
+            default: 0;
+        } ;
+
+        win = sdl.Window.winCreateEx(x, y, width, height, sdlFlags |  backend);
         if( win == null ) throw "Failed to create window";
 
         init_once();

@@ -192,6 +192,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		trace('-------> Specified window dims ${win.width} x ${win.height}');
 
 		_renderer = _forgeSDLWin.renderer();
+		if (_renderer == null) throw "Could not initialize renderer";
+		
 		_queue = _renderer.createQueue();
 
 		for (i in 0..._swap_count) {
