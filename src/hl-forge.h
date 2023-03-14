@@ -319,7 +319,9 @@ class Map64Int {
 class HlForgePipelineDesc : public PipelineDesc {
    public:
     HlForgePipelineDesc() {
-        mGraphicsDesc = {};
+        *static_cast<PipelineDesc *>(this) = {};
+
+
     }
     inline GraphicsPipelineDesc *graphicsPipeline() {
         this->mType = PIPELINE_TYPE_GRAPHICS;

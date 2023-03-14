@@ -233,7 +233,7 @@ ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
     #elif defined( _WINDOWS )
 
 
-    DEBUG_PRINT("NSWindow %p %p %p\n", wmInfo.info.win.window, wmInfo.info.win.hdc, wmInfo.info.win.hinstance);
+    DEBUG_PRINT("Window Info %p %p %p\n", wmInfo.info.win.window, wmInfo.info.win.hdc, wmInfo.info.win.hinstance);
     auto window_flags = SDL_GetWindowFlags(window);
     if (!(window_flags & SDL_WINDOW_VULKAN)) {
         assert(false && "WTF - Vulkan isn't supported by the window");
@@ -304,11 +304,11 @@ ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
 
 
 SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int width, int height, int chainCount, bool hdr10) {
-    //	SDL_WindowData* data = (__bridge SDL_WindowData *)window->driverdata;
+    //SDL_WindowData* data = (__bridge SDL_WindowData *)window->driverdata;
     //   NSView *view = data.nswindow.contentView;
 
     //	NSView *view = [nswin contentView];
-
+    
 #ifdef __APPLE__
     _layer.drawableSize = CGSizeMake(width, height);
 #else
@@ -316,8 +316,10 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
     SwapChainDesc swapChainDesc = {};
     #ifdef __APPLE__
     swapChainDesc.mWindowHandle.window = _view;
-#else
+#elif _WINDOWS
+    swapChainDesc.mWindowHandle.window = wmInfo.info.win.window;
 #endif
+
     swapChainDesc.mPresentQueueCount = 1;
     swapChainDesc.ppPresentQueues = &queue;
     swapChainDesc.mWidth = width;
