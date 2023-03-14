@@ -62,12 +62,17 @@ struct _h_double2 {
 	double x;
 	double y;
 };
+typedef _h_double2 *h_double2;
+typedef _h_double2 *h_double2_array;
 
 struct _h_double3 {
 	double x;
 	double y;
 	double z;
 };
+
+typedef _h_double3 *h_double3;
+typedef _h_double3 *h_double3_array;
 
 struct _h_double4 {
 	double x;

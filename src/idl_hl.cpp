@@ -849,7 +849,7 @@ HL_PRIM int HL_NAME(AttributeSemantic_fromValue1)( int value ) {
 DEFINE_PRIM(_I32, AttributeSemantic_fromValue1, _I32);
 HL_PRIM int HL_NAME(AttributeSemantic_fromIndex1)( int index ) {return index;}
 DEFINE_PRIM(_I32, AttributeSemantic_fromIndex1, _I32);
-static AttributeType AttributeType__values[] = { FLOAT16,FLOAT32,FLOAT64,UINT8,UINT16,UINT32,UINT64 };
+static AttributeType AttributeType__values[] = { ATTR_FLOAT16,ATTR_FLOAT32,ATTR_FLOAT64,ATTR_UINT8,ATTR_UINT16,ATTR_UINT32,ATTR_UINT64 };
 HL_PRIM int HL_NAME(AttributeType_toValue0)( int idx ) {
 	return (int)AttributeType__values[idx];
 }
