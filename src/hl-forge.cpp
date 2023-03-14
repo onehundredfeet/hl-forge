@@ -186,12 +186,12 @@ Queue *createQueue(Renderer *renderer) {
 void destroyRenderer(Renderer *) {
 }
 
-#ifdef __APPLE__
 ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
     this->window = window;
     SDL_VERSION(&wmInfo.version);
     SDL_GetWindowWMInfo(window, &wmInfo);
     DEBUG_PRINT("SDL_Window %p\n", window);
+    #ifdef __APPLE__
     DEBUG_PRINT("NSWindow %p\n", wmInfo.info.cocoa.window);
     void *view = getNSViewFromNSWindow(wmInfo.info.cocoa.window);
     DEBUG_PRINT("NSVIew %p\n", view);
@@ -215,8 +215,7 @@ ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
 #else
     _layer = (CAMetalLayer *)[(__bridge UIView *)_view layer];
 #endif
-
-    RendererDesc rendererDesc = {};
+ RendererDesc rendererDesc = {};
     rendererDesc.mEnableGPUBasedValidation = true;
     _renderer = nullptr;
     initRenderer("haxe_forge", &rendererDesc, &_renderer);
@@ -228,6 +227,11 @@ ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
     _layer.pixelFormat = false ? MTLPixelFormatRGBA16Float : MTLPixelFormatBGRA8Unorm;
     _layer.wantsExtendedDynamicRangeContent = false ? true : false;
     _layer.drawableSize = CGSizeMake(wmInfo.info.cocoa.window.frame.size.width, wmInfo.info.cocoa.window.frame.size.height);
+
+    #else
+
+    #endif
+   
 }
 
 
@@ -238,10 +242,15 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
 
     //	NSView *view = [nswin contentView];
 
+#ifdef __APPLE__
     _layer.drawableSize = CGSizeMake(width, height);
-
+#else
+#endif
     SwapChainDesc swapChainDesc = {};
+    #ifdef __APPLE__
     swapChainDesc.mWindowHandle.window = _view;
+#else
+#endif
     swapChainDesc.mPresentQueueCount = 1;
     swapChainDesc.ppPresentQueues = &queue;
     swapChainDesc.mWidth = width;
@@ -261,7 +270,7 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
     addSwapChain(renderer, &swapChainDesc, &pSwapChain);
     return pSwapChain;
 }
-#endif
+
 void forge_renderer_destroySwapChain(Renderer *pRenderer, SwapChain *swapChain) {
     removeSwapChain(pRenderer, swapChain);
 }
@@ -1066,3 +1075,7 @@ DEFINE_PRIM(_IDL, Window_getWindow1, _BYTES);
 */
 
 DEFINE_PRIM(_BYTES, unpackSDLWindow, TWIN);
+
+void onDeviceLost() {
+
+}

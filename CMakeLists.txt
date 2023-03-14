@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.15)
+cmake_policy(SET CMP0091 NEW)
 project (forge C CXX )
 
 if(APPLE)
@@ -13,6 +14,7 @@ if (NOT FORGE_LIB_DIR)
     set(FORGE_LIB_INC "${FORGE_LIB_DIR}/Common_3")
     set(FORGE_LIB_SRC "${FORGE_LIB_DIR}/Common_3")
     set(FORGE_OS_SRC "${FORGE_LIB_DIR}/Common_3/OS")
+    set(FORGE_TOOLS_SRC_DIR "${FORGE_LIB_DIR}/Common_3/Tools")
     set(FORGE_TP_SRC "${FORGE_LIB_DIR}/Common_3/ThirdParty/OpenSource")
     set(FORGE_MW_SRC "${FORGE_LIB_DIR}/Middleware_3")
     set(FORGE_RDR_SRC "${FORGE_LIB_DIR}/Common_3/Renderer")
@@ -78,12 +80,12 @@ if (NOT SPIRV_ROOT)
 endif()
 
 if (NOT SHADERC_ROOT)
-    set(SHADERC_ROOT "./ext/shaderc")
-    set(SHADERC_INC 
-    "${SHADERC_ROOT}/libshaderc/include"
-    "${SHADERC_ROOT}/libshaderc_util/include"
-    )
-    set(SHADERC_SRC "${SHADERC_ROOT}/libshaderc/src")
+    #set(SHADERC_ROOT "./ext/shaderc")
+    #set(SHADERC_INC 
+    #"${SHADERC_ROOT}/libshaderc/include"
+    #"${SHADERC_ROOT}/libshaderc_util/include"
+   # )
+    #set(SHADERC_SRC "${SHADERC_ROOT}/libshaderc/src")
 endif()
 endif() # OS specific
 
@@ -109,26 +111,46 @@ endif()
 
 
 
-
+#platform specific OS
 if(APPLE)
 set( FORGE_OS_C_SRCS 
-    ${FORGE_OS_SRC}/Logging/Log.c
     ${FORGE_OS_SRC}/Darwin/DarwinThread.c
     ${FORGE_OS_SRC}/Darwin/DarwinLog.c
-    ${FORGE_OS_SRC}/MemoryTracking/MemoryTracking.c
 )
 
 set( FORGE_OS_CPP_SRCS
 ${FORGE_OS_SRC}/Darwin/CocoaFileSystem.mm
-${FORGE_OS_SRC}/FileSystem/FileSystem.cpp
 ${FORGE_OS_SRC}/FileSystem/UnixFileSystem.cpp
-${FORGE_OS_SRC}/FileSystem/SystemRun.cpp
-${FORGE_OS_SRC}/Core/Screenshot.cpp
 )
 elseif(WIN32)
 
+set( FORGE_OS_C_SRCS 
+${FORGE_OS_SRC}/Windows/WindowsLog.c
+${FORGE_OS_SRC}/Windows/WindowsThread.c
+${FORGE_OS_SRC}/Windows/WindowsTime.c
+)
+
+set( FORGE_OS_CPP_SRCS
+#${FORGE_OS_SRC}/Windows/WindowsBase.cpp
+${FORGE_OS_SRC}/Windows/WindowsFileSystem.cpp
+${FORGE_OS_SRC}/Windows/WindowsWindow.cpp
+)
 endif()
 
+#common OS
+set( FORGE_OS_C_SRCS ${FORGE_OS_C_SRCS}
+${FORGE_OS_SRC}/MemoryTracking/MemoryTracking.c
+${FORGE_OS_SRC}/Logging/Log.c
+)
+
+set( FORGE_OS_CPP_SRCS ${FORGE_OS_CPP_SRCS}
+${FORGE_OS_SRC}/Core/Screenshot.cpp
+${FORGE_OS_SRC}/FileSystem/FileSystem.cpp
+${FORGE_OS_SRC}/FileSystem/SystemRun.cpp
+#${FORGE_OS_SRC}/UI/UI.cpp
+)
+
+# meshes
 set ( FORGE_MW_SRCS
     ${FORGE_MW_SRC}/ParallelPrimitives/ParallelPrimitives.cpp
 )
@@ -151,7 +173,11 @@ ${FORGE_RDR_SRC}/Metal/MetalShaderReflection.mm
 )
 elseif(WIN32)
 set( FORGE_OS_RENDER_SRCS
-${SHADERC_SRC}/shaderc.cc
+#${SHADERC_SRC}/shaderc.cc
+${FORGE_RDR_SRC}/Vulkan/Vulkan.cpp
+${FORGE_RDR_SRC}/Vulkan/VulkanRayTracing.cpp
+${FORGE_RDR_SRC}/Vulkan/VulkanShaderReflection.cpp
+${FORGE_TOOLS_SRC_DIR}/SpirvTools/SpirvTools.cpp
 )
 
 endif()
@@ -221,14 +247,14 @@ cmake_policy(SET CMP0015 NEW)
 
 target_include_directories(forge.hdll
 PRIVATE
+${VULKAN_INC_DIR}
+${SHADERC_INC}
 ${FORGE_INC_DIR}
 ${FORGE_LIB_INC}
 ${HL_INCLUDE_DIR}
 ${FORGE_TP_INC}
 ${FP16_INC_DIR}
-${VULKAN_INC_DIR}
 ${SDL_INC_DIR}
-${SHADERC_INC}
 "${XXHASH_ROOT_DIR}"
 )
 if (APPLE)
@@ -240,19 +266,46 @@ find_library( IOKIT_LIB IOKit)
 find_library( METAL_PERF_SHADER_LIB MetalPerformanceShaders)
 find_library( APPKITLIB AppKit)
 find_library( COREGRAPHICSLIB CoreGraphics)
-find_library( SHADERC_LIB shaderc_combined)
+find_library( SPIRVCROSS_METALLIB spirv-cross-msl HINTS ${VULKAN_LIB_DIR})
 
 
 
-
-set( OS_LIBS  ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB} ${APPKITLIB} ${COREGRAPHICSLIB} ${METALKIT_LIB}  ${SHADERC_LIB} )
+set( OS_LIBS  ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB} ${APPKITLIB} ${COREGRAPHICSLIB} ${METALKIT_LIB}   )
 elseif(WIN32)
+set(CMAKE_MSVC_RUNTIME_LIBRARY  "MultiThreadedDLL")
+set_property(TARGET forge.hdll PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MD")
+
+find_library( VULKAN_LIB vulkan-1 HINTS ${VULKAN_LIB_DIR})
+find_library( VOLK_LIB volk HINTS ${VULKAN_LIB_DIR})
+set( OS_LIBS ${VULKAN_LIB} ${VOLK_LIB})
 endif()
 
 find_library( SDL_LIB SDL2 HINTS ${SDL_LIB_DIR})
+find_library( SPIRV_LIB SPIRV HINTS ${VULKAN_LIB_DIR})
 find_library( SPIRVCROSS_CORELIB spirv-cross-core HINTS ${VULKAN_LIB_DIR})
-find_library( SPIRVCROSS_METALLIB spirv-cross-msl HINTS ${VULKAN_LIB_DIR})
+find_library( SPIRVCROSS_UTIL_LIB spirv-cross-util HINTS ${VULKAN_LIB_DIR})
 find_library( SPIRVCROSS_GLSLLIB spirv-cross-glsl HINTS ${VULKAN_LIB_DIR})
+find_library( SPIRVCROSS_HLSL_LIB spirv-cross-hlsl HINTS ${VULKAN_LIB_DIR})
+find_library( SPIRVCROSS_REFLECT_LIB spirv-cross-reflect HINTS ${VULKAN_LIB_DIR})
+find_library( SPIRVCROSS_CPP_LIB spirv-cross-cpp HINTS ${VULKAN_LIB_DIR})
+find_library( SPIRVTOOLS_LIB SPIRV-Tools HINTS ${VULKAN_LIB_DIR})
+find_library( SPIRVTOOLS_OPT_LIB SPIRV-Tools-opt HINTS ${VULKAN_LIB_DIR})
+
+set(SPRIV_LIBS
+${SPIRVTOOLS_OPT_LIB}
+${SPIRVTOOLS_LIB} 
+${SPIRVCROSS_REFLECT_LIB}
+${SPIRVCROSS_METALLIB}
+${SPIRVCROSS_GLSLLIB}
+${SPIRVCROSS_UTIL_LIB}
+${SPIRVCROSS_CPP_LIB}
+${SPIRVCROSS_HLSL_LIB}
+${SPIRV_LIB}
+${SPIRVCROSS_CORELIB}
+)
+
+find_library( SHADERC_LIB shaderc_combined HINTS ${VULKAN_LIB_DIR})
 
 
 if (UNIX)
@@ -271,6 +324,8 @@ set_property (TARGET forge.hdll APPEND_STRING PROPERTY COMPILE_FLAGS " -mpclmul 
 elseif(WIN32)
 set_property (TARGET forge.hdll APPEND_STRING PROPERTY COMPILE_FLAGS "")
 endif() 
-target_link_libraries(forge.hdll ${LIBHL} ${OS_LIBS} ${SPIRVCROSS_CORELIB} ${SPIRVCROSS_METALLIB} ${SPIRVCROSS_GLSLLIB}  ${SDL_LIB} )
+
+
+target_link_libraries(forge.hdll ${LIBHL} ${OS_LIBS}   ${SDL_LIB} ${SHADERC_LIB} ${SPRIV_LIBS})
 
 install(TARGETS forge.hdll )
