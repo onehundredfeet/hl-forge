@@ -1,49 +1,50 @@
 #ifndef __HL_FORGE_H_
 #define __HL_FORGE_H_
 #pragma once
+#if __APPLE__
 #include <Foundation/Foundation.h>
+
+
+
+
+
+
+
+
+
+void heuristicTest(void (*fn)());
+void heuristicTest2(float (*fn)(int));
+
+
+#endif // APPLE
+
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
-#include <fp16.h>
-#include <xxhash.h>
+
+#ifndef SDL_MAJOR_VERSION
+#error "SDL2 SDK not found"
+#endif
 
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#ifndef SDL_MAJOR_VERSION
-#error "SDL2 SDK not found in hl/include/sdl/"
-#endif
-
-// #define DEBUG_PRINT(...) printf(__VA_ARGS__)
-#define DEBUG_PRINT(...)
+#include <fp16.h>
+#include <algorithm>
 
 #include <meshoptimizer/src/meshoptimizer.h>
-
-#define TWIN _ABSTRACT(sdl_window)
-
-void heuristicTest(void (*fn)());
-void heuristicTest2(float (*fn)(int));
-
-bool hlForgeInitialize(const char *name);
 
 #include <Renderer/IRenderer.h>
 #include <Renderer/IResourceLoader.h>
 
+#define XXHASH_EXPOSE_STATE
+#include <xxhash.h>
 
-class ForgeSDLWindow {
-   public:
-    ForgeSDLWindow(SDL_Window *window);
-    SwapChain *createSwapChain(Renderer *renderer, Queue *queue, int width, int height, int chainCount, bool hdr10);
-    SDL_Window *window;
-    SDL_SysWMinfo wmInfo;
-    Renderer *renderer() { return _renderer; }
-    Renderer *_renderer;
-    SDL_MetalView _view;
-    CAMetalLayer *_layer;
-    void present(Queue *pGraphicsQueue, SwapChain *pSwapChain, int swapchainImageIndex, Semaphore *pRenderCompleteSemaphore);
-};
+#define TWIN _ABSTRACT(sdl_window)
+
+// #define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...)
 
 class HashBuilder {
    private:
@@ -82,6 +83,23 @@ class HashBuilder {
         return XXH64_digest(&_state);
     }
 };
+
+bool hlForgeInitialize(const char *name);
+class ForgeSDLWindow {
+   public:
+    ForgeSDLWindow(SDL_Window *window);
+    SwapChain *createSwapChain(Renderer *renderer, Queue *queue, int width, int height, int chainCount, bool hdr10);
+    SDL_Window *window;
+    SDL_SysWMinfo wmInfo;
+    Renderer *renderer() { return _renderer; }
+    Renderer *_renderer;
+    #if __APPLE__
+    SDL_MetalView _view;
+    CAMetalLayer *_layer;
+    #endif
+    void present(Queue *pGraphicsQueue, SwapChain *pSwapChain, int swapchainImageIndex, Semaphore *pRenderCompleteSemaphore);
+};
+
 
 class RootSignatureFactory {
    public:
@@ -256,7 +274,7 @@ class BufferBinder {
         _buffersTmp.push_back(nullptr);
         _strides.push_back(stride);
         _offsets.push_back(offset);
-        return _buffers.size() - 1;
+        return (int)(_buffers.size() - 1);
     }
 
     static void bindAsVertex(Cmd *cmd, BufferBinder *This) {
@@ -267,7 +285,7 @@ class BufferBinder {
             This->_buffersTmp[i] = This->_buffers[i]->current();
         }
         // these strides don't seem to matter on Metal ENABLE_DRAW_INDEX_BASE_VERTEX_FALLBACK
-        cmdBindVertexBuffer(cmd, This->_buffers.size(), &This->_buffersTmp[0], &This->_strides[0], &This->_offsets[0]);
+        cmdBindVertexBuffer(cmd, (int)This->_buffers.size(), &This->_buffersTmp[0], &This->_strides[0], &This->_offsets[0]);
     }
 };
 
@@ -484,31 +502,31 @@ enum AttributeSemantic {
 };
 
 enum AttributeType {
-    FLOAT16,
-    FLOAT32,
-    FLOAT64,
-    UINT8,
-    UINT16,
-    UINT32,
-    UINT64
+    ATTR_FLOAT16,
+    ATTR_FLOAT32,
+    ATTR_FLOAT64,
+    ATTR_UINT8,
+    ATTR_UINT16,
+    ATTR_UINT32,
+    ATTR_UINT64
 };
 
 int inline getAttributeSize(AttributeType t, int dimensions) {
     switch (t) {
-        case FLOAT16:
-            return sizeof(u_int16_t) * dimensions;
-        case FLOAT32:
+        case ATTR_FLOAT16:
+            return sizeof(uint16_t) * dimensions;
+        case ATTR_FLOAT32:
             return sizeof(float_t) * dimensions;
-        case FLOAT64:
+        case ATTR_FLOAT64:
             return sizeof(double) * dimensions;
-        case UINT8:
-            return sizeof(u_int8_t) * dimensions;
-        case UINT16:
-            return sizeof(u_int16_t) * dimensions;
-        case UINT32:
-            return sizeof(u_int32_t) * dimensions;
-        case UINT64:
-            return sizeof(u_int64_t) * dimensions;
+        case ATTR_UINT8:
+            return sizeof(uint8_t) * dimensions;
+        case ATTR_UINT16:
+            return sizeof(uint16_t) * dimensions;
+        case ATTR_UINT32:
+            return sizeof(uint32_t) * dimensions;
+        case ATTR_UINT64:
+            return sizeof(uint64_t) * dimensions;
         default:
             return 0;
     }
@@ -522,7 +540,7 @@ class PolyMesh {
         int dimensions;
         int binarySize;
         bool normalized;
-        std::vector<u_int8_t> data;
+        std::vector<uint8_t> data;
 
         void set(int idx, double *v, int count) {
             auto offset = binarySize * idx;
@@ -530,62 +548,62 @@ class PolyMesh {
             if (offset > data.size()) {
                 printf("ERROR: Index %d is out of bounds\n", idx);
             }
-            u_int8_t *d = &data[offset];
+            uint8_t *d = &data[offset];
 
             if (count > dimensions) count = dimensions;
             for (int i = 0; i < count; i++) {
                 switch (type) {
-                    case FLOAT16:
-                        ((u_int16_t *)d)[i] = fp16_ieee_from_fp32_value(v[i]);
+                    case ATTR_FLOAT16:
+                        ((uint16_t *)d)[i] = fp16_ieee_from_fp32_value(v[i]);
                         break;
-                    case FLOAT32:
+                    case ATTR_FLOAT32:
                         ((float_t *)d)[i] = v[i];
                         break;
-                    case FLOAT64:
+                    case ATTR_FLOAT64:
                         ((double *)d)[i] = v[i];
                         break;
-                    case UINT8:
-                        ((u_int8_t *)d)[i] = normalized ? std::clamp(v[i] * (double)std::numeric_limits<std::uint8_t>::max(), 0., (double)std::numeric_limits<std::uint8_t>::max()) : v[i];
+                    case ATTR_UINT8:
+                        ((uint8_t *)d)[i] = normalized ? std::clamp(v[i] * (double)std::numeric_limits<std::uint8_t>::max(), 0., (double)std::numeric_limits<std::uint8_t>::max()) : v[i];
                         break;
-                    case UINT16:
-                        ((u_int16_t *)d)[i] = normalized ? std::clamp(v[i] * (double)std::numeric_limits<std::uint16_t>::max(), 0., (double)std::numeric_limits<std::uint16_t>::max()) : v[i];
+                    case ATTR_UINT16:
+                        ((uint16_t *)d)[i] = normalized ? std::clamp(v[i] * (double)std::numeric_limits<std::uint16_t>::max(), 0., (double)std::numeric_limits<std::uint16_t>::max()) : v[i];
                         break;
-                    case UINT32:
-                        ((u_int32_t *)d)[i] = normalized ? v[i] * (double)std::numeric_limits<std::uint32_t>::max() : v[i];
+                    case ATTR_UINT32:
+                        ((uint32_t *)d)[i] = (uint32_t)(normalized ? v[i] * (double)std::numeric_limits<std::uint32_t>::max() : v[i]);
                         break;
-                    case UINT64:
-                        ((u_int64_t *)d)[i] = normalized ? v[i] * (double)std::numeric_limits<std::uint64_t>::max() : v[i];
+                    case ATTR_UINT64:
+                        ((uint64_t *)d)[i] = normalized ? v[i] * (double)std::numeric_limits<std::uint64_t>::max() : v[i];
                         break;
                 }
             }
         }
 
         void set(int idx, float *v, int count) {
-            u_int8_t *d = &data[binarySize * idx];
+            uint8_t *d = &data[binarySize * idx];
 
             if (count > dimensions) count = dimensions;
             for (int i = 0; i < count; i++) {
                 switch (type) {
-                    case FLOAT16:
-                        ((u_int16_t *)d)[i] = fp16_ieee_from_fp32_value(v[i]);
+                    case ATTR_FLOAT16:
+                        ((uint16_t *)d)[i] = fp16_ieee_from_fp32_value(v[i]);
                         break;
-                    case FLOAT32:
+                    case ATTR_FLOAT32:
                         ((float_t *)d)[i] = v[i];
                         break;
-                    case FLOAT64:
+                    case ATTR_FLOAT64:
                         ((double *)d)[i] = v[i];
                         break;
-                    case UINT8:
-                        ((u_int8_t *)d)[i] = normalized ? std::clamp(v[i] * (float)std::numeric_limits<std::uint8_t>::max(), 0.0f, (float)std::numeric_limits<std::uint8_t>::max()) : v[i];
+                    case ATTR_UINT8:
+                        ((uint8_t *)d)[i] = normalized ? std::clamp(v[i] * (float)std::numeric_limits<std::uint8_t>::max(), 0.0f, (float)std::numeric_limits<std::uint8_t>::max()) : v[i];
                         break;
-                    case UINT16:
-                        ((u_int16_t *)d)[i] = normalized ? std::clamp(v[i] * (float)std::numeric_limits<std::uint16_t>::max(), 0.0f, (float)std::numeric_limits<std::uint16_t>::max()) : v[i];
+                    case ATTR_UINT16:
+                        ((uint16_t *)d)[i] = normalized ? std::clamp(v[i] * (float)std::numeric_limits<std::uint16_t>::max(), 0.0f, (float)std::numeric_limits<std::uint16_t>::max()) : v[i];
                         break;
-                    case UINT32:
-                        ((u_int32_t *)d)[i] = normalized ? v[i] * (float)std::numeric_limits<std::uint32_t>::max() : v[i];
+                    case ATTR_UINT32:
+                        ((uint32_t *)d)[i] = normalized ? v[i] * (float)std::numeric_limits<std::uint32_t>::max() : v[i];
                         break;
-                    case UINT64:
-                        ((u_int64_t *)d)[i] = normalized ? v[i] * (float)std::numeric_limits<std::uint64_t>::max() : v[i];
+                    case ATTR_UINT64:
+                        ((uint64_t *)d)[i] = normalized ? v[i] * (float)std::numeric_limits<std::uint64_t>::max() : v[i];
                         break;
                 }
             }
@@ -806,7 +824,7 @@ class PolyMesh {
     }
 
     void optimizeTriangleIndices() {
-        std::vector<u_int32_t> optIndices;
+        std::vector<uint32_t> optIndices;
         optIndices.resize(_indices.size());
 
         meshopt_optimizeVertexCache(&optIndices[0], &_indices[0], _indices.size(), _numVerts);
@@ -815,13 +833,13 @@ class PolyMesh {
     }
 
     bool optimizeTriangleIndicesForOverdraw() {
-        std::vector<u_int32_t> optIndices;
+        std::vector<uint32_t> optIndices;
         optIndices.resize(_indices.size());
 
         auto *a = getAttributeBySemantic(POSITION);
 
         if (a != nullptr) {
-            if (a->type == FLOAT32 && a->dimensions == 3) {
+            if (a->type == ATTR_FLOAT32 && a->dimensions == 3) {
                 meshopt_optimizeOverdraw(&optIndices[0], &_indices[0], _indices.size(), (float *)&a->data[0], _numVerts, a->binarySize, 1.05f);
 
                 _indices = std::move(optIndices);
@@ -836,7 +854,7 @@ class PolyMesh {
         return _indices.size();
     }
     void optimizeTriangleMemoryFetch() {
-        std::vector<u_int32_t> remapIndices;
+        std::vector<uint32_t> remapIndices;
         remapIndices.resize(_indices.size());
 
         meshopt_optimizeVertexFetchRemap(&remapIndices[0], &_indices[0], _indices.size(), _numVerts);
@@ -850,7 +868,7 @@ class PolyMesh {
             a.data = std::move(tmp);
         }
 
-        std::vector<u_int32_t> updatedIndices;
+        std::vector<uint32_t> updatedIndices;
         updatedIndices.resize(_indices.size());
 
         meshopt_remapIndexBuffer(&updatedIndices[0], &_indices[0], _indices.size(), &remapIndices[0]);
@@ -916,9 +934,11 @@ class PolyMesh {
     }
 };
 
+#if __APPLE__
 // SDL interface
 SDL_Window *forge_sdl_get_window(void *ptr);
 SDL_MetalView forge_create_metal_view(SDL_Window *);
+#endif
 
 // Swap Chain
 RenderTarget *forge_swap_chain_get_render_target(SwapChain *, int);

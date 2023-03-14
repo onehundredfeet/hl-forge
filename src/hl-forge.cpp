@@ -1,5 +1,7 @@
 
-#include <Foundation/Foundation.h>
+#ifdef __APPLE__
+#include "hl-forge_osx.hpp"
+#endif
 #include <OS/Interfaces/IInput.h>
 #include <OS/Logging/Log.h>
 #include <Renderer/IRenderer.h>
@@ -21,7 +23,9 @@
 #define HL_NAME(x) forge_##x
 #include <hl.h>
 
+#ifdef __APPLE__
 #include "hl-forge-meta.h"
+#endif
 #include "hl-forge.h"
 
 
@@ -54,6 +58,7 @@ static std::vector<BufferDispose> _toDisposeA;
 static std::vector<BufferDispose> _toDisposeB;
 static std::vector<BufferDispose> *_toDispose = nullptr;
 // From SDL
+#ifdef __APPLE__
 static int IsMetalAvailable(const SDL_SysWMinfo *syswm) {
     if (syswm->subsystem != SDL_SYSWM_COCOA && syswm->subsystem != SDL_SYSWM_UIKIT) {
         return SDL_SetError("Metal render target only supports Cocoa and UIKit video targets at the moment.");
@@ -69,32 +74,8 @@ static int IsMetalAvailable(const SDL_SysWMinfo *syswm) {
     return 0;
 }
 
-static SDL_MetalView GetWindowView(SDL_Window *window) {
-    SDL_SysWMinfo info;
-
-    SDL_VERSION(&info.version);
-    if (SDL_GetWindowWMInfo(window, &info)) {
-#ifdef __MACOSX__
-        if (info.subsystem == SDL_SYSWM_COCOA) {
-            NSView *view = info.info.cocoa.window.contentView;
-            if (view.subviews.count > 0) {
-                view = view.subviews[0];
-                if (view.tag == SDL_METALVIEW_TAG) {
-                    return (SDL_MetalView)CFBridgingRetain(view);
-                }
-            }
-        }
-#else
-        if (info.subsystem == SDL_SYSWM_UIKIT) {
-            UIView *view = info.info.uikit.window.rootViewController.view;
-            if (view.tag == SDL_METALVIEW_TAG) {
-                return (SDL_MetalView)CFBridgingRetain(view);
-            }
-        }
 #endif
-    }
-    return nil;
-}
+
 
 bool hlForgeInitialize(const char *name) {
     // init memory allocator
@@ -205,6 +186,7 @@ Queue *createQueue(Renderer *renderer) {
 void destroyRenderer(Renderer *) {
 }
 
+#ifdef __APPLE__
 ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
     this->window = window;
     SDL_VERSION(&wmInfo.version);
@@ -248,6 +230,8 @@ ForgeSDLWindow::ForgeSDLWindow(SDL_Window *window) {
     _layer.drawableSize = CGSizeMake(wmInfo.info.cocoa.window.frame.size.width, wmInfo.info.cocoa.window.frame.size.height);
 }
 
+
+
 SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int width, int height, int chainCount, bool hdr10) {
     //	SDL_WindowData* data = (__bridge SDL_WindowData *)window->driverdata;
     //   NSView *view = data.nswindow.contentView;
@@ -277,7 +261,7 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
     addSwapChain(renderer, &swapChainDesc, &pSwapChain);
     return pSwapChain;
 }
-
+#endif
 void forge_renderer_destroySwapChain(Renderer *pRenderer, SwapChain *swapChain) {
     removeSwapChain(pRenderer, swapChain);
 }
@@ -776,15 +760,19 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
             auto &r = tmp->pReflection->pShaderResources[i];
             ss << "\t" << i << " name:" << r.name << std::endl;
             ss << "\t" << i << " reg:" << r.reg << std::endl;
+            #if __APPLE__
             ss << "\t" << i << " argument buffer field:" << r.mIsArgumentBufferField << std::endl;
+            #endif
             ss << "\t" << i << " used stages:" << r.used_stages << std::endl;
             ss << "\t" << i << " set:" << r.set << std::endl;
             ss << "\t" << i << " size:" << r.size << std::endl;
             ss << "\t" << i << " dim:" << r.dim << std::endl;
+            #ifdef __APPLE__
             ss << "\t" << i << " alignment:" << r.alignment << std::endl;
             ss << "\t" << i << " argument descriptor index:" << r.mtlArgumentDescriptors.mArgumentIndex << std::endl;
             ss << "\t" << i << " argument array length:" << r.mtlArgumentDescriptors.mArrayLength << std::endl;
             ss << "\t" << i << " argument buffer index:" << r.mtlArgumentDescriptors.mBufferIndex << std::endl;
+            #endif
 
             ss << "\t" << i << " type:";
 
@@ -816,6 +804,7 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
                 case DESCRIPTOR_TYPE_ROOT_CONSTANT:
                     ss << "Root constant";
                     break;
+                    #if __APPLE__
                 case DESCRIPTOR_TYPE_ARGUMENT_BUFFER:
                     ss << "Argument buffer";
                     break;
@@ -825,6 +814,7 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
                 case DESCRIPTOR_TYPE_RENDER_PIPELINE_STATE:
                     ss << "Render pipeline buffer";
                     break;
+                    #endif
                 default:
                     ss << "Unknown: " << r.type;
                     break;
