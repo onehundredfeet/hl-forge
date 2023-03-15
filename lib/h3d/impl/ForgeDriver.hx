@@ -1,5 +1,6 @@
 package h3d.impl;
 
+import forge.GLSLTranscoder.EGLSLFlavour;
 import haxe.crypto.Crc32;
 import haxe.Int64;
 //import hl.I64;
@@ -121,6 +122,10 @@ inline function debugTrace(s : String) {
 	trace("DEBUG " + s);
 }
 
+@:enum abstract ForgeBackend(Int) {
+	var Metal = 0;
+	var Vulkan;
+}
 @:access(h3d.impl.Shader)
 class ForgeDriver extends h3d.impl.Driver {
 
@@ -160,6 +165,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _swapRenderTargets = new Array<RenderTarget>();
 	var _fragmentUniformBuffers = new Array<VertexBufferExt>();
 	
+	var _backend : ForgeBackend;
 //	var defaultDepthInst : h3d.mat.DepthBuffer;
 
 	var count = 0;
@@ -171,6 +177,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		var x = Std.string(FileSystem.absolutePath(''));
 		DebugTrace.trace('CWD Driver IS ${x}');
 
+		_backend = switch(Sys.systemName()) {
+			case "Mac": ForgeBackend.Metal;
+			case "Windows" : ForgeBackend.Vulkan;
+			default: ForgeBackend.Vulkan;
+		}
 		reset();
 	}
 
@@ -1084,8 +1095,14 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		//trace('Done init shader');
 	}
 	public function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
-		var vertTranscoder = new forge.GLSLTranscoder();
-		var fragTranscoder = new forge.GLSLTranscoder();
+
+		var flavour = switch(_backend) {
+			case Metal : EGLSLFlavour.Metal;
+			case Vulkan : EGLSLFlavour.Vulkan;
+		}
+
+		var vertTranscoder = new forge.GLSLTranscoder(flavour);
+		var fragTranscoder = new forge.GLSLTranscoder(flavour);
 
 		var p = new CompiledProgram();
 		p.id = _programIds++;
@@ -1190,7 +1207,9 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 			if (p.fragment.textureCount() > 0) {
 				p.fragment.textureIndex = rootSig.getDescriptorIndexFromName( "fragmentTextures");
+				#if metal
 				p.fragment.samplerIndex = rootSig.getDescriptorIndexFromName( "fragmentTexturesSmplr");
+				#end 
 			} else {
 				p.fragment.textureIndex = -1;
 				p.fragment.samplerIndex = -1;
@@ -1202,9 +1221,6 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 				p.fragment.textureCubeIndex = -1;
 				p.fragment.samplerCubeIndex = -1;
 			}
-
-
-			//rootDesc.addSampler( _bilinearClamp2DSampler, "fragmentTexturesSmplr" );
 		}
 
 
@@ -1217,7 +1233,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		p.vertex.paramsLength = shader.vertex.paramsSize * 4; // vectors to floats
 		if (p.vertex.globalsLength > 0) {
 			p.vertex.globalsBuffer = DynamicUniformBuffer.allocate(p.vertex.globalsLength * 4, _swap_count); 
-			p.vertex.globalDescriptorSet = p.vertex.globalsBuffer.createDescriptors( _renderer, rootSig, p.vertex.globalsIndex, DESCRIPTOR_UPDATE_FREQ_PER_FRAME);
+			p.vertex.globalDescriptorSet = p.vertex.globalsBuffer.createDescriptors( _renderer, rootSig, p.vertex.globalsIndex, DESCRIPTOR_UPDATE_FREQ_PER_DRAW);
 		}
 		p.fragment.params = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
 		p.fragment.constantsIndex = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
@@ -1231,7 +1247,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		p.fragment.paramsLength = shader.fragment.paramsSize * 4; // vectors to floats
 		if (p.fragment.globalsLength > 0) {
 			p.fragment.globalsBuffer = DynamicUniformBuffer.allocate(p.fragment.globalsLength * 4, 3); // need to use the swap chain depth, but 3 is enough for now
-			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, DESCRIPTOR_UPDATE_FREQ_PER_FRAME);
+			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, DESCRIPTOR_UPDATE_FREQ_PER_DRAW);
 		}
 //		p.fragment.textures
 /*
@@ -2210,10 +2226,12 @@ var offset = 8;
 			var tds = _textureDescriptorMap.get(crc.get());
 
 			if (tds == null) {
-				DebugTrace.trace('RENDER Adding texture ${crc.get()}');
-				var ds = _renderer.createDescriptorSet(_curShader.rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 2, 0);
+				DebugTrace.trace('RENDER Adding texture ${crc.get()} mode ${textureModeIdx}');
+				var descriptorSets = _backend == Metal ? 2 : 1;
+				var ds = _renderer.createDescriptorSet(_curShader.rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, descriptorSets, 0);
 				
 				if (_textureDataBuilder == null ) {
+					trace('TExture builder is null');
 					_textureDataBuilder = new Array<forge.Native.DescriptorDataBuilder>();
 	
 					for (i in 0...3) {
@@ -2227,10 +2245,16 @@ var offset = 8;
 						var cdb = new forge.Native.DescriptorDataBuilder();
 
 						if (textureMode & TBDT_2D != 0) {
-							var s = cdb.addSlot(DBM_TEXTURES);
-							cdb.setSlotBindName(s, "fragmentTextures");
-							s = cdb.addSlot( DBM_SAMPLERS);
-							cdb.setSlotBindName(s, "fragmentTexturesSmplr");
+							switch(_backend) {
+								case Metal:
+									var s = cdb.addSlot(DBM_TEXTURES);
+									cdb.setSlotBindName(s, "fragmentTextures");
+									s = cdb.addSlot( DBM_SAMPLERS);
+									cdb.setSlotBindName(s, "fragmentTexturesSmplr");
+								case Vulkan:
+									var s = cdb.addSlot( DBM_TEXTURES);
+									cdb.setSlotBindName(s, "fragmentTextures");
+								}
 						}
 
 						if (textureMode & TBDT_CUBE != 0) {
@@ -2242,14 +2266,18 @@ var offset = 8;
 						_textureDataBuilder.push(cdb);
 					}
 				} else {
+					trace('TExture builder is not null');
+
 					//Needs to be a better way to do this
 					switch(textureMode) {
 						case TBDT_2D: 
 							_textureDataBuilder[TBDT_2D_IDX].clearSlotData(0);
-							_textureDataBuilder[TBDT_2D_IDX].clearSlotData(1);
+							if (_backend == Metal)
+								_textureDataBuilder[TBDT_2D_IDX].clearSlotData(1);
 						case TBDT_CUBE:
 							_textureDataBuilder[TBDT_CUBE_IDX].clearSlotData(0);
-							_textureDataBuilder[TBDT_CUBE_IDX].clearSlotData(1);
+							if (_backend == Metal)
+								_textureDataBuilder[TBDT_CUBE_IDX].clearSlotData(1);
 						case TBDT_2D_AND_CUBE:
 							_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(0);
 							_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(1);
@@ -2269,8 +2297,13 @@ var offset = 8;
 					
 					if (ft == null) throw "Forge texture is null";
 
-					tdb.addSlotTexture(0,ft);
-					tdb.addSlotSampler(1,_bilinearClamp2DSampler);
+					switch(_backend) {
+						case Metal:
+							tdb.addSlotTexture(0,ft);
+							tdb.addSlotSampler(1,_bilinearClamp2DSampler);
+						case Vulkan:
+							tdb.addSlotTexture(0,ft);
+					}
 				}
 
 				for (i in 0...shaderFragTextureCubeCount) {
@@ -2280,8 +2313,13 @@ var offset = 8;
 					
 					if (ft == null) throw "Forge texture is null";
 					var slot =  (textureMode & TBDT_2D != 0) ? 2 : 0;
-					tdb.addSlotTexture(slot,ft);
-					tdb.addSlotSampler(slot+1,_bilinearClamp2DSampler);
+					switch(_backend) {
+						case Metal:
+							tdb.addSlotTexture(slot,ft);
+							tdb.addSlotSampler(slot+1,_bilinearClamp2DSampler);
+						case Vulkan:
+							tdb.addSlotTexture(slot,ft);
+					}
 				}
 
 

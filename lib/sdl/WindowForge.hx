@@ -9,7 +9,7 @@ class WindowForge extends sdl.Window {
 	static function init_once() {
 		if (!_initialized) {
 			trace('Initializing...');
-			_initialized = forge.Native.Globals.initialize("Haxe Forge");
+			_initialized = forge.Native.Globals.initialize("HaxeForge.txt");
 			if (!_initialized) {
 				throw "Could not initialize forge";
 			}

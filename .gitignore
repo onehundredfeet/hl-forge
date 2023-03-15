@@ -16,3 +16,7 @@ README-SDL.txt
 SDL2.dll
 vulkan-1.dll
 vulkaninfo.exe
+aftermath
+nsight
+gpuinfo.txt
+out.txt

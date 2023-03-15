@@ -88,6 +88,7 @@ bool hlForgeInitialize(const char *name) {
     FileSystemInitDesc fsDesc = {};
     fsDesc.pAppName = name;
     fsDesc.pResourceMounts[RM_CONTENT] = ".";
+    fsDesc.pResourceMounts[RM_DEBUG] = ".";
     
     DEBUG_PRINT("Intializing file system\n");
 
@@ -695,6 +696,7 @@ std::string forge_translate_glsl_metal(const char *source, const char *filepath,
 }
 #elif defined(WIN32)
 std::string forge_translate_glsl_vulkan(const char *source, const char *filepath, bool fragment) {
+    printf("Translating to vulkan\n");
     auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
     auto spirvASM = compile_file_to_assembly(filepath, shaderKind, source, false);
     auto spvCode = assemble_to_spv(spirvASM);
@@ -735,8 +737,10 @@ void generateMetalShader(const std::string &glslPath, const std::string &metalPa
 }
 #elif defined(WIN32)
 void generateVulkanShader(const std::string &glslPath, const std::string &vulkanPath, bool fragment) {
-    if (isTargetFileOutOfDate(glslPath, vulkanPath)) {
+    printf("Generating vulkan shader %s to %s\n", glslPath.c_str(), vulkanPath.c_str());
+    if (isTargetFileOutOfDate(glslPath, vulkanPath) || true) {
         auto src = getShaderSource(glslPath);
+        printf("\tGetting source\n");
 
         if (src.length() == 0) {
             std::cout << "Could not read GLSL source: " << glslPath << std::endl;
@@ -744,6 +748,13 @@ void generateVulkanShader(const std::string &glslPath, const std::string &vulkan
         }
 
         auto vulkan = forge_translate_glsl_vulkan(src.c_str(), glslPath.c_str(), fragment);
+
+        auto updateFreqSpot = vulkan.find("(set = 3,");
+
+        while (updateFreqSpot != std::string::npos) {
+            vulkan = vulkan.replace(updateFreqSpot + 1, 7, "UPDATE_FREQ_PER_DRAW");
+            updateFreqSpot = vulkan.find("(set = 3,");
+        }
         /*
         if (fragment) {
             auto bufferspot = msl.find("spvDescriptorSet0 [[buffer(");
@@ -754,8 +765,11 @@ void generateVulkanShader(const std::string &glslPath, const std::string &vulkan
             }
         }
         */
+        printf("\twriting source to %s\n", vulkanPath.c_str());
 
         writeShaderSource(vulkanPath, vulkan);
+    } else {
+        printf("\tUp to date\n");
     }
 }
 #endif
@@ -778,13 +792,13 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     #elif defined(_WINDOWS)
     std::string vertFilePath = removeExtension(vertFilePathOriginal);
     std::string fragFilePath = removeExtension(fragFilePathOriginal);
-    auto vertFilePathSpecific = vertFilePath + ".vulkan";
-    auto fragFilePathSpecific = fragFilePath + ".vulkan";
+    auto vertFilePathSpecific = vertFilePath + ".vulkan.vert";
+    auto fragFilePathSpecific = fragFilePath + ".vulkan.frag";
 
     generateVulkanShader(vertFilePathOriginal, vertFilePathSpecific, false);
     generateVulkanShader(fragFilePathOriginal, fragFilePathSpecific, true);
-     auto vertFN = getFilename(vertFilePath);
-    auto fragFN = getFilename(fragFilePath);
+    auto vertFN = getFilename(vertFilePathSpecific);
+    auto fragFN = getFilename(fragFilePathSpecific);
     #endif
 
     /*
@@ -834,10 +848,21 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
 
     ShaderLoadDesc shaderDesc = {};
 
+#ifdef __APPLE__
     shaderDesc.mStages[0] = {vertFN.c_str(), NULL, 0, "main0", SHADER_STAGE_LOAD_FLAG_ENABLE_VR_MULTIVIEW};
     shaderDesc.mStages[1] = {fragFN.c_str(), NULL, 0, "main0"};
+    #elif defined(WIN32)
+    shaderDesc.mStages[0] = {vertFN.c_str(), NULL, 0, "main", SHADER_STAGE_LOAD_FLAG_ENABLE_VR_MULTIVIEW};
+    shaderDesc.mStages[1] = {fragFN.c_str(), NULL, 0, "main"};
+    #endif
     Shader *tmp = nullptr;
     addShader(pRenderer, &shaderDesc, &tmp);
+
+    if (tmp == nullptr) {
+        printf("Couldn't compile shader %s | %s\n",vertFN.c_str(), fragFN.c_str());
+        ASSERT(tmp != nullptr);
+        exit(-1);
+    }
 
     if (tmp->pReflection) {
         std::stringstream ss;
