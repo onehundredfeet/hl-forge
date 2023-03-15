@@ -8,6 +8,7 @@ import hxsl.Printer;
 	var OpenGL = 0;
 	var Vulkan;
 	var Metal;
+	var Auto;
 }
 
 @:enum abstract EUpdateSets(Int) to Int {
@@ -90,9 +91,16 @@ class GLSLTranscoder {
 	var intelDriverFix : Bool;
 	var _flavour : EGLSLFlavour;
 
-	public function new(flavour : EGLSLFlavour) {
+	public function new(flavour : EGLSLFlavour = EGLSLFlavour.Auto) {
 		varNames = new Map();
 		allNames = new Map();
+		if (flavour == EGLSLFlavour.Auto) {
+			_flavour = switch(Sys.systemName()) {
+				case "Mac" : EGLSLFlavour.Metal;
+				case "Windows" : EGLSLFlavour.Vulkan;
+				default : EGLSLFlavour.Vulkan;
+			}
+		} 
 		_flavour = flavour;
 	}
 

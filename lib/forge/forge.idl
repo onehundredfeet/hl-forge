@@ -1092,8 +1092,8 @@ interface TextureLoadDesc {
 
 [NoDelete]
 interface Tools {
-/*		[Static, STL, Internal="forge_translate_glsl_metal"] String glslToMetal( String source, String path, bool fragmentShader); */
-/*		[Static, Internal="hl_compile_metal_to_bin"] void metalToBin( String sourcePath, String outpath ); */
+		[Static, STL, Internal="forge_translate_glsl_native"] String glslToNative( String source, String path, bool fragmentShader); 
+		[Static, Internal="hl_compile_native_to_bin"] void nativeToBin( String sourcePath, String outpath ); 
 };
 
 enum AttributeSemantic {

@@ -691,7 +691,7 @@ void BufferExt::bindAsIndex(Cmd *cmd, BufferExt *b, IndexType it, int offset) {
 }
 
 #ifdef __APPLE__
-std::string forge_translate_glsl_metal(const char *source, const char *filepath, bool fragment) {
+std::string forge_translate_glsl_native(const char *source, const char *filepath, bool fragment) {
     auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
     auto spirvASM = compile_file_to_assembly(filepath, shaderKind, source, false);
     auto spvCode = assemble_to_spv(spirvASM);
@@ -716,7 +716,7 @@ bool isTargetFileOutOfDate(const std::string &source, const std::string &target)
 }
 
 #if __APPLE__
-void generateMetalShader(const std::string &glslPath, const std::string &metalPath, bool fragment) {
+void generateNativeShader(const std::string &glslPath, const std::string &metalPath, bool fragment) {
     if (isTargetFileOutOfDate(glslPath, metalPath)) {
         auto src = getShaderSource(glslPath);
 
@@ -725,7 +725,7 @@ void generateMetalShader(const std::string &glslPath, const std::string &metalPa
             return;
         }
 
-        auto msl = forge_translate_glsl_metal(src.c_str(), glslPath.c_str(), fragment);
+        auto msl = forge_translate_glsl_native(src.c_str(), glslPath.c_str(), fragment);
         if (fragment) {
             auto bufferspot = msl.find("spvDescriptorSet0 [[buffer(");
             if (bufferspot != std::string::npos) {
@@ -788,8 +788,8 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     auto vertFilePathSpecific = vertFilePath + ".metal";
     auto fragFilePathSpecific = fragFilePath + ".metal";
 
-    generateMetalShader(vertFilePathOriginal, vertFilePathSpecific, false);
-    generateMetalShader(fragFilePathOriginal, fragFilePathSpecific, true);
+    generateNativeShader(vertFilePathOriginal, vertFilePathSpecific, false);
+    generateNativeShader(fragFilePathOriginal, fragFilePathSpecific, true);
      auto vertFN = getFilename(vertFilePath);
     auto fragFN = getFilename(fragFilePath);
     #elif defined(_WINDOWS)
@@ -798,8 +798,8 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     auto vertFilePathSpecific = vertFilePath + ".vulkan.vert";
     auto fragFilePathSpecific = fragFilePath + ".vulkan.frag";
 
-    generateVulkanShader(vertFilePathOriginal, vertFilePathSpecific, false);
-    generateVulkanShader(fragFilePathOriginal, fragFilePathSpecific, true);
+    generateNativeShader(vertFilePathOriginal, vertFilePathSpecific, false);
+    generateNativeShader(fragFilePathOriginal, fragFilePathSpecific, true);
     auto vertFN = getFilename(vertFilePathSpecific);
     auto fragFN = getFilename(fragFilePathSpecific);
     #endif
@@ -977,7 +977,7 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     return tmp;
 }
 
-void hl_compile_metal_to_bin(const char *filePath, const char *outFilePath) {
+void hl_compile_native_to_bin(const char *filePath, const char *outFilePath) {
     DEBUG_PRINT("MTL COMPILE SHADER\n");
     char intermediateFilePath[FS_MAX_PATH] = {};
     sprintf(intermediateFilePath, "%s.air", outFilePath);
