@@ -686,12 +686,21 @@ void BufferExt::bindAsIndex(Cmd *cmd, BufferExt *b, IndexType it, int offset) {
     cmdBindIndexBuffer(cmd, b->current(),  it, offset);
 }
 
+#ifdef __APPLE__
 std::string forge_translate_glsl_metal(const char *source, const char *filepath, bool fragment) {
     auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
     auto spirvASM = compile_file_to_assembly(filepath, shaderKind, source, false);
     auto spvCode = assemble_to_spv(spirvASM);
     return getMSLFromSPV(spvCode);
 }
+#elif defined(WIN32)
+std::string forge_translate_glsl_vulkan(const char *source, const char *filepath, bool fragment) {
+    auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
+    auto spirvASM = compile_file_to_assembly(filepath, shaderKind, source, false);
+    auto spvCode = assemble_to_spv(spirvASM);
+    return getVulkanFromSPV(spvCode);
+}
+#endif
 
 bool isTargetFileOutOfDate(const std::string &source, const std::string &target) {
     if (!std::filesystem::exists(source)) return false;
@@ -701,6 +710,7 @@ bool isTargetFileOutOfDate(const std::string &source, const std::string &target)
     return sourceTime > targetTime;
 }
 
+#if __APPLE__
 void generateMetalShader(const std::string &glslPath, const std::string &metalPath, bool fragment) {
     if (isTargetFileOutOfDate(glslPath, metalPath)) {
         auto src = getShaderSource(glslPath);
@@ -723,26 +733,58 @@ void generateMetalShader(const std::string &glslPath, const std::string &metalPa
         writeShaderSource(metalPath, msl);
     }
 }
+#elif defined(WIN32)
+void generateVulkanShader(const std::string &glslPath, const std::string &vulkanPath, bool fragment) {
+    if (isTargetFileOutOfDate(glslPath, vulkanPath)) {
+        auto src = getShaderSource(glslPath);
+
+        if (src.length() == 0) {
+            std::cout << "Could not read GLSL source: " << glslPath << std::endl;
+            return;
+        }
+
+        auto vulkan = forge_translate_glsl_vulkan(src.c_str(), glslPath.c_str(), fragment);
+        /*
+        if (fragment) {
+            auto bufferspot = msl.find("spvDescriptorSet0 [[buffer(");
+            if (bufferspot != std::string::npos) {
+                DEBUG_PRINT("RENDER modifying metal shader code at %d\n", bufferspot);
+                bufferspot += sizeof("spvDescriptorSet0 [[buffer(") - 1;
+                msl = msl.replace(bufferspot, 1, "UPDATE_FREQ_PER_DRAW");
+            }
+        }
+        */
+
+        writeShaderSource(vulkanPath, vulkan);
+    }
+}
+#endif
 
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile) {
 
     std::string vertFilePathOriginal(vertFile);
     std::string fragFilePathOriginal(fragFile);
 
-    #if __APPLE__
+    #ifdef __APPLE__
     std::string vertFilePath = removeExtension(vertFilePathOriginal);
     std::string fragFilePath = removeExtension(fragFilePathOriginal);
-    auto vertFilePathMSL = vertFilePath + ".metal";
-    auto fragFilePathMSL = fragFilePath + ".metal";
+    auto vertFilePathSpecific = vertFilePath + ".metal";
+    auto fragFilePathSpecific = fragFilePath + ".metal";
 
     generateMetalShader(vertFilePathOriginal, vertFilePathMSL, false);
     generateMetalShader(fragFilePathOriginal, fragFilePathMSL, true);
      auto vertFN = getFilename(vertFilePath);
     auto fragFN = getFilename(fragFilePath);
-    #elif _WINDOWS
-     auto vertFN = getFilename(vertFile);
-    auto fragFN = getFilename(fragFile);
-    std::string vertFilePath = vertFilePathOriginal;
+    #elif defined(_WINDOWS)
+    std::string vertFilePath = removeExtension(vertFilePathOriginal);
+    std::string fragFilePath = removeExtension(fragFilePathOriginal);
+    auto vertFilePathSpecific = vertFilePath + ".vulkan";
+    auto fragFilePathSpecific = fragFilePath + ".vulkan";
+
+    generateVulkanShader(vertFilePathOriginal, vertFilePathSpecific, false);
+    generateVulkanShader(fragFilePathOriginal, fragFilePathSpecific, true);
+     auto vertFN = getFilename(vertFilePath);
+    auto fragFN = getFilename(fragFilePath);
     #endif
 
     /*

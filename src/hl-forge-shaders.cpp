@@ -104,3 +104,22 @@ std::string getMSLFromSPV( const std::vector<uint32_t> &spirv_binary ) {
     return source;
 
 }
+
+
+
+std::string getVulkanFromSPV( const std::vector<uint32_t> &spirv_binary ) {
+
+	spirv_cross::CompilerGLSL glslCompiler(std::move(spirv_binary));
+
+    // Set some options.
+	spirv_cross::CompilerGLSL::Options common_options;
+//    common_options.force_temporary = true;
+    common_options.vulkan_semantics = true;
+//    common_options.emit_uniform_buffer_as_plain_uniforms = false;
+  //  common_options.emit_push_constant_as_uniform_buffer = true;
+	glslCompiler.set_common_options(common_options);
+	// Compile to MSL
+	std::string source = glslCompiler.compile();
+    return source;
+
+}

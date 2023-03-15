@@ -987,8 +987,12 @@ void forge_renderer_fill_descriptor_set(Renderer *pRenderer, BufferExt *buf, Des
 
 
 // Tools
+#ifdef __APPLE__
 std::string forge_translate_glsl_metal(const char *source, const char *filepath, bool fragment);
 void hl_compile_metal_to_bin(const char *fileName, const char *outFile);
+#elif defined (WIN32)
+
+#endif
 
 // Queue
 void forge_queue_submit_cmd(Queue *queue, Cmd *cmd, Semaphore *signalSemphor, Semaphore *wait, Fence *signalFence);
