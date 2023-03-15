@@ -272,6 +272,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		setDesc.pRootSignature = _mipGen.rootsig;
 		setDesc.updateFrequency = DESCRIPTOR_UPDATE_FREQ_PER_DRAW;
 		setDesc.maxSets = MAX_MIP_LEVELS; // 2^13 = 8192
+		trace('Creating default descriptors');
 		_mipGenDescriptor = _renderer.addDescriptorSet( setDesc );
 		_mipGenArrayDescriptor = _renderer.addDescriptorSet( setDesc );
 		
@@ -986,6 +987,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	var _programIds = 0;
 	var _bilinearClamp2DSampler : forge.Native.Sampler;
 
+	/*
 	function convertGLSLToMetalBin(glslsource : String, file_root : String, shaderType : ShaderType)
 	{
 		var vertmetalsrc = forge.Native.Tools.glslToMetal(glslsource, file_root + '.glsl', shaderType == FRAGMENT_SHADER);
@@ -999,7 +1001,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	
 		return {glsl:glslsource, metal:vertmetalsrc, metal_bin: sys.io.File.getBytes( binPath ) };						
 	}
-
+*/
 	function initShader(p : CompiledProgram, s : CompiledShader, shader : hxsl.RuntimeShader.RuntimeShaderData, rt : hxsl.RuntimeShader, rootsig : forge.Native.RootSignature) {
 		#if reference_is_code
 		var prefix = s.vertex ? "vertex" : "fragment";
@@ -2121,9 +2123,10 @@ var offset = 8;
 					setDesc.pRootSignature = _curShader.rootSig;
 					setDesc.updateFrequency = DESCRIPTOR_UPDATE_FREQ_PER_DRAW;
 					setDesc.maxSets = 3; // TODO: make this configurable
+					trace('Creating descriptors for id ${_curShader.id}');
 					ds = _renderer.addDescriptorSet( setDesc );
 					var in_buf : sdl.Forge.Buffer = @:privateAccess hbuf.b;
-					
+					trace('Filling descriptor set');
 					_renderer.fillDescriptorSet( in_buf, ds, DBM_UNIFORMS, _curShader.fragment.buffers[i]);
 					
 					hbuf.descriptorMap[_currentPipeline._id] = ds;
