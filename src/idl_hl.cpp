@@ -2644,21 +2644,6 @@ HL_PRIM int HL_NAME(TextureLoadDesc_set_creationFlag)( pref<TextureLoadDesc>* _t
 }
 DEFINE_PRIM(_I32,TextureLoadDesc_set_creationFlag,_IDL _I32);
 
-HL_PRIM vstring * HL_NAME(Tools_glslToMetal3)(vstring * source, vstring * path, bool fragmentShader) {
-	const char* source__cstr = (source == nullptr) ? "" : hl_to_utf8( source->bytes ); // Should be garbage collected
-	const char* path__cstr = (path == nullptr) ? "" : hl_to_utf8( path->bytes ); // Should be garbage collected
-	auto ___retvalue = (forge_translate_glsl_metal(source__cstr, path__cstr, fragmentShader));
-	return hl_utf8_to_hlstr(___retvalue);
-}
-DEFINE_PRIM(_STRING, Tools_glslToMetal3, _STRING _STRING _BOOL);
-
-HL_PRIM void HL_NAME(Tools_metalToBin2)(vstring * sourcePath, vstring * outpath) {
-	const char* sourcePath__cstr = (sourcePath == nullptr) ? "" : hl_to_utf8( sourcePath->bytes ); // Should be garbage collected
-	const char* outpath__cstr = (outpath == nullptr) ? "" : hl_to_utf8( outpath->bytes ); // Should be garbage collected
-	(hl_compile_metal_to_bin(sourcePath__cstr, outpath__cstr));
-}
-DEFINE_PRIM(_VOID, Tools_metalToBin2, _STRING _STRING);
-
 HL_PRIM pref<PolyMesh>* HL_NAME(PolyMesh_new0)() {
 	return alloc_ref((new PolyMesh()),PolyMesh);
 }
