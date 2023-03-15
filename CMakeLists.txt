@@ -14,13 +14,33 @@ if (NOT FORGE_LIB_DIR)
     set(FORGE_LIB_INC "${FORGE_LIB_DIR}/Common_3")
     set(FORGE_LIB_SRC "${FORGE_LIB_DIR}/Common_3")
     set(FORGE_OS_SRC "${FORGE_LIB_DIR}/Common_3/OS")
+    set(FORGE_APP_SRC "${FORGE_LIB_DIR}/Common_3/Application")
+    set(FORGE_APP_INC "${FORGE_APP_SRC}/Interfaces")
+    set(FORGE_UTIL_SRC "${FORGE_LIB_DIR}/Common_3/Utilities")
+    set(FORGE_UITL_INC "${FORGE_UTIL_SRC}/Interfaces")
     set(FORGE_TOOLS_SRC_DIR "${FORGE_LIB_DIR}/Common_3/Tools")
-    set(FORGE_TP_SRC "${FORGE_LIB_DIR}/Common_3/ThirdParty/OpenSource")
+    set(FORGE_TP_SRC "${FORGE_LIB_DIR}/Common_3/Utilities/ThirdParty/OpenSource")
+    set(FORGE_RES_SRC "${FORGE_LIB_DIR}/Common_3/Resources")
+    set(FORGE_RES_INC "${FORGE_RES_SRC}/ResourceLoader/Interfaces")
+    set(FORGE_RES_TP_SRC "${FORGE_RES_SRC}/ResourceLoader/ThirdParty/OpenSource")
     set(FORGE_MW_SRC "${FORGE_LIB_DIR}/Middleware_3")
     set(FORGE_RDR_SRC "${FORGE_LIB_DIR}/Common_3/Renderer")
+    set(FORGE_GFX_SRC "${FORGE_LIB_DIR}/Common_3/Graphics")
+    set(FORGE_GFX_INC "${FORGE_GFX_SRC}/Interfaces")
     set(FORGE_EASTL_DIR "${FORGE_TP_SRC}/EASTL")
     set(FORGE_TP_INC ${FORGE_TP_SRC} )
+
+    set(FORGE_INC_DIR
+    ${FORGE_APP_INC}
+    ${FORGE_GFX_INC}
+    ${FORGE_TP_INC}
+    ${FORGE_RES_INC}
+    ${FORGE_UITL_INC}
+    ${FORGE_RES_INC}
+    )
 endif()
+
+
 
 if (UNIX)
 if (NOT HL_LIB_DIR) 
@@ -90,18 +110,6 @@ endif()
 endif() # OS specific
 
 
-
-if (NOT FORGE_ROOT) 
-set(FORGE_ROOT "../forge")
-endif()
-
-if (NOT FORGE_SRC_DIR) 
-set(FORGE_SRC_DIR "${FORGE_ROOT}/source")
-endif()
-if (NOT FORGE_INC_DIR) 
-set(FORGE_INC_DIR "${FORGE_ROOT}/include")
-endif()
-
 set(FP16_INC_DIR "ext/FP16/include")
 
 
@@ -120,7 +128,7 @@ set( FORGE_OS_C_SRCS
 
 set( FORGE_OS_CPP_SRCS
 ${FORGE_OS_SRC}/Darwin/CocoaFileSystem.mm
-${FORGE_OS_SRC}/FileSystem/UnixFileSystem.cpp
+${FORGE_UTIL_SRC}/FileSystem/UnixFileSystem.cpp
 )
 elseif(WIN32)
 
@@ -139,14 +147,16 @@ endif()
 
 #common OS
 set( FORGE_OS_C_SRCS ${FORGE_OS_C_SRCS}
-${FORGE_OS_SRC}/MemoryTracking/MemoryTracking.c
-${FORGE_OS_SRC}/Logging/Log.c
+${FORGE_UTIL_SRC}/MemoryTracking/MemoryTracking.c
+${FORGE_UTIL_SRC}/Log/Log.c
+${FORGE_UTIL_SRC}/Math/StbDs.c
+${FORGE_TP_SRC}/bstrlib/bstrlib.c
 )
 
 set( FORGE_OS_CPP_SRCS ${FORGE_OS_CPP_SRCS}
-${FORGE_OS_SRC}/Core/Screenshot.cpp
-${FORGE_OS_SRC}/FileSystem/FileSystem.cpp
-${FORGE_OS_SRC}/FileSystem/SystemRun.cpp
+${FORGE_APP_SRC}/Screenshot.cpp
+${FORGE_UTIL_SRC}/FileSystem/FileSystem.cpp
+${FORGE_UTIL_SRC}/FileSystem/SystemRun.cpp
 #${FORGE_OS_SRC}/UI/UI.cpp
 )
 
@@ -157,19 +167,19 @@ set ( FORGE_MW_SRCS
 
 set (FORGE_TP_SRCS
     ${FORGE_TP_SRC}/basis_universal/transcoder/basisu_transcoder.cpp
-    ${FORGE_TP_SRC}/meshoptimizer/src/vcacheoptimizer.cpp
-    ${FORGE_TP_SRC}/meshoptimizer/src/vfetchoptimizer.cpp
-    ${FORGE_TP_SRC}/meshoptimizer/src/indexgenerator.cpp
-    ${FORGE_TP_SRC}/meshoptimizer/src/overdrawoptimizer.cpp
-    ${FORGE_TP_SRC}/meshoptimizer/src/allocator.cpp
+    ${FORGE_RES_TP_SRC}/meshoptimizer/src/vcacheoptimizer.cpp
+    ${FORGE_RES_TP_SRC}/meshoptimizer/src/vfetchoptimizer.cpp
+    ${FORGE_RES_TP_SRC}/meshoptimizer/src/indexgenerator.cpp
+    ${FORGE_RES_TP_SRC}/meshoptimizer/src/overdrawoptimizer.cpp
+    ${FORGE_RES_TP_SRC}/meshoptimizer/src/allocator.cpp
 #    ${FORGE_TP_SRC}/FluidStudios/MemoryManager/mmgr.c
 )
 
 if (APPLE)
 set( FORGE_OS_RENDER_SRCS
-${FORGE_RDR_SRC}/Metal/MetalRenderer.mm
-${FORGE_RDR_SRC}/Metal/MetalRaytracing.mm
-${FORGE_RDR_SRC}/Metal/MetalShaderReflection.mm
+${FORGE_GFX_SRC}/Metal/MetalRenderer.mm
+${FORGE_GFX_SRC}/Metal/MetalRaytracing.mm
+${FORGE_GFX_SRC}/Metal/MetalShaderReflection.mm
 )
 elseif(WIN32)
 set( FORGE_OS_RENDER_SRCS
@@ -184,9 +194,11 @@ endif()
 
 set (FORGE_RENDERER_SRCS
     ${FORGE_OS_RENDER_SRCS}
-    ${FORGE_RDR_SRC}/Renderer.cpp
-    ${FORGE_RDR_SRC}/ResourceLoader.cpp
-    ${FORGE_RDR_SRC}/CommonShaderReflection.cpp
+    ${FORGE_GFX_SRC}/Graphics.cpp
+    ${FORGE_GFX_SRC}/GPUConfig.cpp
+    ${FORGE_GFX_SRC}/DependencyTracking.cpp
+    ${FORGE_RES_SRC}/ResourceLoader/ResourceLoader.cpp
+    ${FORGE_GFX_SRC}/CommonShaderReflection.cpp
     
 )
 
@@ -250,11 +262,15 @@ PRIVATE
 ${VULKAN_INC_DIR}
 ${SHADERC_INC}
 ${FORGE_INC_DIR}
+${FORGE_APP_INC}
+${FORGE_GFX_INC}
+${FORGE_RES_INC}
 ${FORGE_LIB_INC}
 ${HL_INCLUDE_DIR}
 ${FORGE_TP_INC}
 ${FP16_INC_DIR}
 ${SDL_INC_DIR}
+${FORGE_RES_TP_SRC}
 "${XXHASH_ROOT_DIR}"
 )
 if (APPLE)

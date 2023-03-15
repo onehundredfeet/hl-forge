@@ -1,18 +1,16 @@
 
-#ifdef __APPLE__
-#include "hl-forge_osx.hpp"
-#endif
-#include <OS/Interfaces/IInput.h>
-#include <OS/Logging/Log.h>
-#include <Renderer/IRenderer.h>
-#include <Renderer/IResourceLoader.h>
-#include <Renderer/IShaderReflection.h>
+
+#include <IInput.h>
+#include <ILog.h>
+//#include <Renderer/IRenderer.h>
+#include <IResourceLoader.h>
+#include <IShaderReflection.h>
 #include <basis_universal/basisu_enc.h>
 #include <tinyimageformat/tinyimageformat_apis.h>
 #include <tinyimageformat/tinyimageformat_base.h>
 #include <tinyimageformat/tinyimageformat_bits.h>
 #include <tinyimageformat/tinyimageformat_query.h>
-#include <OS/Core/TextureContainers.h>
+//#include <TextureContainers.h>
 
 #include <filesystem>
 #include <iostream>
@@ -28,6 +26,10 @@
 #endif
 #include "hl-forge.h"
 
+
+#ifdef __APPLE__
+#include "hl-forge_osx.hpp"
+#endif
 
 
 struct BufferDispose {
@@ -650,6 +652,7 @@ bool forge_render_target_capture_2(Renderer *pRenderer, Cmd *pCmd, RenderTarget 
 
     return true;
 }
+/*
 Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int width, int height, int nodeIndex) {
     const uint32_t rowAlignment = max(1u, rp->pActiveGpuSettings->mUploadBufferTextureRowAlignment);
     const uint32_t blockSize = max(1u, TinyImageFormat_BitSizeOfBlock(format));
@@ -669,7 +672,7 @@ Buffer *forge_create_transfer_buffer(Renderer *rp, TinyImageFormat format, int w
 
     return tmp;
 }
-
+*/
 void BufferExt::dispose() {
     if (_toDispose == nullptr) _toDispose = &_toDisposeA;
     for (int i = 0; i < _buffers.size(); i++) {
@@ -785,8 +788,8 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     auto vertFilePathSpecific = vertFilePath + ".metal";
     auto fragFilePathSpecific = fragFilePath + ".metal";
 
-    generateMetalShader(vertFilePathOriginal, vertFilePathMSL, false);
-    generateMetalShader(fragFilePathOriginal, fragFilePathMSL, true);
+    generateMetalShader(vertFilePathOriginal, vertFilePathSpecific, false);
+    generateMetalShader(fragFilePathOriginal, fragFilePathSpecific, true);
      auto vertFN = getFilename(vertFilePath);
     auto fragFN = getFilename(fragFilePath);
     #elif defined(_WINDOWS)
@@ -938,14 +941,17 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
                     ss << "Root constant";
                     break;
                     #if __APPLE__
-                case DESCRIPTOR_TYPE_ARGUMENT_BUFFER:
-                    ss << "Argument buffer";
+                case DESCRIPTOR_TYPE_INDIRECT_BUFFER:
+                    ss << "Indirect buffer";
                     break;
                 case DESCRIPTOR_TYPE_INDIRECT_COMMAND_BUFFER:
                     ss << "Indirect command buffer";
                     break;
-                case DESCRIPTOR_TYPE_RENDER_PIPELINE_STATE:
-                    ss << "Render pipeline buffer";
+                case DESCRIPTOR_TYPE_VERTEX_BUFFER:
+                    ss << "Vertex  buffer";
+                    break;
+                case DESCRIPTOR_TYPE_INDEX_BUFFER:
+                    ss << "Index  buffer";
                     break;
                     #endif
                 default:

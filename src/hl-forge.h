@@ -3,8 +3,8 @@
 #pragma once
 #if __APPLE__
 #include <Foundation/Foundation.h>
-
-
+#include <IGraphics.h>
+#include <IResourceLoader.h>
 
 
 
@@ -35,10 +35,11 @@ void heuristicTest2(float (*fn)(int));
 
 #include <meshoptimizer/src/meshoptimizer.h>
 
-#include <Renderer/IRenderer.h>
-#include <Renderer/IResourceLoader.h>
+//#include <Renderer/IRenderer.h>
+//#include <Renderer/IResourceLoader.h>
 
-#define XXHASH_EXPOSE_STATE
+//#define XXHASH_EXPOSE_STATE
+#define XXH_STATIC_LINKING_ONLY
 #include <xxhash.h>
 
 #define TWIN _ABSTRACT(sdl_window)
