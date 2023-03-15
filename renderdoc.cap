@@ -1,0 +1,27 @@
+{
+    "rdocCaptureSettings": 1,
+    "settings": {
+        "autoStart": true,
+        "commandLine": "bin\\main.hl",
+        "environment": [
+        ],
+        "executable": "C:\\Users\\writt\\bin\\hl.exe",
+        "inject": false,
+        "numQueuedFrames": 0,
+        "options": {
+            "allowFullscreen": false,
+            "allowVSync": false,
+            "apiValidation": true,
+            "captureAllCmdLists": true,
+            "captureCallstacks": false,
+            "captureCallstacksOnlyDraws": false,
+            "debugOutputMute": true,
+            "delayForDebugger": 0,
+            "hookIntoChildren": false,
+            "refAllResources": true,
+            "verifyBufferAccess": true
+        },
+        "queuedFrameCap": 0,
+        "workingDir": "E:/git/hl-forge"
+    }
+}

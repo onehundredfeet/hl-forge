@@ -4,6 +4,19 @@ import format.abc.Data.ABCData;
 import hxsl.Ast;
 import hxsl.Printer;
 
+@:enum abstract EGLSLFlavour(Int) {
+	var OpenGL = 0;
+	var Vulkan;
+	var Metal;
+}
+
+@:enum abstract EUpdateSets(Int) to Int {
+	var NONE = 0;
+	var PER_FRAME;
+	var PER_BATCH;
+	var PER_DRAW;
+}
+
 class GLSLTranscoder {
 
 	static var KWD_LIST = [
@@ -75,10 +88,12 @@ class GLSLTranscoder {
 		when there are some unused textures in shader output.
 	*/
 	var intelDriverFix : Bool;
+	var _flavour : EGLSLFlavour;
 
-	public function new() {
+	public function new(flavour : EGLSLFlavour) {
 		varNames = new Map();
 		allNames = new Map();
+		_flavour = flavour;
 	}
 
 	inline function get_isES() return glES != null;
@@ -718,9 +733,10 @@ class GLSLTranscoder {
 		});
 
 		_bufferCount = 0;
+		var set : Int = EUpdateSets.PER_DRAW;
 
 		if (globals.length > 0) {
-			add('layout( set=1, binding=${_bufferCount} ) uniform ${isVertex ? "Vert" : "Frag"}Globals {\n');
+			add('layout( set=${set}, binding=${_bufferCount} ) uniform ${isVertex ? "Vert" : "Frag"}Globals {\n');
 			if (globals.length > 0) {
 				// uniforms first
 				for( v in globals ) {
@@ -769,7 +785,7 @@ class GLSLTranscoder {
         add("//Samplers\n");
 		
         for( v in sampler_params ) {
-            add('layout (set=1,binding=${_bufferCount}) uniform ');
+            add('layout (set=${set},binding=${_bufferCount}) uniform ');
 			switch(v.type) {
 				case TSampler2D: 
 					debugTrace ('RENDER adding sampler ${v.name}');
@@ -888,8 +904,8 @@ class GLSLTranscoder {
 		return decls.join("\n");
 	}
 
-	public static function compile( s : ShaderData ) {
-		var out = new GLSLTranscoder();
+	public static function compile( s : ShaderData, f : EGLSLFlavour ) {
+		var out = new GLSLTranscoder(f);
 		#if js
 		out.glES = 1;
 		out.version = 100;

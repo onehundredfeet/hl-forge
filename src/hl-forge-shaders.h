@@ -15,7 +15,7 @@ std::string compile_file_to_assembly(const char *source_name,
 void writeShaderSource(const std::string &path, const std::string &source);
 void writeShaderSPV(const std::string &path, const std::vector<uint32_t> &code);
 std::string getShaderSource(const std::string &path);
-#ifdefined __APPLE__
+#ifdef __APPLE__
 std::string getMSLFromSPV( const std::vector<uint32_t> &spirv_binary ) ;
 #elif defined(WIN32)
 std::string getVulkanFromSPV( const std::vector<uint32_t> &spirv_binary ) ;
