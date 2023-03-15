@@ -11,3 +11,8 @@ build.debug
 ext/include
 ext/lib
 ext/sdl2
+OpenAL32.dll
+README-SDL.txt
+SDL2.dll
+vulkan-1.dll
+vulkaninfo.exe
