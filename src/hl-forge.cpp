@@ -5,6 +5,7 @@
 //#include <Renderer/IRenderer.h>
 #include <IResourceLoader.h>
 #include <IShaderReflection.h>
+#include <IOperatingSystem.h>
 #include <basis_universal/basisu_enc.h>
 #include <tinyimageformat/tinyimageformat_apis.h>
 #include <tinyimageformat/tinyimageformat_base.h>
@@ -1222,12 +1223,14 @@ void requestShutdown()
     #endif
 }
 
+#ifdef _WINDOWS
 void requestReset(const ResetDesc* pResetDesc)
 {
 	//gResetDescriptor = *pResetDesc;
         printf("!!!!!!!!!!!!!!!!!! DEVICE LOST !!!!!!!!!!!!!!!!\n");
 
 }
+#endif
 
 void requestReload(const ReloadDesc* pReloadDesc)
 {

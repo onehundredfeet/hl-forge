@@ -14,6 +14,7 @@ if (NOT FORGE_LIB_DIR)
     set(FORGE_LIB_INC "${FORGE_LIB_DIR}/Common_3")
     set(FORGE_LIB_SRC "${FORGE_LIB_DIR}/Common_3")
     set(FORGE_OS_SRC "${FORGE_LIB_DIR}/Common_3/OS")
+    set(FORGE_INC_SRC "${FORGE_LIB_DIR}/Common_3/OS/Interfaces")
     set(FORGE_APP_SRC "${FORGE_LIB_DIR}/Common_3/Application")
     set(FORGE_APP_INC "${FORGE_APP_SRC}/Interfaces")
     set(FORGE_UTIL_SRC "${FORGE_LIB_DIR}/Common_3/Utilities")
@@ -37,6 +38,7 @@ if (NOT FORGE_LIB_DIR)
     ${FORGE_RES_INC}
     ${FORGE_UITL_INC}
     ${FORGE_RES_INC}
+    ${FORGE_INC_SRC}
     )
 endif()
 

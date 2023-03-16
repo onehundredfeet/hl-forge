@@ -1122,7 +1122,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		//DebugTrace.trace('cwd ${FileSystem.absolutePath('')}');
 
 		var platform = switch( Sys.systemName()) {
-            case "Mac": "metal";
+            case "Mac": "MACOS";
             case "Windows": "vulkan";
             default:"";
         } ;
