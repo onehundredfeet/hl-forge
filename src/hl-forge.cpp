@@ -698,7 +698,7 @@ std::string forge_translate_glsl_native(const char *source, const char *filepath
     return getMSLFromSPV(spvCode);
 }
 #elif defined(WIN32)
-std::string forge_translate_glsl_vulkan(const char *source, const char *filepath, bool fragment) {
+std::string forge_translate_glsl_native(const char *source, const char *filepath, bool fragment) {
     printf("Translating to vulkan\n");
     auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
     auto spirvASM = compile_file_to_assembly(filepath, shaderKind, source, false);
@@ -739,7 +739,7 @@ void generateNativeShader(const std::string &glslPath, const std::string &metalP
     }
 }
 #elif defined(WIN32)
-void generateVulkanShader(const std::string &glslPath, const std::string &vulkanPath, bool fragment) {
+void generateNativeShader(const std::string &glslPath, const std::string &vulkanPath, bool fragment) {
     printf("Generating vulkan shader %s to %s\n", glslPath.c_str(), vulkanPath.c_str());
     if (isTargetFileOutOfDate(glslPath, vulkanPath) || true) {
         auto src = getShaderSource(glslPath);
@@ -750,7 +750,7 @@ void generateVulkanShader(const std::string &glslPath, const std::string &vulkan
             return;
         }
 
-        auto vulkan = forge_translate_glsl_vulkan(src.c_str(), glslPath.c_str(), fragment);
+        auto vulkan = forge_translate_glsl_native(src.c_str(), glslPath.c_str(), fragment);
 
         auto updateFreqSpot = vulkan.find("(set = 3,");
 
@@ -1208,11 +1208,28 @@ DEFINE_PRIM(_BYTES, unpackSDLWindow, TWIN);
 
 // WINDOWS CALLBACKS
 void onDeviceLost() {
-    printf("!!!!!!!!!!!!!!!!!! DEVICE LOST !!!!!!!!!!!!!!!!\n");
 }
 
-void onRequestReload() {
-    printf("!!!!!!!!!!!!!!!!!! REQUEST RELOAD !!!!!!!!!!!!!!!!\n");
+
+void requestShutdown() 
+{ 
+    #if _WINDOWS
+	PostQuitMessage(0); 
+    #endif
+}
+
+void requestReset(const ResetDesc* pResetDesc)
+{
+	//gResetDescriptor = *pResetDesc;
+        printf("!!!!!!!!!!!!!!!!!! DEVICE LOST !!!!!!!!!!!!!!!!\n");
+
+}
+
+void requestReload(const ReloadDesc* pReloadDesc)
+{
+	//gReloadDescriptor = *pReloadDesc;
+        printf("!!!!!!!!!!!!!!!!!! REQUEST RELOAD !!!!!!!!!!!!!!!!\n");
+
 }
 
 CustomMessageProcessor sCustomProc = nullptr;

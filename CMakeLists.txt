@@ -95,7 +95,7 @@ if (NOT SDL_ROOT)
 endif()
 
 if (NOT SPIRV_ROOT)
-    set( SPIRV_ROOT "${FORGE_TP_SRC}/SPRIV_Cross")
+#    set( SPIRV_ROOT "${FORGE_TP_SRC}/SPRIV_Cross")
     set( SPIRV_INC_DIR "${SPIRV_ROOT}")
 endif()
 
@@ -150,6 +150,7 @@ set( FORGE_OS_C_SRCS ${FORGE_OS_C_SRCS}
 ${FORGE_UTIL_SRC}/MemoryTracking/MemoryTracking.c
 ${FORGE_UTIL_SRC}/Log/Log.c
 ${FORGE_UTIL_SRC}/Math/StbDs.c
+${FORGE_UTIL_SRC}/Math/algorithms.c
 ${FORGE_TP_SRC}/bstrlib/bstrlib.c
 )
 
@@ -184,10 +185,12 @@ ${FORGE_GFX_SRC}/Metal/MetalShaderReflection.mm
 elseif(WIN32)
 set( FORGE_OS_RENDER_SRCS
 #${SHADERC_SRC}/shaderc.cc
-${FORGE_RDR_SRC}/Vulkan/Vulkan.cpp
-${FORGE_RDR_SRC}/Vulkan/VulkanRayTracing.cpp
-${FORGE_RDR_SRC}/Vulkan/VulkanShaderReflection.cpp
-${FORGE_TOOLS_SRC_DIR}/SpirvTools/SpirvTools.cpp
+${FORGE_GFX_SRC}/Vulkan/Vulkan.cpp
+${FORGE_GFX_SRC}/Vulkan/VulkanRayTracing.cpp
+${FORGE_GFX_SRC}/Vulkan/VulkanShaderReflection.cpp
+#${FORGE_TOOLS_SRC_DIR}/SpirvTools/SpirvTools.cpp
+${FORGE_GFX_SRC}/ThirdParty/OpenSource/SPIRV_Cross/SpirvTools.cpp
+
 )
 
 endif()
@@ -282,7 +285,6 @@ find_library( IOKIT_LIB IOKit)
 find_library( METAL_PERF_SHADER_LIB MetalPerformanceShaders)
 find_library( APPKITLIB AppKit)
 find_library( COREGRAPHICSLIB CoreGraphics)
-find_library( SPIRVCROSS_METALLIB spirv-cross-msl HINTS ${VULKAN_LIB_DIR})
 
 
 
@@ -307,6 +309,7 @@ find_library( SPIRVCROSS_REFLECT_LIB spirv-cross-reflect HINTS ${VULKAN_LIB_DIR}
 find_library( SPIRVCROSS_CPP_LIB spirv-cross-cpp HINTS ${VULKAN_LIB_DIR})
 find_library( SPIRVTOOLS_LIB SPIRV-Tools HINTS ${VULKAN_LIB_DIR})
 find_library( SPIRVTOOLS_OPT_LIB SPIRV-Tools-opt HINTS ${VULKAN_LIB_DIR})
+find_library( SPIRVCROSS_METALLIB spirv-cross-msl HINTS ${VULKAN_LIB_DIR})
 
 set(SPRIV_LIBS
 ${SPIRVTOOLS_OPT_LIB}
