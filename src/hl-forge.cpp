@@ -752,12 +752,13 @@ void generateNativeShader(const std::string &glslPath, const std::string &vulkan
 
         auto vulkan = forge_translate_glsl_native(src.c_str(), glslPath.c_str(), fragment);
 
+/*
         auto updateFreqSpot = vulkan.find("(set = 3,");
 
         while (updateFreqSpot != std::string::npos) {
             vulkan = vulkan.replace(updateFreqSpot + 1, 7, "UPDATE_FREQ_PER_DRAW");
             updateFreqSpot = vulkan.find("(set = 3,");
-        }
+        }*/
         /*
         if (fragment) {
             auto bufferspot = msl.find("spvDescriptorSet0 [[buffer(");
@@ -793,10 +794,13 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
      auto vertFN = getFilename(vertFilePath);
     auto fragFN = getFilename(fragFilePath);
     #elif defined(_WINDOWS)
-    std::string vertFilePath = removeExtension(vertFilePathOriginal);
+    std::string vertFilePath = removeExtension(vertFilePathOriginal); // removes glsl
     std::string fragFilePath = removeExtension(fragFilePathOriginal);
-    auto vertFilePathSpecific = vertFilePath + ".vulkan.vert";
-    auto fragFilePathSpecific = fragFilePath + ".vulkan.frag";
+    vertFilePath = removeExtension(vertFilePath); // removes .vert
+    fragFilePath = removeExtension(fragFilePath); // removes .frag
+
+    auto vertFilePathSpecific = vertFilePath + ".vulkan.glsl.vert";
+    auto fragFilePathSpecific = fragFilePath + ".vulkan.glsl.frag";
 
     generateNativeShader(vertFilePathOriginal, vertFilePathSpecific, false);
     generateNativeShader(fragFilePathOriginal, fragFilePathSpecific, true);
