@@ -1,5 +1,6 @@
 package h3d.impl;
 
+import forge.GLSLTranscoder;
 import forge.GLSLTranscoder.EGLSLFlavour;
 import haxe.crypto.Crc32;
 import haxe.Int64;
@@ -17,6 +18,7 @@ import forge.DynamicUniformBuffer;
 import h3d.impl.GraphicsDriver;
 import forge.Native.TextureCreationFlags;
 import forge.DebugTrace;
+import forge.EnumTools;
 
 private typedef DescriptorIndex = Null<Int>;
 private typedef Program = forge.Forge.Program;
@@ -983,6 +985,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 	var _shaders:Map<Int, CompiledProgram>;
 	var _curShader:CompiledProgram;
 
+	/*
 	function getGLSL(transcoder:forge.GLSLTranscoder, shader:hxsl.RuntimeShader.RuntimeShaderData) {
 		if (shader.code == null) {
 			transcoder.version = 430;
@@ -996,7 +999,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 		return shader.code;
 	}
-
+*/
 	var _programIds = 0;
 	var _bilinearClamp2DSampler : forge.Native.Sampler;
 
@@ -1101,18 +1104,27 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 			case Vulkan : EGLSLFlavour.Vulkan;
 		}
 
-		var vertTranscoder = new forge.GLSLTranscoder(flavour);
-		var fragTranscoder = new forge.GLSLTranscoder(flavour);
+		DebugTrace.trace('RENDER SHADER compiling shader ${shader.id} for ${EnumTools.nameByValue(EGLSLFlavour)[flavour]}');
+		var transcoder = new forge.GLSLTranscoder(flavour);
 
 		var p = new CompiledProgram();
 		p.id = _programIds++;
+		DebugTrace.trace('RENDER SHADER Setting up transcoder');
 
-		var vert_glsl = getGLSL(vertTranscoder, shader.vertex);
-		var frag_glsl = getGLSL(fragTranscoder, shader.fragment);
+		transcoder.setStageCode(VERTEX, shader.vertex.data);
+		transcoder.setStageCode(FRAGMENT, shader.fragment.data);
+		transcoder.version = 430;
+		transcoder.glES = 4.3;
+		DebugTrace.trace('RENDER SHADER building');
+		transcoder.build();
+		DebugTrace.trace('Getting code');
+		var vert_glsl = shader.vertex.code = transcoder.getGLSL(VERTEX);
+		var frag_glsl = shader.fragment.code = transcoder.getGLSL(FRAGMENT);
 
 		//DebugTrace.trace('vert shader ${vert_glsl}');
 		//DebugTrace.trace('frag shader ${frag_glsl}');
 
+		DebugTrace.trace('getting hash');
 		var vert_md5 = haxe.crypto.Md5.encode(vert_glsl);
 		var frag_md5 = haxe.crypto.Md5.encode(frag_glsl);
 		DebugTrace.trace('RENDER MATERIAL SHADER vert md5 ${vert_md5}');
@@ -1225,21 +1237,21 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 
 		// get inputs
-		p.vertex.params = rootSig.getDescriptorIndexFromName( "_vertrootconstants");
-		p.vertex.constantsIndex = rootSig.getDescriptorIndexFromName( "_vertrootconstants");
-		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName( "_vertrootglobalsPerFrame");
-		p.vertex.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0"); // doesn't seem to resolve
+		p.vertex.params = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(VERTEX, PARAMS));
+		p.vertex.constantsIndex = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(VERTEX, PARAMS));
+		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(VERTEX, GLOBALS));
+//		p.vertex.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0"); // doesn't seem to resolve
 		p.vertex.globalsLength = shader.vertex.globalsSize * 4; // vectors to floats
 		p.vertex.paramsLength = shader.vertex.paramsSize * 4; // vectors to floats
 		if (p.vertex.globalsLength > 0) {
 			p.vertex.globalsBuffer = DynamicUniformBuffer.allocate(p.vertex.globalsLength * 4, _swap_count); 
 			p.vertex.globalDescriptorSet = p.vertex.globalsBuffer.createDescriptors( _renderer, rootSig, p.vertex.globalsIndex, DESCRIPTOR_UPDATE_FREQ_PER_DRAW);
 		}
-		p.fragment.params = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
-		p.fragment.constantsIndex = rootSig.getDescriptorIndexFromName( "_fragrootconstants");
+		p.fragment.params = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
+		p.fragment.constantsIndex = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
 		p.fragment.globalsLength = shader.fragment.globalsSize * 4; // vectors to floats
-		p.fragment.globalsIndex = rootSig.getDescriptorIndexFromName( "_fragrootglobalsPerFrame");
-		p.fragment.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0");
+		p.fragment.globalsIndex = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, GLOBALS));
+//		p.fragment.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0");
 
 //		trace ('p.vertex.globalsIndex ${p.vertex.globalsIndex} p.vertex.globalsDescriptorSetIndex ${p.vertex.globalsDescriptorSetIndex}');
 //		trace ('p.fragment.globalsIndex ${p.fragment.globalsIndex} p.fragment.globalsDescriptorSetIndex ${p.fragment.globalsDescriptorSetIndex}');
@@ -1279,7 +1291,7 @@ struct spvDescriptorSetBuffer0
 				case Input:
 					
 				
-					var name =  vertTranscoder.varNames.get(v.id);
+					var name =  transcoder.getStageVarNames(VERTEX).get(v.id);
 					if (name == null) name = v.name;
 					var a = new CompiledAttribute();
 					a.type = switch (v.type) {
@@ -1355,16 +1367,19 @@ struct spvDescriptorSetBuffer0
 
 	public override function selectShader(shader:hxsl.RuntimeShader) {
 		debugTrace('RENDER MATERIAL SHADER selectShader ${shader.id}');
-		if (!renderReady()) return true;
+//		if (!renderReady()) return true;
 		var p = _shaders.get(shader.id);
 		if (_curShader!= p) {
 			_currentPipeline = null;
 		}
 
 		if (p == null) {
+			debugTrace('RENDER MATERIAL SHADER compiling program ...${shader.id}');
 			p = compileProgram(shader);
 			_shaders.set( shader.id, p);
+			debugTrace('RENDER MATERIAL SHADER compiled program is ${p}');
 		}
+		
 
 		_curShader = p;
 
@@ -1384,7 +1399,8 @@ struct spvDescriptorSetBuffer0
 			_fragmentTextures.resize( _curShader.fragment.textureCount() );
 			_fragmentTextureCubes.resize( _curShader.fragment.textureCubeCount() );
 		}
-	
+		debugTrace('RENDER MATERIAL SHADER all good! ${_curShader}');
+
 
 		return true;
 	}
