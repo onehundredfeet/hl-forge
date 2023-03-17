@@ -1068,7 +1068,7 @@ RootSignature *forge_renderer_createRootSignatureSimple(Renderer *pRenderer, Sha
     addRootSignature(pRenderer, &rootDesc, &tmp);
 
     for (auto i = 0; i < tmp->mDescriptorCount; i++) {
-        DEBUG_PRINT("\tRENDER Descriptor %d is %s\n", i, tmp->pDescriptors[i].pName);
+        DEBUG_PRINT("\tRENDER Descriptor [%d] is %s\n", i, tmp->pDescriptors[i].pName);
     }
     return tmp;
 }
@@ -1168,7 +1168,7 @@ RootSignature *RootSignatureFactory::create(Renderer *pRenderer) {
 
     for (auto i = 0; i < tmp->mDescriptorCount; i++) {
         DescriptorInfo &info = tmp->pDescriptors[i];
-        DEBUG_PRINT("\tRENDER Descriptor %d is %s hi %d dim %d size %d static %d type %d\n", i, info.pName, info.mHandleIndex, info.mDim, info.mSize, info.mStaticSampler, info.mType);
+        DEBUG_PRINT("\tRENDER Descriptor %s [%d] isRoot %d set/freq %d handle %d dim %d size %d static %d type %d\n", info.pName, i, info.mRootDescriptor, info.mUpdateFrequency, info.mHandleIndex, info.mDim, info.mSize, info.mStaticSampler, info.mType);
     }
 
     return tmp;

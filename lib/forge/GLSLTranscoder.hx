@@ -157,7 +157,9 @@ class GLSLTranscoder {
 		if (flavour == EGLSLFlavour.Auto)
 			flavour = _defaultFlavour;
 
-		if ((flavour == EGLSLFlavour.Metal || stage == VERTEX) && set == EDescriptorSetSlot.PARAMS)
+		if (
+			//(flavour == EGLSLFlavour.Metal || stage == VERTEX) && 
+			set == EDescriptorSetSlot.PARAMS)
 			return '${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[set]}${PUSH_CONSTANT_TAG}';
 		return '${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[set]}';
 	}
@@ -792,7 +794,7 @@ class GLSLTranscoder {
 		TMat2;
 	 */
 	function getLayoutSpec(stage:EShaderStage, set:EDescriptorSetSlot, idx = -1) {
-		if (_flavour == EGLSLFlavour.Metal) {
+		if (_flavour == EGLSLFlavour.Metal || true) {
 			if (set == PARAMS)
 				return LAYOUT_PUSH_CONSTANT;
 		}

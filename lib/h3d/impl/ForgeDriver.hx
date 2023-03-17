@@ -1237,6 +1237,8 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 
 		// get inputs
+		var GLOBAL_DESCRIPTOR_SET = forge.Native.DescriptorUpdateFrequency.fromValue(EDescriptorSetSlot.GLOBALS);
+
 		p.vertex.params = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(VERTEX, PARAMS));
 		p.vertex.constantsIndex = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(VERTEX, PARAMS));
 		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(VERTEX, GLOBALS));
@@ -1245,7 +1247,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		p.vertex.paramsLength = shader.vertex.paramsSize * 4; // vectors to floats
 		if (p.vertex.globalsLength > 0) {
 			p.vertex.globalsBuffer = DynamicUniformBuffer.allocate(p.vertex.globalsLength * 4, _swap_count); 
-			p.vertex.globalDescriptorSet = p.vertex.globalsBuffer.createDescriptors( _renderer, rootSig, p.vertex.globalsIndex, DESCRIPTOR_UPDATE_FREQ_PER_DRAW);
+			p.vertex.globalDescriptorSet = p.vertex.globalsBuffer.createDescriptors( _renderer, rootSig, p.vertex.globalsIndex, GLOBAL_DESCRIPTOR_SET);
 		}
 		p.fragment.params = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
 		p.fragment.constantsIndex = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
@@ -1259,7 +1261,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		p.fragment.paramsLength = shader.fragment.paramsSize * 4; // vectors to floats
 		if (p.fragment.globalsLength > 0) {
 			p.fragment.globalsBuffer = DynamicUniformBuffer.allocate(p.fragment.globalsLength * 4, 3); // need to use the swap chain depth, but 3 is enough for now
-			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, DESCRIPTOR_UPDATE_FREQ_PER_DRAW);
+			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, GLOBAL_DESCRIPTOR_SET);
 		}
 //		p.fragment.textures
 /*
@@ -2242,9 +2244,11 @@ var offset = 8;
 			var tds = _textureDescriptorMap.get(crc.get());
 
 			if (tds == null) {
+				var TEXTURE_DESCRIPTOR_SET = forge.Native.DescriptorUpdateFrequency.fromValue(EDescriptorSetSlot.SAMPLERS);
+
 				DebugTrace.trace('RENDER Adding texture ${crc.get()} mode ${textureModeIdx}');
 				var descriptorSets = _backend == Metal ? 2 : 1;
-				var ds = _renderer.createDescriptorSet(_curShader.rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, descriptorSets, 0);
+				var ds = _renderer.createDescriptorSet(_curShader.rootSig, TEXTURE_DESCRIPTOR_SET, descriptorSets, 0);
 				
 				if (_textureDataBuilder == null ) {
 					trace('TExture builder is null');
