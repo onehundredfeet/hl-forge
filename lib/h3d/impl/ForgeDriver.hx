@@ -1126,23 +1126,21 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		for (i in 0...depth) {
 			var builder = new DescriptorDataBuilder();
 
-			var s0 = builder.addSlot( DBM_UNIFORMS );     
-			var s1 = builder.addSlot( DBM_UNIFORMS );     
-			   
-			builder.setSlotBindIndex(s0, vidx);
-			builder.setSlotBindIndex(s1, fidx);
-			builder.addSlotUniformBuffer( s0, @:privateAccess vbuf._buffers.get(i) );
-			builder.addSlotUniformBuffer( s1, @:privateAccess fbuf._buffers.get(i) );
+			if (vbuf != null) {
+				var s0 = builder.addSlot( DBM_UNIFORMS );     
+				builder.setSlotBindIndex(s0, vidx);
+				builder.addSlotUniformBuffer( s0, @:privateAccess vbuf._buffers.get(i) );
+			}
+			if (fbuf != null) {
+				var s1 = builder.addSlot( DBM_UNIFORMS );     
+				builder.setSlotBindIndex(s1, fidx);
+				builder.addSlotUniformBuffer( s1, @:privateAccess fbuf._buffers.get(i) );	
+			}
+			DebugTrace.trace( 'RENDER DESCRIPTORS Updating depth ${i}');
+
 			builder.update( _renderer, i, ds);
 		}
 		
-
-
-		if (vbuf != null)
-	        _renderer.fillDescriptorSet( @:privateAccess vbuf._buffers, ds, DescriptorSlotMode.DBM_UNIFORMS, 0);
-		if (fbuf != null)
-	        _renderer.fillDescriptorSet( @:privateAccess fbuf._buffers, ds, DescriptorSlotMode.DBM_UNIFORMS, 1);
-
 		DebugTrace.trace( 'RENDER DESCRIPTORS DONE multibuffer descriptor on set ${set}');
 
 
