@@ -758,7 +758,7 @@ class GLSLTranscoder {
 			case Local:
 		}
 		
-		if (v.kind == Param && !v.type.match(TBuffer(_)) && offset != -1) {
+		if (_flavour == Vulkan && v.kind == Param && !v.type.match(TBuffer(_)) && offset != -1) {
 			add('layout(offset=${offset}) ');
 		}
 
