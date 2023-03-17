@@ -1159,29 +1159,36 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 		var rootDesc = new forge.Native.RootSignatureDesc();
 
+		if (_bilinearClamp2DSampler == null) {
+			var samplerDesc = new forge.Native.SamplerDesc();
+			samplerDesc.mMinFilter = FILTER_LINEAR;
+			samplerDesc.mMagFilter = FILTER_LINEAR;
+			samplerDesc.mAddressU = ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerDesc.mAddressV = ADDRESS_MODE_CLAMP_TO_EDGE;
+			samplerDesc.mAddressW = ADDRESS_MODE_CLAMP_TO_EDGE;	
+			samplerDesc.mMipMapMode = MIPMAP_MODE_NEAREST;
+			samplerDesc.mMipLodBias = 0.0;
+			samplerDesc.mMaxAnisotropy = 0.0;
+			
+
+			_bilinearClamp2DSampler = _renderer.createSampler(samplerDesc);
+			forge.Native.Globals.waitForAllResourceLoads();
+		}
+
 		rootDesc.addShader(fgShader);
-		
+
+		var tt = shader.fragment.textures;
+		for (i in 0...shader.fragment.texturesCount) {
+			tt = tt.next;
+			rootDesc.addSampler(_bilinearClamp2DSampler, tt.name);
+		}
 		var rootSig = _renderer.createRootSig(rootDesc);
 		p.rootSig = rootSig;
 		
 		forge.Native.Globals.waitForAllResourceLoads();
 
 		if (shader.fragment.texturesCount > 0 ) {
-			if (_bilinearClamp2DSampler == null) {
-				var samplerDesc = new forge.Native.SamplerDesc();
-				samplerDesc.mMinFilter = FILTER_LINEAR;
-				samplerDesc.mMagFilter = FILTER_LINEAR;
-				samplerDesc.mAddressU = ADDRESS_MODE_CLAMP_TO_EDGE;
-				samplerDesc.mAddressV = ADDRESS_MODE_CLAMP_TO_EDGE;
-				samplerDesc.mAddressW = ADDRESS_MODE_CLAMP_TO_EDGE;	
-				samplerDesc.mMipMapMode = MIPMAP_MODE_NEAREST;
-				samplerDesc.mMipLodBias = 0.0;
-				samplerDesc.mMaxAnisotropy = 0.0;
-				
-
-				_bilinearClamp2DSampler = _renderer.createSampler(samplerDesc);
-			}
-			forge.Native.Globals.waitForAllResourceLoads();
+			
 
 			var tt = shader.fragment.textures;
 			
