@@ -730,7 +730,7 @@ class GLSLTranscoder {
 
 	final BUFFER_SET = EDescriptorSetSlot.BUFFERS;
 
-	function initVar(v:TVar) {
+	function initVar(v:TVar, offset = -1) {
 		switch (v.kind) {
 			case Param, Global:
 				if (v.type.match(TBuffer(_))) {
@@ -757,6 +757,11 @@ class GLSLTranscoder {
 				return;
 			case Local:
 		}
+		
+		if (v.kind == Param && !v.type.match(TBuffer(_)) && offset != -1) {
+			add('layout(offset=${offset}) ');
+		}
+
 		if (v.qualifiers != null)
 			for (q in v.qualifiers)
 				switch (q) {
@@ -772,6 +777,61 @@ class GLSLTranscoder {
 		add(';  // ${v.name} : ${v.kind} \n');
 	}
 
+	function getTypeSize(t:Type) {
+		return switch (t) {
+			case TInt: 4;
+			case TBool: 1;
+			case TFloat: 4;
+			case TVec(size, k):
+				switch (k) {
+					case VFloat: 4 * size;
+					case VInt: 4 * size;
+					case VBool: size;
+				}
+			default: throw "Not supported";
+		}
+	}
+
+	function getVarSize(v:TVar) {
+		return switch (v.type) {
+			case TArray(t, size):
+				var old = v.type;
+				v.type = t;
+				var baseCount = getVarSize(v);
+				v.type = old;
+				baseCount *
+				switch (size) {
+					case SVar(v): throw "Not supported";
+					case SConst(1): (intelDriverFix) ? 2 : 1;
+					case SConst(n): n;
+					default: throw 'Unrecognized size ${size}';
+				}
+				
+			//			trace('Added size ${size} for ${v}');
+			default:
+				getTypeSize(v.type);
+		}
+	}
+
+
+	function getSize(v:TVar) {
+
+		var size = getVarSize(v);
+
+		if (v.qualifiers != null)
+			for (q in v.qualifiers)
+				switch (q) {
+					case Precision(p):
+						switch (p) {
+							case Low: return Std.int(size / 2);
+							case Medium: Std.int(size); 
+							case High: Std.int(size * 2); 
+						}
+					default:
+				}
+				
+		return size;
+	}
 	/*
 		TVoid;
 		TInt;
@@ -806,6 +866,19 @@ class GLSLTranscoder {
 		return 'set=${set},binding=${stage}';
 	}
 
+	function isPushBuffer( stage: EShaderStage, set : EDescriptorSetSlot) {
+		return set == EDescriptorSetSlot.PARAMS;
+	}
+	function getBufferedParams(s:ShaderData) : Array<TVar>{
+		var params = s.vars.filter((x) -> x.type.match(TBuffer(_)) == false && x.kind == Param);
+		return params.filter((x) -> switch (x.type) {
+			case TSampler2D: false;
+			case TSamplerCube: false;
+			case TArray(t, size): t != TSampler2D && t != TSamplerCube;
+			default: true;
+		});
+
+	}
 	function initVars(s:ShaderData, stage:EShaderStage) {
 		outIndex = 0;
 		uniformBuffer = 0;
@@ -816,12 +889,7 @@ class GLSLTranscoder {
 
 		var globals = nonBufferVars.filter((x) -> x.kind == Global);
 		var params = nonBufferVars.filter((x) -> x.kind == Param);
-		var buffer_params = params.filter((x) -> switch (x.type) {
-			case TSampler2D: false;
-			case TSamplerCube: false;
-			case TArray(t, size): t != TSampler2D && t != TSamplerCube;
-			default: true;
-		});
+		var buffer_params = getBufferedParams(s);
 
 		if (globals.length > 0) {
 			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.GLOBALS)}) uniform ${getVariableBufferName(stage, EDescriptorSetSlot.GLOBALS)} {\n');
@@ -835,17 +903,20 @@ class GLSLTranscoder {
 		if (buffer_params.length > 0) {
 			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.PARAMS)} ) uniform ${getVariableBufferName(stage, EDescriptorSetSlot.PARAMS, _flavour)} {\n');
 
+			var totalSize = 0;
 			for (v in buffer_params) {
 				add("\t");
-				initVar(v);
+				initVar(v, _buildPushConstantSize + totalSize);
+				totalSize += getSize( v);
 			}
-
+			trace( 'RENDER PARAMS OFFSET ${_buildPushConstantSize} TOTAL SIZE ${totalSize} for stage ${stage}');
+			_buildPushConstantSize += totalSize;
+			
 			add('} _${getVariableBufferName(stage, EDescriptorSetSlot.PARAMS, _flavour)};\n');
 		}
 		for (b in bufferVars) {
 			initVar(b);
 		}
-		var SAMPLER_SET = EDescriptorSetSlot.SAMPLERS;
 
 		var sampler_params = params.filter((x) -> switch (x.type) {
 			case TSampler2D: true;
@@ -922,8 +993,20 @@ class GLSLTranscoder {
 		add("// Done variable declaration\n");
 	}
 
+	var _buildPushConstantSize = 0;
+	var _buildAllBufferedParams = [];
+	function prebuild() {
+		/*
+		for (i in 0..._shaderData.length) {
+			if (_shaderData[i] != null) {
+				_buildAllBufferedParams = _buildAllBufferedParams.concat(getBufferedParams(_shaderData[i]));
+			}
+		}
+		*/
+	}
 	public function build() {
 		try {
+			prebuild();
 			buildStage(EShaderStage.VERTEX);
 			buildStage(EShaderStage.FRAGMENT);
 		} catch (e:haxe.Exception) {
