@@ -904,6 +904,7 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
             #if __APPLE__
             ss << "\t" << i << " argument buffer field:" << r.mIsArgumentBufferField << std::endl;
             #endif
+            
             ss << "\t" << i << " used stages:" << r.used_stages << std::endl;
             ss << "\t" << i << " set:" << r.set << std::endl;
             ss << "\t" << i << " size:" << r.size << std::endl;

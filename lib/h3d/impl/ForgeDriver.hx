@@ -13,6 +13,9 @@ import h3d.mat.Pass as Pass;
 import forge.Native.BlendStateTargets as BlendStateTargets;
 import forge.Native.ColorMask as ColorMask;
 import forge.Native.StateBuilder as StateBuilder;
+import forge.Native.DescriptorSlotMode;
+import forge.Native.DescriptorDataBuilder;
+
 import forge.Forge;
 import forge.DynamicUniformBuffer;
 import h3d.impl.GraphicsDriver;
@@ -31,7 +34,7 @@ private class CompiledShader {
 	public var constantsIndex:DescriptorIndex;
 	public var globalsIndex:DescriptorIndex;
 	public var globalsDescriptorSetIndex:DescriptorIndex;
-	public var globalDescriptorSet : forge.Native.DescriptorSet;
+	public var globalProgramDescriptorSet : forge.Native.DescriptorSet;
 	public var params:DescriptorIndex;
 	public var globalsLength:Int;
 	public var paramsLength:Int;
@@ -99,6 +102,7 @@ private class CompiledProgram {
 	public var forgeShader:forge.Native.Shader;
 	public var vertex:CompiledShader;
 	public var fragment:CompiledShader;
+	public var globalDescriptorSet : forge.Native.DescriptorSet;
 	public var inputs:InputNames;
 	public var naturalLayout: forge.Native.VertexLayout;
 	public var attribs:Array<CompiledAttribute>;
@@ -1097,6 +1101,54 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		}
 		//trace('Done init shader');
 	}
+	static inline final SIZEOF_FLOAT = 4;
+	static inline final FLOATS_PER_VECT = 4;
+	
+	 function createGlobalDescriptors(rootSig : forge.Native.RootSignature, set : EDescriptorSetSlot, vbuf : DynamicUniformBuffer, vidx: Int, fbuf : DynamicUniformBuffer, fidx : Int ) : forge.Native.DescriptorSet {
+
+		DebugTrace.trace( 'RENDER DESCRIPTORS Creating multibuffer descriptor on set ${set} with vbuf ${vbuf}[${vidx}] fbuf ${fbuf}[${fidx}]');
+
+		var dsfset = forge.Native.DescriptorUpdateFrequency.fromValue(set);
+
+        if (vbuf == null && fbuf == null) return null;
+		if (vbuf != null && fbuf != null && vbuf.depth != vbuf.depth) throw "Must have matching depth, i think";
+        var setDesc = new forge.Native.DescriptorSetDesc();
+		setDesc.pRootSignature = rootSig;
+		setDesc.updateFrequency = dsfset;
+		var depth = vbuf != null ? vbuf.depth : fbuf.depth; // 2^13 = 8192
+		setDesc.maxSets = depth;
+
+		DebugTrace.trace( 'RENDER DESCRIPTORS Adding set ');
+		var ds = _renderer.addDescriptorSet( setDesc );
+        
+		DebugTrace.trace( 'RENDER DESCRIPTORS Filling set ');
+
+		for (i in 0...depth) {
+			var builder = new DescriptorDataBuilder();
+
+			var s0 = builder.addSlot( DBM_UNIFORMS );     
+			var s1 = builder.addSlot( DBM_UNIFORMS );     
+			   
+			builder.setSlotBindIndex(s0, vidx);
+			builder.setSlotBindIndex(s1, fidx);
+			builder.addSlotUniformBuffer( s0, @:privateAccess vbuf._buffers.get(i) );
+			builder.addSlotUniformBuffer( s1, @:privateAccess fbuf._buffers.get(i) );
+			builder.update( _renderer, i, ds);
+		}
+		
+
+
+		if (vbuf != null)
+	        _renderer.fillDescriptorSet( @:privateAccess vbuf._buffers, ds, DescriptorSlotMode.DBM_UNIFORMS, 0);
+		if (fbuf != null)
+	        _renderer.fillDescriptorSet( @:privateAccess fbuf._buffers, ds, DescriptorSlotMode.DBM_UNIFORMS, 1);
+
+		DebugTrace.trace( 'RENDER DESCRIPTORS DONE multibuffer descriptor on set ${set}');
+
+
+		return ds;
+	}
+
 	public function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
 
 		var flavour = switch(_backend) {
@@ -1252,8 +1304,9 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		p.vertex.globalsLength = shader.vertex.globalsSize * 4; // vectors to floats
 		p.vertex.paramsLength = shader.vertex.paramsSize * 4; // vectors to floats
 		if (p.vertex.globalsLength > 0) {
-			p.vertex.globalsBuffer = DynamicUniformBuffer.allocate(p.vertex.globalsLength * 4, _swap_count); 
-			p.vertex.globalDescriptorSet = p.vertex.globalsBuffer.createDescriptors( _renderer, rootSig, p.vertex.globalsIndex, GLOBAL_DESCRIPTOR_SET);
+			p.vertex.globalsBuffer = DynamicUniformBuffer.allocate(p.vertex.globalsLength * SIZEOF_FLOAT, _swap_count); 
+			DebugTrace.trace('RENDER SHADER Creating vertex globals descriptor');
+//			p.vertex.globalDescriptorSet = p.vertex.globalsBuffer.createDescriptors( _renderer, rootSig, p.vertex.globalsIndex, GLOBAL_DESCRIPTOR_SET);
 		}
 		p.fragment.params = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
 		p.fragment.constantsIndex = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
@@ -1261,14 +1314,19 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		p.fragment.globalsIndex = rootSig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, GLOBALS));
 //		p.fragment.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0");
 
-//		trace ('p.vertex.globalsIndex ${p.vertex.globalsIndex} p.vertex.globalsDescriptorSetIndex ${p.vertex.globalsDescriptorSetIndex}');
-//		trace ('p.fragment.globalsIndex ${p.fragment.globalsIndex} p.fragment.globalsDescriptorSetIndex ${p.fragment.globalsDescriptorSetIndex}');
+		DebugTrace.trace ('RENDER SHADER DESCRIPTOR p.vertex.globalsIndex ${p.vertex.globalsIndex} p.vertex.globalsDescriptorSetIndex ${p.vertex.globalsDescriptorSetIndex}');
+		DebugTrace.trace ('RENDER SHADER DESCRIPTOR p.fragment.globalsIndex ${p.fragment.globalsIndex} p.fragment.globalsDescriptorSetIndex ${p.fragment.globalsDescriptorSetIndex}');
 
-		p.fragment.paramsLength = shader.fragment.paramsSize * 4; // vectors to floats
+		p.fragment.paramsLength = shader.fragment.paramsSize * FLOATS_PER_VECT; // vectors to floats
 		if (p.fragment.globalsLength > 0) {
-			p.fragment.globalsBuffer = DynamicUniformBuffer.allocate(p.fragment.globalsLength * 4, 3); // need to use the swap chain depth, but 3 is enough for now
-			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, GLOBAL_DESCRIPTOR_SET);
+			p.fragment.globalsBuffer = DynamicUniformBuffer.allocate(p.fragment.globalsLength * FLOATS_PER_VECT, 3); // need to use the swap chain depth, but 3 is enough for now
+			DebugTrace.trace('RENDER SHADER Creating fragment globals descriptor');
+//			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, GLOBAL_DESCRIPTOR_SET);
 		}
+
+		p.globalDescriptorSet = createGlobalDescriptors(rootSig,EDescriptorSetSlot.GLOBALS, p.vertex.globalsBuffer, p.vertex.globalsIndex, p.fragment.globalsBuffer, p.fragment.globalsIndex );
+
+	
 //		p.fragment.textures
 /*
 struct spvDescriptorSetBuffer0
@@ -2142,11 +2200,10 @@ var offset = 8;
 			DebugTrace.trace('RENDER CALLSTACK CONSTANTS pushing fragment constants ${_curShader.fragment.globalsLength + _curShader.fragment.paramsLength}');
 			_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.constantsIndex, hl.Bytes.getArray(_fragConstantBuffer) );
 		}
-		if (_curShader.vertex.globalsIndex != -1) {
-			_currentCmd.bindDescriptorSet(_curShader.vertex.globalsBuffer.currentIdx(), _curShader.vertex.globalDescriptorSet);
-		}
-		if (_curShader.fragment.globalsIndex != -1) {
-			_currentCmd.bindDescriptorSet(_curShader.fragment.globalsBuffer.currentIdx(), _curShader.fragment.globalDescriptorSet);			
+		if (_curShader.globalDescriptorSet != null) {
+			var idx = _curShader.vertex.globalsBuffer != null ? _curShader.vertex.globalsBuffer.currentIdx() : _curShader.fragment.globalsBuffer.currentIdx();
+			DebugTrace.trace('RENDER Setting global descriptor set to idx ${idx} vert buf ${ _curShader.vertex.globalsBuffer} frag buf ${_curShader.fragment.globalsBuffer}');
+			_currentCmd.bindDescriptorSet(idx, _curShader.globalDescriptorSet);
 		}
 	}
 

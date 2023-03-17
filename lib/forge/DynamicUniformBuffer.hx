@@ -19,7 +19,9 @@ class DynamicUniformBuffer {
     var _dirty : Bool = true;
     var _offset : Int = 0;
     function new() {}
-
+    public var depth(get,never) : Int;
+    function get_depth() return _depth; 
+    
     public static function allocate( byteCount : Int, depth: Int, ? bytes : Bytes ) {
         var buffer = new DynamicUniformBuffer();
         buffer._byteCount = byteCount;
@@ -42,6 +44,8 @@ class DynamicUniformBuffer {
     }
     
     public function createDescriptors(renderer : Renderer, rootsig : RootSignature, slotIndex : Int, frequency: forge.Native.DescriptorUpdateFrequency) : DescriptorSet {
+        DebugTrace.trace( 'Creating descriptor on set ${frequency} on slot ${slotIndex} with ${_depth} alternatives, count? ${_buffers.getSize()}');
+
         var setDesc = new forge.Native.DescriptorSetDesc();
 		setDesc.pRootSignature = rootsig;
 		setDesc.updateFrequency = frequency;

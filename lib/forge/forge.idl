@@ -907,7 +907,7 @@ interface DescriptorDataBuilder {
 	void setSlotBindIndex(int slot, int index);
 	[Internal="addSlotData"] void addSlotTexture( int slot, Texture tex );
 	[Internal="addSlotData"] void addSlotSampler( int slot, Sampler sampler );
-	[Internal="addSlotData"] void addSlotUniformBuffer( int slot, Buffer uniformBuffer );
+	[Internal="addSlotData"] void addSlotUniformBuffer( int slot, InternalBuffer uniformBuffer );
 	void setSlotUAVMipSlice( int slot, int idx );
 	void update(Renderer renderer, int index, DescriptorSet set);
 	void bind(Cmd cmd, int index, DescriptorSet set);	
@@ -990,8 +990,13 @@ interface SyncToken {
 
 };
 
+[Internal="Buffer", NoDelete]
+interface InternalBuffer {
+
+};
+
 [Internal="BufferExt"]
-interface Buffer {
+interface Buffer { // rotating buffer
 	void updateRegion(bytes data, int toffset, int size, int soffset);
 	void update(bytes data);
 	void dispose();
@@ -1000,6 +1005,8 @@ interface Buffer {
 	int next();
 	int currentIdx();
 	void setCurrent(int idx);
+	InternalBuffer get(int idx);
+	InternalBuffer current(int idx);
 };
 
 

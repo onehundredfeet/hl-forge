@@ -141,6 +141,7 @@ class BufferExt {
     inline void update(void *data) {
         BufferUpdateDesc desc = {};
         desc.pBuffer = current();
+        printf("RENDER BufferExt Updating buffer %d : [Offset %Id] [size %I64d]\n", _idx, desc.pBuffer->mVulkan.mOffset, desc.pBuffer->mSize );
         beginUpdateResource(&desc);
         memcpy(desc.pMappedData, data, desc.pBuffer->mSize);
         endUpdateResource(&desc, NULL);
@@ -161,6 +162,9 @@ class BufferExt {
         return _idx;
     }
 
+    Buffer *get(int idx) {
+        return _buffers[idx];
+    }
     static void bindAsIndex(Cmd *cmd, BufferExt *b, IndexType it, int offset);
 };
 
@@ -212,6 +216,7 @@ class BufferLoadDescExt : public BufferLoadDesc {
             Buffer *tmp = nullptr;
             ppBuffer = &tmp;
 
+            DEBUG_PRINT("Attempting to add resource buffer %d/%d\n", i, _depth);
             if (i == _depth - 1)
                 addResource(this, token); // this may not work, but I don't want to make multiple sync tokens
             else
@@ -432,9 +437,11 @@ class DescriptorDataBuilder {
     void addSlotData(int slot, Sampler *data) {
         _dataPointers[slot]->push_back(data);
     }
+    /*
     void addSlotData(int slot, BufferExt *bp) {
         _dataPointers[slot]->push_back(bp->current());
     }
+    */
     void addSlotData(int slot, Buffer *bp) {
         _dataPointers[slot]->push_back(bp);
     }
