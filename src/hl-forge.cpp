@@ -1155,14 +1155,17 @@ RootSignature *RootSignatureFactory::create(Renderer *pRenderer) {
 
     for (int i = 0; i < _names.size(); i++) {
         pointers[i] = _names[i].c_str();
+        DEBUG_PRINT("\tRENDER ROOT SIG has sampler %s\n",  pointers[i]);
     }
     RootSignatureDesc rootDesc = {
         &_shaders[0],
         (uint32_t)_shaders.size(),
-        0,
+        0, // bindless textures
         pointers,
         &_samplers[0],
-        (uint32_t)_samplers.size()};
+        (uint32_t)_samplers.size(),
+        ROOT_SIGNATURE_FLAG_NONE// flags
+        };
 
     addRootSignature(pRenderer, &rootDesc, &tmp);
 

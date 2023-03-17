@@ -1179,8 +1179,9 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 
 		var tt = shader.fragment.textures;
 		for (i in 0...shader.fragment.texturesCount) {
+			trace('RENDER SAMPLER ADDING SAMPER ${tt.name}');
+			rootDesc.addSampler(_bilinearClamp2DSampler, "fragmentTextures");
 			tt = tt.next;
-			rootDesc.addSampler(_bilinearClamp2DSampler, tt.name);
 		}
 		var rootSig = _renderer.createRootSig(rootDesc);
 		p.rootSig = rootSig;
@@ -1188,8 +1189,6 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		forge.Native.Globals.waitForAllResourceLoads();
 
 		if (shader.fragment.texturesCount > 0 ) {
-			
-
 			var tt = shader.fragment.textures;
 			
 			DebugTrace.trace('RENDER TEXTURE name ${tt.name} index ${tt.index} instance ${tt.instance} pos ${tt.pos} type ${tt.type} next ${tt.next}');
