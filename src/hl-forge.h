@@ -141,7 +141,9 @@ class BufferExt {
     inline void update(void *data) {
         BufferUpdateDesc desc = {};
         desc.pBuffer = current();
+        #ifdef _WINDOWS
         printf("RENDER BufferExt Updating buffer %d : [Offset %Id] [size %I64d]\n", _idx, desc.pBuffer->mVulkan.mOffset, desc.pBuffer->mSize );
+        #endif
         beginUpdateResource(&desc);
         memcpy(desc.pMappedData, data, desc.pBuffer->mSize);
         endUpdateResource(&desc, NULL);

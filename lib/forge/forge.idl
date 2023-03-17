@@ -1005,8 +1005,8 @@ interface Buffer { // rotating buffer
 	int next();
 	int currentIdx();
 	void setCurrent(int idx);
-	InternalBuffer get(int idx);
-	InternalBuffer current(int idx);
+	[Const] InternalBuffer get(int idx);
+	[Const] InternalBuffer current();
 };
 
 

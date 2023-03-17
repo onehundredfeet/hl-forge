@@ -2167,7 +2167,7 @@ HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotSampler2)(pref<DescriptorDataB
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotSampler2, _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotUniformBuffer2)(pref<DescriptorDataBuilder>* _this, int slot, pref<BufferExt>* uniformBuffer) {
+HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotUniformBuffer2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Buffer>* uniformBuffer) {
 	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(uniformBuffer)));
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotUniformBuffer2, _IDL _I32 _IDL);
@@ -2395,6 +2395,16 @@ HL_PRIM void HL_NAME(Buffer_setCurrent1)(pref<BufferExt>* _this, int idx) {
 	(_unref(_this)->setCurrent(idx));
 }
 DEFINE_PRIM(_VOID, Buffer_setCurrent1, _IDL _I32);
+
+HL_PRIM HL_CONST pref<Buffer>* HL_NAME(Buffer_get1)(pref<BufferExt>* _this, int idx) {
+	return alloc_ref_const((_unref(_this)->get(idx)),InternalBuffer);
+}
+DEFINE_PRIM(_IDL, Buffer_get1, _IDL _I32);
+
+HL_PRIM HL_CONST pref<Buffer>* HL_NAME(Buffer_current0)(pref<BufferExt>* _this) {
+	return alloc_ref_const((_unref(_this)->current()),InternalBuffer);
+}
+DEFINE_PRIM(_IDL, Buffer_current0, _IDL);
 
 HL_PRIM pref<BufferLoadDescExt>* HL_NAME(BufferLoadDesc_new0)() {
 	auto ___retvalue = alloc_ref((new BufferLoadDescExt()),BufferLoadDesc);
