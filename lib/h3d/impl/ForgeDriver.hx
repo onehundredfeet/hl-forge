@@ -2251,7 +2251,7 @@ var offset = 8;
 				var ds = _renderer.createDescriptorSet(_curShader.rootSig, TEXTURE_DESCRIPTOR_SET, descriptorSets, 0);
 				
 				if (_textureDataBuilder == null ) {
-					trace('TExture builder is null');
+					DebugTrace.trace('RENDER TExture builder is null, creating one');
 					_textureDataBuilder = new Array<forge.Native.DescriptorDataBuilder>();
 	
 					for (i in 0...3) {
@@ -2308,7 +2308,10 @@ var offset = 8;
 
 				}
 
+				
 				var tdb = _textureDataBuilder[textureModeIdx];
+
+				DebugTrace.trace('RENDER shader fragment texture count is ${shaderFragTextureCount}');
 
 				for (i in 0...shaderFragTextureCount) {
 					var t = _fragmentTextures[i];
@@ -2342,11 +2345,12 @@ var offset = 8;
 					}
 				}
 
-
+				DebugTrace.trace('RENDER shader updating descriptor set');
 				tdb.update(_renderer, 0, ds);
 
 				tds = {mat:_currentPipeline, tex:_fragmentTextures.copy(), texCubes: _fragmentTextureCubes.copy(), ds:ds};
 				_textureDescriptorMap.set(crc.get(), tds);
+				DebugTrace.trace('RENDER Done setting up textures');
 			} else {
 				DebugTrace.trace('RENDER TEXTURE Reusing texture ${crc.get()}');
 			}
