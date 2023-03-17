@@ -229,7 +229,27 @@ class StateBuilder {
     StateBuilder() { reset(); }
     ~StateBuilder() {}
     void reset() {
-        memset(this, 0, sizeof(StateBuilder));
+        _blend = {};
+        _blend.mDstAlphaFactors[0] = BC_ZERO;
+        _blend.mDstFactors[0] = BC_ZERO;
+        _blend.mSrcAlphaFactors[0] = BC_ONE;
+        _blend.mSrcFactors[0] = BC_ONE;
+        _blend.mMasks[0] = ALL;
+        _blend.mRenderTargetMask = BLEND_STATE_TARGET_ALL;
+        _blend.mIndependentBlend = false;
+
+        _depth = {};
+        _depth.mDepthFunc = CMP_LEQUAL;
+        _depth.mDepthTest = false;
+        _depth.mDepthWrite = false;
+        _depth.mStencilBackFunc = CMP_ALWAYS;
+        _depth.mStencilFrontFunc = CMP_ALWAYS;
+        _depth.mStencilReadMask = 0xFF;
+        _depth.mStencilWriteMask = 0xFF;
+
+        _raster = {};
+        _raster.mCullMode = CULL_MODE_BACK;
+
     }
 
     void addToHash(HashBuilder *hb) {
