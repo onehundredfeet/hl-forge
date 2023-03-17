@@ -514,7 +514,7 @@ interface ColorMask {
 	const int GREEN = 0x02;
 	const int BLUE = 0x04;
 	const int ALPHA = 0x08;
-	const int ALL = 0xff;
+	const int ALL = 0x0f;
 };
 //static const int RED = 0x1;
 //static const int GREEN = 0x2;
