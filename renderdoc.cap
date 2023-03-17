@@ -1,7 +1,7 @@
 {
     "rdocCaptureSettings": 1,
     "settings": {
-        "autoStart": true,
+        "autoStart": false,
         "commandLine": "bin\\main.hl",
         "environment": [
         ],
@@ -9,17 +9,17 @@
         "inject": false,
         "numQueuedFrames": 0,
         "options": {
-            "allowFullscreen": false,
-            "allowVSync": false,
+            "allowFullscreen": true,
+            "allowVSync": true,
             "apiValidation": true,
-            "captureAllCmdLists": true,
+            "captureAllCmdLists": false,
             "captureCallstacks": false,
             "captureCallstacksOnlyDraws": false,
             "debugOutputMute": true,
             "delayForDebugger": 0,
             "hookIntoChildren": false,
             "refAllResources": true,
-            "verifyBufferAccess": true
+            "verifyBufferAccess": false
         },
         "queuedFrameCap": 0,
         "workingDir": "E:/git/hl-forge"
