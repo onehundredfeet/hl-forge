@@ -302,6 +302,9 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	function addDepthBuffer() {
+		if (_attachedDepthBuffer) {
+			getDefaultDepthBuffer();
+		}
 		return true;
 	}
 
@@ -430,6 +433,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		_queueResize = true;
 	}
 
+	var _attachedDepthBuffer = false;
 
 	override function getDefaultDepthBuffer():h3d.mat.DepthBuffer {
 		DebugTrace.trace('Getting default depth buffer ${_width}  ${_height}');
@@ -444,6 +448,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			_defaultDepth.height = _height;
 			_defaultDepth.b = allocDepthBuffer(_defaultDepth);
 		}
+		_attachedDepthBuffer = true;
 		return _defaultDepth;
 	}
 
