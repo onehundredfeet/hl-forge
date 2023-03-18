@@ -1933,7 +1933,7 @@ struct spvDescriptorSetBuffer0
 			layout_attr.mSemanticNameLength = a.name.length;
 			layout_attr.setSemanticName( a.name );
 			DebugTrace.trace('LAYOUT STRIDE Building layout for location ${location}/${totalAttribs} from compiled attribute ${a.offsetBytes} offset, ${a.strideBytes} stride bytes');
-			vl.setBindingStride(bindingCount, a.strideBytes);
+			vl.setStride(bindingCount, a.strideBytes);
 		}
 
 		return vl;
