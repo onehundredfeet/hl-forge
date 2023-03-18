@@ -1912,24 +1912,25 @@ struct spvDescriptorSetBuffer0
 	
 	function buildLayoutFromShader(s:CompiledProgram) : forge.Native.VertexLayout {
 		var vl = new forge.Native.VertexLayout();
-		vl.attribCount = 0;
+
+		var attribCount = 0;
+
 
 
 		for (a in s.attribs) {
-			var location = vl.attribCount++;
+			var location = vl.attribCount = attribCount ++ ;
 			var layout_attr = vl.attrib(location);
 
 			layout_attr.mFormat = getLayoutFormat(a);
 			
-
 			layout_attr.mBinding = 0;
 			layout_attr.mLocation = a.index; 
 			layout_attr.mOffset = a.offsetBytes;
 			layout_attr.mSemantic = a.semantic;
 			layout_attr.mSemanticNameLength = a.name.length;
 			layout_attr.setSemanticName( a.name );
-			DebugTrace.trace('LAYOUT STRIDE Building layout from compiled attribute ${a.strideBytes} stride bytes');
-			vl.setstrides(location, a.strideBytes);
+			DebugTrace.trace('LAYOUT STRIDE Building layout from compiled attribute ${a.offsetBytes} offset, ${a.strideBytes} stride bytes');
+			vl.setStride(location, a.strideBytes);
 		}
 
 		return vl;
@@ -1998,7 +1999,7 @@ var offset = 8;
 			layout_attr.mSemantic = a.semantic;
 			layout_attr.mSemanticNameLength = a.name.length;
 			layout_attr.setSemanticName( a.name );
-			vl.setstrides(location, m.strideBytes);
+			vl.setStride(location, m.strideBytes);
 		}
 
 		return vl;
@@ -2007,7 +2008,8 @@ var offset = 8;
 	function buildLayoutFromMultiBuffer(s :CompiledProgram, b : Buffer.BufferOffset ) : forge.Native.VertexLayout {
 		var vl = buildLayoutFromShader(s);
 		for (i in 0...vl.attribCount) {
-			vl.setstrides(i, b.buffer.buffer.strideBytes);
+			trace('RENDER BUILDING LAYOUT MULTI BUFFER ${i} stride ${ b.buffer.buffer.strideBytes} ');
+			vl.setStride(i, b.buffer.buffer.strideBytes);
 		}
 
 		return vl;
@@ -2144,17 +2146,17 @@ var offset = 8;
 				if (_curBuffer.flags.has(RawFormat)) {
 					DebugTrace.trace('LAYOUT BINDING NATURAL layout');
 					cmat._layout = _curShader.naturalLayout;
-					cmat._stride = _curShader.naturalLayout.getstrides(0);
+					cmat._stride = _curShader.naturalLayout.getStride(0);
 				} else {
 					DebugTrace.trace('LAYOUT BINDING HEAPS layout');
 					cmat._layout = buildHeapsLayout( _curShader, _curBuffer.buffer );
-					cmat._stride = cmat._layout.getstrides(0);
+					cmat._stride = cmat._layout.getStride(0);
 				}
 			} else if (_curMultiBuffer != null) {
 				DebugTrace.trace('LAYOUT BINDING Multi layout');
 				// there can be a stride mistmatch here
 				cmat._layout = buildLayoutFromMultiBuffer( _curShader, _curMultiBuffer);
-				cmat._stride = cmat._layout.getstrides(0);
+				cmat._stride = cmat._layout.getStride(0);
 			} else
 				throw "no buffer specified to bind pipeline";
 
@@ -2568,7 +2570,7 @@ var offset = 8;
 
 			strideCountBytes += a.sizeBytes;
 			_bufferBinder.add( b, mb.strideBytes, curBufferView.offset * elementSize );
-			DebugTrace.trace ('RENDER STRIDE OFFSET attr ${a.name} offset ${ curBufferView.offset} offset bytes ${curBufferView.offset * elementSize}');
+			DebugTrace.trace ('RENDER STRIDE ${ mb.strideBytes} OFFSET ${curBufferView.offset * elementSize} attr ${a.name} offset ${ curBufferView.offset} offset bytes ${curBufferView.offset * elementSize}');
 			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
 			// gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
 			// updateDivisor(a);

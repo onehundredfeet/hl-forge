@@ -637,7 +637,9 @@ interface VertexLayout
 	[Internal="mAttribCount"] attribute  uint     attribCount;
 	//VertexAttrib mAttribs[MAX_VERTEX_ATTRIBS];
 	[CObject, Const, Internal="forge_vertex_layout_get_attrib"] VertexAttrib attrib(int idx);
-	[Internal="mStrides"] attribute  uint [] strides;
+	//[Internal="mStrides"] attribute  uint [] strides;
+	[CObject,Internal="forge_vertex_layout_set_stride"] void setStride( int idx, int stride );
+	[CObject,Internal="forge_vertex_layout_get_stride"] int getStride( int idx );
 };
 
 

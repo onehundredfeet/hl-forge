@@ -169,6 +169,13 @@ void forge_blend_state_desc_set_rt(BlendStateDesc *bs, BlendStateTargets rt, boo
 VertexAttrib *forge_vertex_layout_get_attrib(VertexLayout *layout, int idx) {
     return &layout->mAttribs[idx];
 }
+void forge_vertex_layout_set_stride(VertexLayout *layout, int idx, int stride) {
+    layout->mStrides[idx] = stride;
+}
+
+int forge_vertex_layout_get_stride(VertexLayout *layout, int idx) {
+    return layout->mStrides[idx];
+}
 
 void forge_vertex_attrib_set_semantic(VertexAttrib *attrib, const char *name) {
     strncpy(&attrib->mSemanticName[0], name, MAX_SEMANTIC_NAME_LENGTH);
