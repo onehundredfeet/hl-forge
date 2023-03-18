@@ -1915,25 +1915,27 @@ struct spvDescriptorSetBuffer0
 
 		var attribCount = 0;
 
-
+		var totalAttribs = s.attribs.length;
+		var bindingCount = 0;
 
 		for (a in s.attribs) {
 			var location = attribCount ++ ;
+			vl.attribCount = attribCount;
+
 			var layout_attr = vl.attrib(location);
 
 			layout_attr.mFormat = getLayoutFormat(a);
 			
-			layout_attr.mBinding = 0;
+			layout_attr.mBinding = bindingCount; // <- WRONG
 			layout_attr.mLocation = a.index; 
 			layout_attr.mOffset = a.offsetBytes;
 			layout_attr.mSemantic = a.semantic;
 			layout_attr.mSemanticNameLength = a.name.length;
 			layout_attr.setSemanticName( a.name );
-			DebugTrace.trace('LAYOUT STRIDE Building layout for location ${location} from compiled attribute ${a.offsetBytes} offset, ${a.strideBytes} stride bytes');
-			vl.setStride(location, a.strideBytes);
+			DebugTrace.trace('LAYOUT STRIDE Building layout for location ${location}/${totalAttribs} from compiled attribute ${a.offsetBytes} offset, ${a.strideBytes} stride bytes');
+			vl.setBindingStride(bindingCount, a.strideBytes);
 		}
 
-		vl.attribCount = attribCount;
 		return vl;
 	}
 
