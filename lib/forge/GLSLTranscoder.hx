@@ -15,7 +15,7 @@ enum abstract EGLSLFlavour(Int) {
 @:enum abstract EDescriptorSetSlot(Int) to Int {
 	var GLOBALS = 0;
 	var PARAMS;
-	var SAMPLERS;
+	var TEXTURES;
 	var BUFFERS;
 	var NONE;
 }
@@ -35,7 +35,7 @@ class GLSLTranscoder {
 		"attribute", "const", "uniform", "varying", "inout", "void",
 	];
 	static final STAGE_SHORT_NAME = ["Vert", "Frag", "Comp"];
-	static final SET_SHORT_NAME = ["Globals", "Params", "Samplers", "Buffers", ""];
+	static final SET_SHORT_NAME = ["Globals", "Params", "Textures", "Buffers", ""];
 	static final LAYOUT_PUSH_CONSTANT = "push_constant";
 
 	static var KWDS = [for (k in KWD_LIST) k => true];
@@ -163,7 +163,7 @@ class GLSLTranscoder {
 	}
 
 	function getLookupName(set:EDescriptorSetSlot, name:String):String {
-		if (set == SAMPLERS)
+		if (set == TEXTURES)
 			return name;
 		return "_" + getVariableBufferName(_currentStage, set, _flavour) + "." + name;
 	}
@@ -173,10 +173,10 @@ class GLSLTranscoder {
 			case VarKind.Global: getLookupName(EDescriptorSetSlot.GLOBALS, varName(v));
 			case VarKind.Param:
 				switch (v.type) {
-					case TSampler2D: getLookupName(EDescriptorSetSlot.SAMPLERS, varName(v));
-					case TSamplerCube: getLookupName(EDescriptorSetSlot.SAMPLERS, varName(v));
+					case TSampler2D: getLookupName(EDescriptorSetSlot.TEXTURES, varName(v));
+					case TSamplerCube: getLookupName(EDescriptorSetSlot.TEXTURES, varName(v));
 					case TArray(t, size):
-						(t == TSampler2D || t == TSamplerCube) ? getLookupName(EDescriptorSetSlot.SAMPLERS,
+						(t == TSampler2D || t == TSamplerCube) ? getLookupName(EDescriptorSetSlot.TEXTURES,
 							varName(v)) : getLookupName(EDescriptorSetSlot.PARAMS, varName(v));
 					case TBuffer(t, size):
 						if (_bufferNameLookup == null)
@@ -926,13 +926,14 @@ class GLSLTranscoder {
 		});
 
 		if (sampler_params.length > 0) {
-			add("//Samplers\n");
+			add("//Samplers & textures\n");
 
-			// ${getVariableBufferName( stage, EDescriptorSetSlot.SAMPLERS, _flavour)}_${v.name}
+			// ${getVariableBufferName( stage, EDescriptorSetSlot.TEXTURES, _flavour)}_${v.name}
 
 			var idx = 0;
+//			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, idx++)} ) uniform ${getVariableBufferName(stage, EDescriptorSetSlot.TEXTURES, _flavour)} {\n ');
 			for (v in sampler_params) {
-				add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.SAMPLERS, idx++)} ) uniform ');
+				add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, idx++)} ) uniform ');
 				switch (v.type) {
 					case TSampler2D:
 						debugTrace('RENDER adding sampler ${v.name}');
@@ -946,6 +947,8 @@ class GLSLTranscoder {
 
 				initVar(v);
 			}
+//			add('} _${getVariableBufferName(stage, EDescriptorSetSlot.TEXTURES, _flavour)};\n');
+
 		}
 
 		add("//Input\n");
@@ -1088,7 +1091,7 @@ class GLSLTranscoder {
 				decl("#version " + (version > 150 ? 150 : version));
 			else
 		 */
-		decl("#version 430"); // OpenGL 3.0
+		decl("#version 460"); // OpenGL 3.0
 
 		decls.push(buf.toString());
 		buf = null;
