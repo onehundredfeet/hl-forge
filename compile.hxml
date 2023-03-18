@@ -7,7 +7,7 @@
 -lib tink_macro
 --class-path example
 --hl bin/main.hl
---main Base3D
+--main Skin
 -D heaps_forge
 -D heaps_no_gl
 -D hlsdl_no_gl

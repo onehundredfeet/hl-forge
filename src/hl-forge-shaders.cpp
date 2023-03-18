@@ -19,7 +19,8 @@ std::string compile_file_to_assembly(const char *source_name,
 //    options.SetTargetEnvironment(shaderc_target_env_opengl, 0);
       options.SetTargetEnvironment(shaderc_target_env_vulkan, shaderc_env_version_vulkan_1_3);
       //options.SetAutoBindUniforms(true);
-      options.SetTargetSpirv(shaderc_spirv_version_1_0);
+      options.SetTargetSpirv(shaderc_spirv_version_1_3);
+      options.SetForcedVersionProfile(460, shaderc_profile_none);
     //options.SetForcedVersionProfile(330, shaderc_profile_none);
     options.SetAutoMapLocations(true);
     //	options.SetAutoBindUniforms(true);
@@ -91,13 +92,15 @@ std::string getMSLFromSPV( const std::vector<uint32_t> &spirv_binary ) {
     // Set some options.
 	spirv_cross::CompilerMSL::Options mtl_options;
 
-   //mtl_options.argument_buffers = true;
+   mtl_options.argument_buffers = true;
    // mtl_options.pad_argument_buffer_resources = true;
-  //  mtl_options.force_active_argument_buffer_resources = true;
+   mtl_options.force_active_argument_buffer_resources = true;
+    
 //    mtl_options.shader_input_buffer_index
  //   mtl_options.force_native_arrays = true;
-    mtl_options.set_msl_version(2,4);
+    mtl_options.set_msl_version(3,0);
 	mslCompiler.set_msl_options(mtl_options);
+   mslCompiler.add_discrete_descriptor_set( 0 );
 
 	// Compile to MSL
 	std::string source = mslCompiler.compile();

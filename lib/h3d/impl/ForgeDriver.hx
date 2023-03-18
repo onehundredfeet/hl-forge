@@ -1235,7 +1235,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		var tt = shader.fragment.textures;
 		for (i in 0...shader.fragment.texturesCount) {
 			trace('RENDER SAMPLER ADDING SAMPER ${tt.name}');
-			rootDesc.addSampler(_bilinearClamp2DSampler, "fragmentTextures");
+			rootDesc.addSampler(_bilinearClamp2DSampler, 'fragmentTextures${0}');
 			tt = tt.next;
 		}
 		var rootSig = _renderer.createRootSig(rootDesc);
@@ -2316,7 +2316,7 @@ var offset = 8;
 			var tds = _textureDescriptorMap.get(crc.get());
 
 			if (tds == null) {
-				var TEXTURE_DESCRIPTOR_SET = forge.Native.DescriptorUpdateFrequency.fromValue(EDescriptorSetSlot.SAMPLERS);
+				var TEXTURE_DESCRIPTOR_SET = forge.Native.DescriptorUpdateFrequency.fromValue(EDescriptorSetSlot.TEXTURES);
 
 				DebugTrace.trace('RENDER Adding texture ${crc.get()} mode ${textureModeIdx}');
 				var descriptorSets = _backend == Metal ? 2 : 1;
