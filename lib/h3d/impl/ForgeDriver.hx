@@ -1918,7 +1918,7 @@ struct spvDescriptorSetBuffer0
 
 
 		for (a in s.attribs) {
-			var location = vl.attribCount = attribCount ++ ;
+			var location = attribCount ++ ;
 			var layout_attr = vl.attrib(location);
 
 			layout_attr.mFormat = getLayoutFormat(a);
@@ -1929,10 +1929,11 @@ struct spvDescriptorSetBuffer0
 			layout_attr.mSemantic = a.semantic;
 			layout_attr.mSemanticNameLength = a.name.length;
 			layout_attr.setSemanticName( a.name );
-			DebugTrace.trace('LAYOUT STRIDE Building layout from compiled attribute ${a.offsetBytes} offset, ${a.strideBytes} stride bytes');
+			DebugTrace.trace('LAYOUT STRIDE Building layout for location ${location} from compiled attribute ${a.offsetBytes} offset, ${a.strideBytes} stride bytes');
 			vl.setStride(location, a.strideBytes);
 		}
 
+		vl.attribCount = attribCount;
 		return vl;
 	}
 
@@ -2008,9 +2009,10 @@ var offset = 8;
 	function buildLayoutFromMultiBuffer(s :CompiledProgram, b : Buffer.BufferOffset ) : forge.Native.VertexLayout {
 		var vl = buildLayoutFromShader(s);
 		for (i in 0...vl.attribCount) {
-			trace('RENDER BUILDING LAYOUT MULTI BUFFER ${i} stride ${ b.buffer.buffer.strideBytes} ');
+			trace('RENDER BUILDING LAYOUT MULTI BUFFER ${i}/${vl.attribCount} stride ${ b.buffer.buffer.strideBytes} ');
 			vl.setStride(i, b.buffer.buffer.strideBytes);
 		}
+		trace('RENDER BUILDING LAYOUT MULTI BUFFER DONE ');
 
 		return vl;
 		/*

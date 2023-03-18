@@ -1063,7 +1063,7 @@ void forge_blend_state_desc_set_rt(BlendStateDesc *, BlendStateTargets rt, bool 
 // Vertex Layout
 VertexAttrib *forge_vertex_layout_get_attrib(VertexLayout *, int idx);
 void forge_vertex_layout_set_stride(VertexLayout *, int idx, int stride);
-int forge_vertex_layout_set_stride(VertexLayout *, int idx);
+int forge_vertex_layout_get_stride(VertexLayout *, int idx);
 
 // Vertex Attrib
 void forge_vertex_attrib_set_semantic(VertexAttrib *, const char *name);

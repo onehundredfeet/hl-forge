@@ -1364,15 +1364,15 @@ HL_PRIM HL_CONST pref<VertexAttrib>* HL_NAME(VertexLayout_attrib1)(pref<VertexLa
 }
 DEFINE_PRIM(_IDL, VertexLayout_attrib1, _IDL _I32);
 
-HL_PRIM unsigned int HL_NAME(VertexLayout_get_strides)( pref<VertexLayout>* _this, int index ) {
-	return _unref(_this)->mStrides[index];
+HL_PRIM void HL_NAME(VertexLayout_setStride2)(pref<VertexLayout>* _this, int idx, int stride) {
+	(forge_vertex_layout_set_stride( _unref(_this) , idx, stride));
 }
-DEFINE_PRIM(_I32,VertexLayout_get_strides,_IDL _I32);
-HL_PRIM unsigned int HL_NAME(VertexLayout_set_strides)( pref<VertexLayout>* _this, int index, unsigned int value ) {
-	_unref(_this)->mStrides[index] = (value);
-	return value;
+DEFINE_PRIM(_VOID, VertexLayout_setStride2, _IDL _I32 _I32);
+
+HL_PRIM int HL_NAME(VertexLayout_getStride1)(pref<VertexLayout>* _this, int idx) {
+	return (forge_vertex_layout_get_stride( _unref(_this) , idx));
 }
-DEFINE_PRIM(_I32,VertexLayout_set_strides,_IDL _I32 _I32); // Array setter
+DEFINE_PRIM(_I32, VertexLayout_getStride1, _IDL _I32);
 
 HL_PRIM bool HL_NAME(Globals_initialize1)(vstring * name) {
 	const char* name__cstr = (name == nullptr) ? "" : hl_to_utf8( name->bytes ); // Should be garbage collected
