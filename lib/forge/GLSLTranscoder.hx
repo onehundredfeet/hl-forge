@@ -69,6 +69,7 @@ class GLSLTranscoder {
 		gl;
 	};
 	static var MAT34 = "struct _mat3x4 { vec4 a; vec4 b; vec4 c; };";
+	static var MUL_MAT34 = "vec3 m3x4mult( vec3 v, _mat3x4 m) { vec4 ve = vec4(v,1.0); return vec3(dot(m.a,ve),dot(m.b,ve),dot(m.c,ve)); }";
 
 	var buf:StringBuf;
 	var exprIds = 0;
@@ -448,7 +449,7 @@ class GLSLTranscoder {
 				switch ([op, e1.t, e2.t]) {
 					case [OpAssignOp(OpMult) | OpMult, TVec(3, VFloat), TMat3x4]:
 						decl(MAT34);
-						decl("vec3 m3x4mult( vec3 v, _mat3x4 m) { vec4 ve = vec4(v,1.0); return vec3(dot(m.a,ve),dot(m.b,ve),dot(m.c,ve)); }");
+						decl(MUL_MAT34);
 						if (op.match(OpAssignOp(_))) {
 							addValue(e1, tabs);
 							add(" = ");
@@ -786,7 +787,8 @@ class GLSLTranscoder {
 					case VInt: 4 * size;
 					case VBool: size;
 				}
-			default: throw "Not supported";
+			case TMat3x4: 4 * 3 * 4;
+			default: throw 'Not supported ${t}';
 		}
 	}
 

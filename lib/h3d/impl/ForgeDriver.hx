@@ -2202,11 +2202,11 @@ var offset = 8;
 
 //		trace ('PARAMS Pushing Vertex Constants ${_temp} floats ${total / 4} vectors: [0] = x ${x} y ${y} z ${z} w ${w}');
 		if (_curShader.vertex.constantsIndex != -1) {
-			DebugTrace.trace('RENDER CALLSTACK CONSTANTS pushing vertex constants ${_curShader.vertex.globalsLength + _curShader.vertex.paramsLength}');
+			DebugTrace.trace('RENDER CALLSTACK CONSTANTS pushing vertex parameters ${_curShader.vertex.constantsIndex} ${ _curShader.vertex.paramsLength}');
 			_currentCmd.pushConstants( _curShader.rootSig, _curShader.vertex.constantsIndex, hl.Bytes.getArray(_vertConstantBuffer)  );
 		}
 		if (_curShader.fragment.constantsIndex != -1) {
-			DebugTrace.trace('RENDER CALLSTACK CONSTANTS pushing fragment constants ${_curShader.fragment.globalsLength + _curShader.fragment.paramsLength}');
+			DebugTrace.trace('RENDER CALLSTACK CONSTANTS pushing fragment parameters ${_curShader.fragment.paramsLength}');
 			_currentCmd.pushConstants( _curShader.rootSig, _curShader.fragment.constantsIndex, hl.Bytes.getArray(_fragConstantBuffer) );
 		}
 		if (_curShader.globalDescriptorSet != null) {
