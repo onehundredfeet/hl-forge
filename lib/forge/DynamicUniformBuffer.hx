@@ -43,12 +43,12 @@ class DynamicUniformBuffer {
         return buffer;
     }
     
-    public function createDescriptors(renderer : Renderer, rootsig : RootSignature, slotIndex : Int, frequency: forge.Native.DescriptorUpdateFrequency) : DescriptorSet {
+    public function createDescriptors(renderer : Renderer, rootsig : RootSignature, slotIndex : Int, frequency: Int) : DescriptorSet {
         DebugTrace.trace( 'Creating descriptor on set ${frequency} on slot ${slotIndex} with ${_depth} alternatives, count? ${_buffers.getSize()}');
 
         var setDesc = new forge.Native.DescriptorSetDesc();
 		setDesc.pRootSignature = rootsig;
-		setDesc.updateFrequency = frequency;
+		setDesc.setIndex = frequency;
 		setDesc.maxSets = _depth; // 2^13 = 8192
 		var ds = renderer.addDescriptorSet( setDesc );
         

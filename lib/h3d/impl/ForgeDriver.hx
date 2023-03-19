@@ -95,6 +95,40 @@ private class CompiledAttribute {
 	public function new() {}
 }
 
+private class ParameterBuffer {
+	static final SIZEOF_FLOAT = 4;
+	static final QW_SIZE = 4 * SIZEOF_FLOAT;
+	public var program : CompiledProgram;
+
+	public var buffer:forge.Native.Buffer;
+	public var descriptors : forge.Native.DescriptorSet;
+	public var capacity : Int;
+	public var writeHead : Int;
+	public var blockHead : Int;
+	public var swapCount : Int;
+
+	public var blocks : Array<forge.PipelineParamBufferBlock>;
+
+	public function new( program : CompiledProgram, qwPerBlock : Int, blockCount : Int, swapCount : Int ) {
+		this.program = program;
+		this.capacity = blockCount;
+		this.writeHead = 0;
+		this.swapCount = swapCount;
+		
+		
+
+		//buffer = forge.Native.Buffer.create( capacity, forge.Native.BufferType.Uniform, forge.Native.BufferUsage.Dynamic );
+		//descriptors = forge.Native.DescriptorSet.create( forge.Native.DescriptorSetLayout.create( [forge.Native.DescriptorSlot.create( forge.Native.DescriptorType.UniformBuffer, DescriptorSlotMode.Dynamic )] ) );
+		//descriptors.update( [forge.Native.DescriptorDataBuilder.create( buffer )] );
+		//this.capacity = capacity;
+	}
+
+
+	public function reset() {
+		writeHead = 0;
+		blockHead = 0;
+	}
+}
 private class CompiledProgram {
 	public var id: Int;
 	public var p:Program;
@@ -289,7 +323,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var setDesc = new forge.Native.DescriptorSetDesc();
 		setDesc.pRootSignature = _mipGen.rootsig;
-		setDesc.updateFrequency = DESCRIPTOR_UPDATE_FREQ_PER_DRAW;
+		setDesc.setIndex = forge.Native.DescriptorUpdateFrequency.DESCRIPTOR_UPDATE_FREQ_PER_DRAW.toValue();
 		setDesc.maxSets = MAX_MIP_LEVELS; // 2^13 = 8192
 		trace('Creating default descriptors');
 		_mipGenDescriptor = _renderer.addDescriptorSet( setDesc );
@@ -1119,7 +1153,7 @@ gl.bufferSubData(GL.ARRAY_BUFFER,
 		if (vbuf != null && fbuf != null && vbuf.depth != vbuf.depth) throw "Must have matching depth, i think";
         var setDesc = new forge.Native.DescriptorSetDesc();
 		setDesc.pRootSignature = rootSig;
-		setDesc.updateFrequency = dsfset;
+		setDesc.setIndex = EDescriptorSetSlot.GLOBALS;
 		var depth = vbuf != null ? vbuf.depth : fbuf.depth; // 2^13 = 8192
 		setDesc.maxSets = depth;
 
@@ -2229,7 +2263,7 @@ var offset = 8;
 				if (ds == null) {
 					var setDesc = new forge.Native.DescriptorSetDesc();
 					setDesc.pRootSignature = _curShader.rootSig;
-					setDesc.updateFrequency = DESCRIPTOR_UPDATE_FREQ_PER_DRAW;
+					setDesc.setIndex = EDescriptorSetSlot.BUFFERS;
 					setDesc.maxSets = 3; // TODO: make this configurable
 					trace('Creating descriptors for id ${_curShader.id}');
 					ds = _renderer.addDescriptorSet( setDesc );
@@ -2316,11 +2350,9 @@ var offset = 8;
 			var tds = _textureDescriptorMap.get(crc.get());
 
 			if (tds == null) {
-				var TEXTURE_DESCRIPTOR_SET = forge.Native.DescriptorUpdateFrequency.fromValue(EDescriptorSetSlot.TEXTURES);
-
 				DebugTrace.trace('RENDER Adding texture ${crc.get()} mode ${textureModeIdx}');
 				var descriptorSets = _backend == Metal ? 2 : 1;
-				var ds = _renderer.createDescriptorSet(_curShader.rootSig, TEXTURE_DESCRIPTOR_SET, descriptorSets, 0);
+				var ds = _renderer.createDescriptorSet(_curShader.rootSig, EDescriptorSetSlot.TEXTURES, descriptorSets, 0);
 				
 				if (_textureDataBuilder == null ) {
 					DebugTrace.trace('RENDER TExture builder is null, creating one');

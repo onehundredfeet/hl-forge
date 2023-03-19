@@ -884,7 +884,7 @@ interface DescriptorSetDesc {
 	void DescriptorSetDesc();
 
 	[Const] attribute RootSignature pRootSignature;
-	[Internal="mUpdateFrequency"] attribute DescriptorUpdateFrequency updateFrequency;
+	[Internal="mUpdateFrequency", SetCast="DescriptorUpdateFrequency"] attribute int setIndex;
 	[Internal="mMaxSets"] attribute uint maxSets;
 	[Internal="mNodeIndex"] attribute uint nodeIndex;
 };
@@ -947,7 +947,7 @@ interface Renderer {
 	[CObject, Internal="forge_load_compute_shader_file", Const] Shader loadComputeShader( String fileName );
 
 	[CObject, Const] DescriptorSet addDescriptorSet( DescriptorSetDesc desc, [Return] DescriptorSet set ); 
-	[CObject, Const, Internal="forge_renderer_create_descriptor_set"] DescriptorSet createDescriptorSet( RootSignature sig, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex ); 
+	[CObject, Const, Internal="forge_renderer_create_descriptor_set"] DescriptorSet createDescriptorSet( RootSignature sig, int setIndex, uint maxSets, uint nodeIndex ); 
 
 	[CObject, Const, Internal="addSampler"] Sampler createSampler(  SamplerDesc desc, [Return] Sampler samplers );
 	[CObject, Internal="forge_renderer_wait_fence"] void waitFence( Fence fence );

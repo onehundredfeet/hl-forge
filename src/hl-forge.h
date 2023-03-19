@@ -990,7 +990,7 @@ inline bool isVSync(SwapChain *sc) {
 Renderer *createRenderer(const char *name);
 void destroyRenderer(Renderer *);
 Queue *createQueue(Renderer *renderer);
-DescriptorSet *forge_renderer_create_descriptor_set(Renderer *, RootSignature *, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex);
+DescriptorSet *forge_renderer_create_descriptor_set(Renderer *, RootSignature *, int setIndex, uint maxSets, uint nodeIndex);
 RenderTarget *forge_sdl_create_render_target(Renderer *, RenderTargetDesc *);
 CmdPool *forge_sdl_renderer_create_cmd_pool(Renderer *, Queue *);
 Cmd *forge_sdl_renderer_create_cmd(Renderer *, CmdPool *);

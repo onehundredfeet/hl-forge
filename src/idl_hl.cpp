@@ -2096,15 +2096,15 @@ HL_PRIM HL_CONST pref<RootSignature>* HL_NAME(DescriptorSetDesc_set_pRootSignatu
 }
 DEFINE_PRIM(_IDL,DescriptorSetDesc_set_pRootSignature,_IDL _IDL);
 
-HL_PRIM int HL_NAME(DescriptorSetDesc_get_updateFrequency)( pref<DescriptorSetDesc>* _this ) {
-	return HL_NAME(DescriptorUpdateFrequency_valueToIndex1)(_unref(_this)->mUpdateFrequency);
+HL_PRIM int HL_NAME(DescriptorSetDesc_get_setIndex)( pref<DescriptorSetDesc>* _this ) {
+	return _unref(_this)->mUpdateFrequency;
 }
-DEFINE_PRIM(_I32,DescriptorSetDesc_get_updateFrequency,_IDL);
-HL_PRIM int HL_NAME(DescriptorSetDesc_set_updateFrequency)( pref<DescriptorSetDesc>* _this, int value ) {
-	_unref(_this)->mUpdateFrequency = (DescriptorUpdateFrequency)HL_NAME(DescriptorUpdateFrequency_indexToValue1)(value);
+DEFINE_PRIM(_I32,DescriptorSetDesc_get_setIndex,_IDL);
+HL_PRIM int HL_NAME(DescriptorSetDesc_set_setIndex)( pref<DescriptorSetDesc>* _this, int value ) {
+	_unref(_this)->mUpdateFrequency = (DescriptorUpdateFrequency)(value);
 	return value;
 }
-DEFINE_PRIM(_I32,DescriptorSetDesc_set_updateFrequency,_IDL _I32);
+DEFINE_PRIM(_I32,DescriptorSetDesc_set_setIndex,_IDL _I32);
 
 HL_PRIM unsigned int HL_NAME(DescriptorSetDesc_get_maxSets)( pref<DescriptorSetDesc>* _this ) {
 	return _unref(_this)->mMaxSets;
@@ -2264,8 +2264,8 @@ addDescriptorSet( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
 }
 DEFINE_PRIM(_IDL, Renderer_addDescriptorSet2, _IDL _IDL);
 
-HL_PRIM HL_CONST pref<DescriptorSet>* HL_NAME(Renderer_createDescriptorSet4)(pref<Renderer>* _this, pref<RootSignature>* sig, int updateFrequency, unsigned int maxSets, unsigned int nodeIndex) {
-	return alloc_ref_const((forge_renderer_create_descriptor_set( _unref(_this) , _unref_ptr_safe(sig), DescriptorUpdateFrequency__values[updateFrequency], maxSets, nodeIndex)),DescriptorSet);
+HL_PRIM HL_CONST pref<DescriptorSet>* HL_NAME(Renderer_createDescriptorSet4)(pref<Renderer>* _this, pref<RootSignature>* sig, int setIndex, unsigned int maxSets, unsigned int nodeIndex) {
+	return alloc_ref_const((forge_renderer_create_descriptor_set( _unref(_this) , _unref_ptr_safe(sig), setIndex, maxSets, nodeIndex)),DescriptorSet);
 }
 DEFINE_PRIM(_IDL, Renderer_createDescriptorSet4, _IDL _IDL _I32 _I32 _I32);
 

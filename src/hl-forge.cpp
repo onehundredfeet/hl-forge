@@ -594,11 +594,11 @@ std::string getFilename(const std::string &path) {
     return path.substr(lastindex + 1);
 }
 
-DescriptorSet *forge_renderer_create_descriptor_set(Renderer *pRenderer, RootSignature *pRootSignature, DescriptorUpdateFrequency updateFrequency, uint maxSets, uint nodeIndex) {
+DescriptorSet *forge_renderer_create_descriptor_set(Renderer *pRenderer, RootSignature *pRootSignature, int setIndex, uint maxSets, uint nodeIndex) {
     DescriptorSet *tmp;
     DescriptorSetDesc desc = {
         pRootSignature,
-        updateFrequency,
+        (DescriptorUpdateFrequency)setIndex,
         maxSets,
         nodeIndex};
 
