@@ -99,7 +99,7 @@ class PipelineParamBufferBlock {
                 if (fBytes > 0 && fidx >= 0) {
                     var s1 = builder.addSlot( DBM_UNIFORMS );     
                     builder.setSlotBindIndex(s1, fidx);
-                    builder.addSlotUniformBuffer( s1, @:privateAccess buffer._vbuffers[l].get(d) );	
+                    builder.addSlotUniformBuffer( s1, @:privateAccess buffer._fbuffers[l].get(d) );	
                 }
                 DebugTrace.trace( 'RENDER DESCRIPTORS PipelineParamBufferBlock Creating with ${l} length, ${d} depth ${ds_idx} index - vidx ${vidx} fidx ${fidx}');
     
