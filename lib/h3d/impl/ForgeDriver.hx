@@ -1321,9 +1321,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 			if (p.fragment.textureCount() > 0) {
 				p.fragment.textureIndex = rootSig.getDescriptorIndexFromName("fragmentTextures");
-				#if metal
 				p.fragment.samplerIndex = rootSig.getDescriptorIndexFromName("fragmentTexturesSmplr");
-				#end
 			} else {
 				p.fragment.textureIndex = -1;
 				p.fragment.samplerIndex = -1;
@@ -2465,6 +2463,8 @@ class ForgeDriver extends h3d.impl.Driver {
 								case Vulkan:
 									var s = cdb.addSlot(DBM_TEXTURES);
 									cdb.setSlotBindName(s, "fragmentTextures");
+									s = cdb.addSlot(DBM_SAMPLERS);
+									cdb.setSlotBindName(s, "fragmentTexturesSmplr");
 							}
 						}
 
@@ -2518,6 +2518,7 @@ class ForgeDriver extends h3d.impl.Driver {
 							tdb.addSlotSampler(1, _bilinearClamp2DSampler);
 						case Vulkan:
 							tdb.addSlotTexture(0, ft);
+							tdb.addSlotSampler(1, _bilinearClamp2DSampler);
 					}
 				}
 

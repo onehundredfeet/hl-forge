@@ -173,10 +173,11 @@ class GLSLTranscoder {
 		// (flavour == EGLSLFlavour.Metal || stage == VERTEX) &&
 		return '${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[set]}';
 	}
-
+	
+	var texPostFix = "";
 	function getLookupName(set:EDescriptorSetSlot, name:String):String {
 		if (set == TEXTURES)
-			return name;
+			return name + texPostFix;
 		return "_" + getVariableBufferName(_currentStage, set, _flavour) + "." + name;
 	}
 
@@ -245,7 +246,7 @@ class GLSLTranscoder {
 				decl(MAT34);
 				add("_mat3x4");
 			case TSampler2D:
-				add("sampler2D");
+				add("sampler");
 			case TSampler2DArray:
 				add("sampler2DArray");
 				if (isES)
@@ -556,6 +557,21 @@ class GLSLTranscoder {
 				} else {
 					add(", 0)");
 				}
+			case TCall({e: TGlobal(g = Texture)}, args):
+				add("texture(");
+				
+				add("sampler2D(");
+					addValue(args[0], tabs);
+					add(",");
+					texPostFix = "Smplr"; // SUPER hacky
+					addValue(args[0], tabs);
+					texPostFix = "";
+				add(")");
+				for (i in 1...args.length){
+					add(",");
+					addValue(args[i], tabs);
+				}
+				add(")");
 			case TCall(v, args):
 				switch (v.e) {
 					case TGlobal(g):
@@ -974,7 +990,7 @@ class GLSLTranscoder {
 				}
 
 				if (_flavour == Vulkan) {
-					var vt = {id: v.id, name : v.name + "_samp", type : v.type, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
+					var vt = {id: v.id + 2000, name : v.name + "Smplr", type : v.type, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
 					initVar(vt);
 	
 					var vsType = switch(v.type) {
@@ -983,7 +999,7 @@ class GLSLTranscoder {
 						default:  v.type;
 					};
 	
-					var vs = {id: v.id + 2000, name : v.name + "_tex", type : vsType, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
+					var vs = {id: v.id, name : v.name, type : vsType, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
 					trace('WTF : vt ${vt.name} vs ${vs.name}');
 					add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, tex_binding_idx++)} ) uniform ');
 					initVar(vs);
