@@ -6,7 +6,10 @@
 
 #include "hl-forge-shaders.h"
 
-
+#ifndef DEBUG_PRINT
+//#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...)
+#endif
 // Compiles a shader to SPIR-V assembly. Returns the assembly text
 // as a string.
 std::string compile_file_to_assembly(const char *source_name,
@@ -112,7 +115,7 @@ std::string getMSLFromSPV( const std::vector<uint32_t> &spirv_binary ) {
 
 
 std::string getVulkanFromSPV( const std::vector<uint32_t> &spirv_binary ) {
-    printf("Getting vulkan from spirv\n");
+    DEBUG_PRINT("Getting vulkan from spirv\n");
 	spirv_cross::CompilerGLSL glslCompiler(std::move(spirv_binary));
 
     // Set some options.

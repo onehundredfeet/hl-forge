@@ -37,8 +37,8 @@ void heuristicTest2(float (*fn)(int));
 
 #define TWIN _ABSTRACT(sdl_window)
 
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
-//#define DEBUG_PRINT(...)
+//#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...)
 
 class HashBuilder {
    private:
@@ -142,7 +142,7 @@ class BufferExt {
         BufferUpdateDesc desc = {};
         desc.pBuffer = current();
         #ifdef _WINDOWS
-        printf("RENDER BufferExt Updating buffer %d : [Offset %Id] [size %I64d]\n", _idx, desc.pBuffer->mVulkan.mOffset, desc.pBuffer->mSize );
+        DEBUG_PRINT("RENDER BufferExt Updating buffer %d : [Offset %Id] [size %I64d]\n", _idx, desc.pBuffer->mVulkan.mOffset, desc.pBuffer->mSize );
         #endif
         beginUpdateResource(&desc);
         memcpy(desc.pMappedData, data, desc.pBuffer->mSize);
@@ -487,7 +487,7 @@ class ResourceBarrierBuilder {
    public:
     int addRTBarrier(RenderTarget *rt, ResourceState src, ResourceState dst) {
         if (rt != nullptr) {
-            printf("render target %p - texture %p\n", rt, rt->pTexture);
+            DEBUG_PRINT("render target %p - texture %p\n", rt, rt->pTexture);
             if (rt->pTexture ==(void *)(0xdeadbeefdeadbeef)) {
                 printf("Texture is invalid on reder target");
                 exit(-1);

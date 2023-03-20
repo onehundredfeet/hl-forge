@@ -707,7 +707,7 @@ std::string forge_translate_glsl_native(const char *source, const char *filepath
 }
 #elif defined(WIN32)
 std::string forge_translate_glsl_native(const char *source, const char *filepath, bool fragment) {
-    printf("Translating to vulkan\n");
+    DEBUG_PRINT("Translating to vulkan\n");
     auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
     auto spirvASM = compile_file_to_assembly(filepath, shaderKind, source, false);
     auto spvCode = assemble_to_spv(spirvASM);
@@ -748,10 +748,10 @@ void generateNativeShader(const std::string &glslPath, const std::string &metalP
 }
 #elif defined(WIN32)
 void generateNativeShader(const std::string &glslPath, const std::string &vulkanPath, bool fragment) {
-    printf("Generating vulkan shader %s to %s\n", glslPath.c_str(), vulkanPath.c_str());
+    DEBUG_PRINT("Generating vulkan shader %s to %s\n", glslPath.c_str(), vulkanPath.c_str());
     if (isTargetFileOutOfDate(glslPath, vulkanPath) || true) {
         auto src = getShaderSource(glslPath);
-        printf("\tGetting source\n");
+        DEBUG_PRINT("\tGetting source\n");
 
         if (src.length() == 0) {
             std::cout << "Could not read GLSL source: " << glslPath << std::endl;
@@ -777,11 +777,11 @@ void generateNativeShader(const std::string &glslPath, const std::string &vulkan
             }
         }
         */
-        printf("\twriting source to %s\n", vulkanPath.c_str());
+        DEBUG_PRINT("\twriting source to %s\n", vulkanPath.c_str());
 
         writeShaderSource(vulkanPath, vulkan);
     } else {
-        printf("\tUp to date\n");
+        DEBUG_PRINT("\tUp to date\n");
     }
 }
 #endif

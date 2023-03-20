@@ -6,6 +6,7 @@ import haxe.macro.Expr;
 
 class DebugTrace {
     public static macro function trace(e : Expr) : Expr {
-        return macro trace($e);
+        return macro {};
+//        return macro trace($e);
     }
 }

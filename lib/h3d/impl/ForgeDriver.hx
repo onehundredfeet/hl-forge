@@ -136,10 +136,6 @@ private class CompiledMaterial {
 	public var _stride:Int;
 }
 
-inline function debugTrace(s:String) {
-	trace("DEBUG " + s);
-}
-
 @:enum abstract ForgeBackend(Int) {
 	var Metal = 0;
 	var Vulkan;
@@ -226,7 +222,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		_width = win.width;
 		_height = win.height;
 
-		trace('-------> Specified window dims ${win.width} x ${win.height}');
+		DebugTrace.trace('-------> Specified window dims ${win.width} x ${win.height}');
 
 		_renderer = _forgeSDLWin.renderer();
 		if (_renderer == null)
@@ -311,7 +307,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		setDesc.pRootSignature = _mipGen.rootsig;
 		setDesc.setIndex = forge.Native.DescriptorUpdateFrequency.DESCRIPTOR_UPDATE_FREQ_PER_DRAW.toValue();
 		setDesc.maxSets = MAX_MIP_LEVELS; // 2^13 = 8192
-		trace('Creating default descriptors');
+		DebugTrace.trace('Creating default descriptors');
 		_mipGenDescriptor = _renderer.addDescriptorSet(setDesc);
 		_mipGenArrayDescriptor = _renderer.addDescriptorSet(setDesc);
 
@@ -329,13 +325,13 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	function attach() {
-		trace('Attaching...');
+		DebugTrace.trace('Attaching...');
 		if (_sc == null) {
-			trace('Creating swap achain with ${_width} x ${_height}');
+			DebugTrace.trace('Creating swap achain with ${_width} x ${_height}');
 			_sc = _forgeSDLWin.createSwapChain(_renderer, _queue, _width, _height, _swap_count, _hdr);
 			if (_sc == null)
 				throw "Couldn\'t create swap chain";
-			trace('Adding swap count ${_swap_count} RT size ${_swapRenderTargets.length}');
+			DebugTrace.trace('Adding swap count ${_swap_count} RT size ${_swapRenderTargets.length}');
 			for (i in 0..._swap_count) {
 				var rt = _sc.getRenderTarget(i);
 				if (rt == null)
@@ -362,7 +358,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			DebugTrace.trace('Duplicate attach');
 		}
 
-		trace('Done attaching swap chain');
+		DebugTrace.trace('Done attaching swap chain');
 		if (!addDepthBuffer())
 			return false;
 
@@ -370,10 +366,10 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	function detach() {
-		trace('Detatching...');
+		DebugTrace.trace('Detatching...');
 		if (_sc != null) {
 			_queue.waitIdle();
-			trace('Destroying swap chain...');
+			DebugTrace.trace('Destroying swap chain...');
 			_renderer.destroySwapChain(_sc);
 			_sc = null;
 		}
@@ -450,7 +446,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _queueResize = false;
 
 	public override function resize(width:Int, height:Int) {
-		trace('Resizing ${width} ${height}');
+		DebugTrace.trace('Resizing ${width} ${height}');
 		DebugTrace.trace('----> SC IS ${_sc}');
 
 		_width = width;
@@ -742,7 +738,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			if (t.flags.has(MipMapped))
 				ftd.descriptors = ftd.descriptors | forge.Native.DescriptorType.DESCRIPTOR_TYPE_RW_TEXTURE.toValue();
 			ftd.format = internalFormat;
-			//		trace ('Format is ${ftd.format}');
+			//		DebugTrace.trace ('Format is ${ftd.format}');
 			flt = ftd.load(t.name, null);
 
 			if (flt == null)
@@ -977,7 +973,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	public override function begin(frame:Int) {
 		// Check for VSYNC
-		debugTrace('RENDERING BEGIN CLEAR Begin');
+		DebugTrace.trace('RENDERING BEGIN CLEAR Begin');
 		if (_queueResize) {
 			detach();
 			attach();
@@ -1013,7 +1009,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		_currentCmd = _swapCmds[_frameIndex];
 
 		_currentCmd.begin();
-		trace('Inserting current RT begin ${_currentRT} ${_currentSwapIndex}'); // Crashes here
+		DebugTrace.trace('Inserting current RT begin ${_currentRT} ${_currentSwapIndex}'); // Crashes here
 		_currentCmd.insertBarrier(_currentRT.begin);
 		//		_currentCmd.renderBarrier( _currentRT.rt );
 		_frameBegun = true;
@@ -1246,7 +1242,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		forge.FileDependency.overwriteIfDifferentString(fragpath + ".glsl", frag_glsl);
 		//		sys.io.File.saveContent(vertpath + ".glsl", vert_glsl);
 		//		sys.io.File.saveContent(fragpath + ".glsl", frag_glsl);
-		trace('Creating shader....');
+		DebugTrace.trace('Creating shader....');
 		var fgShader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
 		p.forgeShader = fgShader;
 		p.vertex = new CompiledShader(fgShader, true, shader.vertex);
@@ -1278,7 +1274,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var tt = shader.fragment.textures;
 		for (i in 0...shader.fragment.texturesCount) {
-			trace('RENDER SAMPLER ADDING SAMPER ${tt.name}');
+			DebugTrace.trace('RENDER SAMPLER ADDING SAMPER ${tt.name}');
 			rootDesc.addSampler(_bilinearClamp2DSampler, 'fragmentTextures'); // This is still suspect. [RC], need to look deeper into what this is doing
 			tt = tt.next;
 		}
@@ -1479,7 +1475,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function selectShader(shader:hxsl.RuntimeShader) {
-		debugTrace('RENDER MATERIAL SHADER selectShader ${shader.id}');
+		DebugTrace.trace('RENDER MATERIAL SHADER selectShader ${shader.id}');
 		//		if (!renderReady()) return true;
 		var p = _shaders.get(shader.id);
 		if (_curShader != p) {
@@ -1487,10 +1483,10 @@ class ForgeDriver extends h3d.impl.Driver {
 		}
 
 		if (p == null) {
-			debugTrace('RENDER MATERIAL SHADER compiling program ...${shader.id}');
+			DebugTrace.trace('RENDER MATERIAL SHADER compiling program ...${shader.id}');
 			p = compileProgram(shader);
 			_shaders.set(shader.id, p);
-			debugTrace('RENDER MATERIAL SHADER compiled program is ${p}');
+			DebugTrace.trace('RENDER MATERIAL SHADER compiled program is ${p}');
 		}
 
 		_curShader = p;
@@ -1517,7 +1513,7 @@ class ForgeDriver extends h3d.impl.Driver {
 				_curShader.resetParamBuffers();
 			}
 		}
-		debugTrace('RENDER MATERIAL SHADER all good! ${_curShader}');
+		DebugTrace.trace('RENDER MATERIAL SHADER all good! ${_curShader}');
 
 		return true;
 	}
@@ -1545,7 +1541,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (!renderReady())
 			return;
 
-		debugTrace('RENDER CALLSTACK uploadShaderBuffers ${which}');
+		DebugTrace.trace('RENDER CALLSTACK uploadShaderBuffers ${which}');
 
 		switch (which) {
 			case Globals: // trace ('Ignoring globals'); // do nothing as it was all done by the globals
@@ -1598,7 +1594,7 @@ class ForgeDriver extends h3d.impl.Driver {
 					var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
 					// var offset = _curShader.vertex.globalsLength * 4;
 					var offset = 0;
-					trace('Vert blitting ${_curShader.vertex.paramsLengthFloats} float ie ${_curShader.vertex.paramsLengthFloats * 4} bytes to buffer of length ${buf.vertex.params.length}');
+					DebugTrace.trace('Vert blitting ${_curShader.vertex.paramsLengthFloats} float ie ${_curShader.vertex.paramsLengthFloats * 4} bytes to buffer of length ${buf.vertex.params.length}');
 
 					tmpBuff.blit(offset, hl.Bytes.getArray(buf.vertex.params.toData()), 0, _curShader.vertex.paramsLengthFloats * 4);
 				}
@@ -1612,7 +1608,7 @@ class ForgeDriver extends h3d.impl.Driver {
 					var tmpBuff = hl.Bytes.getArray(_fragConstantBuffer);
 					//				var offset = _curShader.fragment.globalsLength * 4;
 					var offset = 0;
-					trace('Frag blitting ${_curShader.fragment.paramsLengthFloats} float ie ${_curShader.fragment.paramsLengthFloats * 4} bytes');
+					DebugTrace.trace('Frag blitting ${_curShader.fragment.paramsLengthFloats} float ie ${_curShader.fragment.paramsLengthFloats * 4} bytes');
 					tmpBuff.blit(offset, hl.Bytes.getArray(buf.fragment.params.toData()), 0, _curShader.fragment.paramsLengthFloats * 4);
 				}
 			case Textures:
@@ -1856,7 +1852,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			//		DebugTrace.trace('DEPTH depth test ${pass.depthTest} write ${pass.depthWrite}');
 			d.depthFunc = convertDepthFunc(pass.depthTest);
 			//		d.depthFunc = CMP_GREATER;
-			//		trace ('RENDERER DEPTH config ${d.depthTest} ${d.depthWrite} ${d.depthFunc}');
+			//		DebugTrace.trace ('RENDERER DEPTH config ${d.depthTest} ${d.depthWrite} ${d.depthFunc}');
 			d.stencilTest = pass.stencil != null;
 			d.stencilReadMask = pass.colorMask;
 			d.stencilWriteMask = 0; // TODO
@@ -2078,10 +2074,10 @@ class ForgeDriver extends h3d.impl.Driver {
 	function buildLayoutFromMultiBuffer(s:CompiledProgram, b:Buffer.BufferOffset):forge.Native.VertexLayout {
 		var vl = buildLayoutFromShader(s);
 		for (i in 0...vl.attribCount) {
-			trace('RENDER BUILDING LAYOUT MULTI BUFFER ${i}/${vl.attribCount} stride ${b.buffer.buffer.strideBytes} ');
+			DebugTrace.trace('RENDER BUILDING LAYOUT MULTI BUFFER ${i}/${vl.attribCount} stride ${b.buffer.buffer.strideBytes} ');
 			vl.setStride(i, b.buffer.buffer.strideBytes);
 		}
-		trace('RENDER BUILDING LAYOUT MULTI BUFFER DONE ');
+		DebugTrace.trace('RENDER BUILDING LAYOUT MULTI BUFFER DONE ');
 
 		return vl;
 		/*
@@ -2096,10 +2092,10 @@ class ForgeDriver extends h3d.impl.Driver {
 						
 						var location = vl.attribCount++;
 						var layout_attr = vl.attrib(location);
-						trace ('getting name for ${v.id}');
+						DebugTrace.trace ('getting name for ${v.id}');
 						var name =  vertTranscoder.varNames.get(v.id);
 						if (name == null) name = v.name;
-						trace ('STRIDE Laying out ${v.name} with ${size} floats at ${offset}');
+						DebugTrace.trace ('STRIDE Laying out ${v.name} with ${size} floats at ${offset}');
 
 						switch(name) {
 							case "position":layout_attr.mSemantic = SEMANTIC_POSITION;
@@ -2163,7 +2159,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	function bindPipeline() {
 		if (!renderReady())
 			return;
-		debugTrace("RENDER CALLSTACK bindPipeline");
+		DebugTrace.trace("RENDER CALLSTACK bindPipeline");
 
 		if (_currentPass == null) {
 			throw "can't build a pipeline without a pass";
@@ -2279,7 +2275,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		if (cp.paramCurBuffer >= cp.paramBuffers.length) {
 			var length = cp.paramCurBuffer == 0 ? 4 : 16;
-			trace('RENDER Allocating new param buffer verts ${cp.vertex.paramsLengthFloats * FLOAT_BYTES} frag ${cp.fragment.paramsLengthFloats * FLOAT_BYTES}');
+			DebugTrace.trace('RENDER Allocating new param buffer verts ${cp.vertex.paramsLengthFloats * FLOAT_BYTES} frag ${cp.fragment.paramsLengthFloats * FLOAT_BYTES}');
 			var pb = forge.PipelineParamBufferBlock.allocate(_renderer, cp.rootSig, cp.vertex.paramsLengthFloats * FLOAT_BYTES,
 				cp.fragment.paramsLengthFloats * FLOAT_BYTES, PARAMS, length);
 			cp.paramBuffers.push(pb);
@@ -2291,7 +2287,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	function pushParameters() {
 		DebugTrace.trace("RENDER CALLSTACK pushParameters");
 
-		//		trace ('PARAMS Pushing Vertex Constants ${_temp} floats ${total / 4} vectors: [0] = x ${x} y ${y} z ${z} w ${w}');
+		//		DebugTrace.trace ('PARAMS Pushing Vertex Constants ${_temp} floats ${total / 4} vectors: [0] = x ${x} y ${y} z ${z} w ${w}');
 		#if PUSH_CONSTANTS
 		if (_curShader.vertex.constantsIndex != -1) {
 			DebugTrace.trace('RENDER CALLSTACK CONSTANTS pushing vertex parameters ${_curShader.vertex.constantsIndex} ${_curShader.vertex.paramsLengthFloats}');
@@ -2306,17 +2302,17 @@ class ForgeDriver extends h3d.impl.Driver {
 			var pb = getParamBuffer();
 			pb.beginUpdate();
 			{
-				trace('FILLING VERT PARAMS vert length ${_curShader.vertex.paramsLengthBytes}');
+				DebugTrace.trace('FILLING VERT PARAMS vert length ${_curShader.vertex.paramsLengthBytes}');
 				var qw = Std.int(_curShader.vertex.paramsLengthFloats / 4);
 				for (i in 0...qw) {
-					trace('\tVert qw ${i} ${_vertConstantBuffer[i * 4 + 0]},${_vertConstantBuffer[i * 4 + 1]},${_vertConstantBuffer[i * 4 + 2]},${_vertConstantBuffer[i * 4 + 3]}');
+					DebugTrace.trace('\tVert qw ${i} ${_vertConstantBuffer[i * 4 + 0]},${_vertConstantBuffer[i * 4 + 1]},${_vertConstantBuffer[i * 4 + 2]},${_vertConstantBuffer[i * 4 + 3]}');
 				}
 			}
 			{
-				trace('FILLING FRAG PARAMS  flength ${_curShader.fragment.paramsLengthBytes}');
+				DebugTrace.trace('FILLING FRAG PARAMS  flength ${_curShader.fragment.paramsLengthBytes}');
 				var qw = Std.int(_curShader.fragment.paramsLengthFloats / 4);
 				for (i in 0...qw) {
-					trace('\tVert qw ${i} ${_fragConstantBuffer[i * 4 + 0]},${_fragConstantBuffer[i * 4 + 1]},${_fragConstantBuffer[i * 4 + 2]},${_fragConstantBuffer[i * 4 + 3]}');
+					DebugTrace.trace('\tVert qw ${i} ${_fragConstantBuffer[i * 4 + 0]},${_fragConstantBuffer[i * 4 + 1]},${_fragConstantBuffer[i * 4 + 2]},${_fragConstantBuffer[i * 4 + 3]}');
 				}
 			}
 			pb.fill(hl.Bytes.getArray(_vertConstantBuffer), hl.Bytes.getArray(_fragConstantBuffer));
@@ -2349,10 +2345,10 @@ class ForgeDriver extends h3d.impl.Driver {
 					setDesc.pRootSignature = _curShader.rootSig;
 					setDesc.setIndex = EDescriptorSetSlot.BUFFERS;
 					setDesc.maxSets = 3; // TODO: make this configurable
-					trace('Creating descriptors for id ${_curShader.id}');
+					DebugTrace.trace('Creating descriptors for id ${_curShader.id}');
 					ds = _renderer.addDescriptorSet(setDesc);
 					var in_buf:sdl.Forge.Buffer = @:privateAccess hbuf.b;
-					trace('Filling descriptor set');
+					DebugTrace.trace('Filling descriptor set');
 					_renderer.fillDescriptorSet(in_buf, ds, DBM_UNIFORMS, _curShader.fragment.buffers[i]);
 
 					hbuf.descriptorMap[_currentPipeline._id] = ds;
@@ -2476,7 +2472,7 @@ class ForgeDriver extends h3d.impl.Driver {
 						_textureDataBuilder.push(cdb);
 					}
 				} else {
-					trace('TExture builder is not null');
+					DebugTrace.trace('TExture builder is not null');
 
 					// Needs to be a better way to do this
 					switch (textureMode) {
@@ -2602,7 +2598,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (_boundTextures[idx] != t.t) {
 			_boundTextures[idx] = t.t;
 
-			trace('Bindnig texture ${t.id} to ${idx}');
+			DebugTrace.trace('Bindnig texture ${t.id} to ${idx}');
 			#if multidriver
 			if (t.t.driver != this)
 				throw "Invalid texture context";
@@ -2759,7 +2755,7 @@ public override function selectBuffer(v:Buffer) {
 public function bindBuffer() {
 	if (!renderReady())
 		return;
-	debugTrace('RENDER CALLSTACK bindBuffer');
+	DebugTrace.trace('RENDER CALLSTACK bindBuffer');
 
 	if (_currentPipeline == null)
 		throw "No pipeline defined";
@@ -2851,7 +2847,7 @@ public function bindBuffer() {
 }
 
 public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
-	debugTrace('RENDER CALLSTACK TARGET CLEAR bind and clear ${_currentRT} and ${_currentDepth} ${color} ${depth} ${stencil}');
+	DebugTrace.trace('RENDER CALLSTACK TARGET CLEAR bind and clear ${_currentRT} and ${_currentDepth} ${color} ${depth} ${stencil}');
 	if (!renderReady())
 		return;
 
@@ -2876,9 +2872,9 @@ public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
 }
 
 public override function end() {
-	debugTrace('RENDER CALLSTACK TARGET end');
+	DebugTrace.trace('RENDER CALLSTACK TARGET end');
 	_currentCmd.unbindRenderTarget();
-	trace('Inserting current RT present');
+	DebugTrace.trace('Inserting current RT present');
 
 	_currentCmd.insertBarrier(_currentRT.present);
 	_currentRT = null;
@@ -2948,14 +2944,14 @@ var _currentDepth:h3d.mat.DepthBuffer;
 function setRenderTargetsInternal(textures:Array<h3d.mat.Texture>, layer:Int, mipLevel:Int) {
 	if (!renderReady())
 		return;
-	debugTrace('RENDER TARGET CALLSTACK setRenderTargetsInternal');
+	DebugTrace.trace('RENDER TARGET CALLSTACK setRenderTargetsInternal');
 
 	if (_currentCmd == null) {
 		_currentCmd = _tmpCmd;
 		_currentCmd.begin();
 	} else {
 		_currentCmd.unbindRenderTarget();
-		trace('Inserting current RT out');
+		DebugTrace.trace('Inserting current RT out');
 
 		_currentCmd.insertBarrier(_currentRT.outBarrier);
 	}
@@ -3014,8 +3010,8 @@ function setRenderTargetsInternal(textures:Array<h3d.mat.Texture>, layer:Int, mi
 		throw "Invalid depth buffer size : does not match render target size";
 
 	_currentDepth = @:privateAccess (tex.depthBuffer == null ? null : tex.depthBuffer);
-	debugTrace('RENDER TARGET  setting depth buffer target to existing ${_currentDepth} ${_currentDepth != null ? _currentDepth.width : null} ${_currentDepth != null ? _currentDepth.height : null}');
-	trace('Inserting current RT in barrier');
+	DebugTrace.trace('RENDER TARGET  setting depth buffer target to existing ${_currentDepth} ${_currentDepth != null ? _currentDepth.width : null} ${_currentDepth != null ? _currentDepth.height : null}');
+	DebugTrace.trace('Inserting current RT in barrier');
 	_currentCmd.insertBarrier(_currentRT.inBarrier);
 
 	if (!tex.flags.has(WasCleared)) {
@@ -3120,12 +3116,12 @@ var _curTexture:h3d.mat.Texture;
 var _currentTargets = new Array<forge.Native.RenderTarget>();
 
 function setDefaultRenderTarget() {
-	debugTrace('RENDER CALLSTACK TARGET CLEAR setDefaultRenderTarget ');
+	DebugTrace.trace('RENDER CALLSTACK TARGET CLEAR setDefaultRenderTarget ');
 	if (!renderReady())
 		return;
 
 	_currentCmd.unbindRenderTarget();
-	trace('Inserting current RT out');
+	DebugTrace.trace('Inserting current RT out');
 	_currentCmd.insertBarrier(_currentRT.outBarrier);
 	_currentDepth = _defaultDepth;
 	_targetsCount = 1;
@@ -3182,7 +3178,7 @@ function captureSubRenderBuffer(rt:RenderTarget, pixels:hxd.Pixels, x:Int, y:Int
 	_renderer.resetCmdPool(_capturePool);
 
 	var size = rt.rt.captureSize();
-	trace('CAPTURE Capturing buffer of size ${size} from w ${w} h ${h} at x ${x} y ${y} of format ${pixels.format}');
+	DebugTrace.trace('CAPTURE Capturing buffer of size ${size} from w ${w} h ${h} at x ${x} y ${y} of format ${pixels.format}');
 	if (_captureBuffer == null || size > _captureBuffer.length) {
 		_captureBuffer = haxe.io.Bytes.alloc(size);
 	}
@@ -3190,14 +3186,14 @@ function captureSubRenderBuffer(rt:RenderTarget, pixels:hxd.Pixels, x:Int, y:Int
 	var outLen = pixels.bytes.length;
 	var tmpBuffer = hl.Bytes.fromBytes(_captureBuffer);
 
-	trace('CAPTURE TMP BUFFER IS ${tmpBuffer} : ${StringTools.hex(tmpBuffer.address().high)}${StringTools.hex(tmpBuffer.address().low)}');
+	DebugTrace.trace('CAPTURE TMP BUFFER IS ${tmpBuffer} : ${StringTools.hex(tmpBuffer.address().high)}${StringTools.hex(tmpBuffer.address().low)}');
 	if (!_renderer.captureAsBytes(_captureCmd, rt.rt, _queue, forge.Native.ResourceState.RESOURCE_STATE_PRESENT, hl.Bytes.fromBytes(_captureBuffer),
 		size)) {
 		throw "Capture Failed";
 	}
 	var rt_w = rt.rt.width;
 
-	trace('CAPTURE blitting rows of length ${w}  into an image of ${rt_w} at x ${x} y ${y}');
+	DebugTrace.trace('CAPTURE blitting rows of length ${w}  into an image of ${rt_w} at x ${x} y ${y}');
 
 	if (outLen < w * h * 4)
 		throw 'output buffer isn\'t big enough ${outLen} vs ${w * h * 4}';
@@ -3296,9 +3292,9 @@ public override function capturePixels(tex:h3d.mat.Texture, layer:Int, mipLevel:
 }
 
 public override function uploadVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-	//		trace('RENDER STRIDE UPLOAD  uploadVertexBytes start ${startVertex} vstride ${v.stride} vstridebytes ${v.strideBytes} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} elements');
+	//		DebugTrace.trace('RENDER STRIDE UPLOAD  uploadVertexBytes start ${startVertex} vstride ${v.stride} vstridebytes ${v.strideBytes} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} elements');
 	v.b.updateRegion(buf, startVertex * v.strideBytes, vertexCount * v.strideBytes, 0);
-	//		trace('Done');
+	//		DebugTrace.trace('Done');
 }
 
 public override function uploadIndexBytes(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
