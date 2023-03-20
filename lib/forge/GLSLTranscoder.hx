@@ -913,6 +913,7 @@ class GLSLTranscoder {
 		return params.filter((x) -> isBufferableType(x.type));
 	}
 
+	static inline final NEW_VAR_OFFSET = 5000;
 	function initVars(s:ShaderData, stage:EShaderStage) {
 		outIndex = 0;
 		uniformBuffer = 0;
@@ -989,7 +990,7 @@ class GLSLTranscoder {
 						false;
 				}
 
-				var vt = {id: v.id + 2000, name : v.name + "Smplr", type : v.type, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
+				var vt = {id: v.id + NEW_VAR_OFFSET, name : v.name + "Smplr", type : v.type, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
 				initVar(vt);
 
 				var vsType = switch(v.type) {
