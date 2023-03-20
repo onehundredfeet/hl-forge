@@ -495,6 +495,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		depthRT.sampleQuality = 0;
 		depthRT.sampleCount = SAMPLE_COUNT_1;
 		depthRT.startState = RESOURCE_STATE_DEPTH_WRITE;
+//		depthRT.mClearValue.depth = 0.0f;
+//		depthRT.mClearValue.stencil = 0;
+		//depthRT.mClearValue = depthStencilClear;
+		//depthRT.mSampleCount = SAMPLE_COUNT_1;
+		//depthRT.mSampleQuality = 0;
 
 		if (b.format != null) {
 			//			DebugTrace.trace('b is ${b} format is ${b != null ? b.format : null}');

@@ -1436,6 +1436,11 @@ HL_PRIM int HL_NAME(RenderTarget_set_format)( pref<RenderTarget>* _this, int val
 }
 DEFINE_PRIM(_I32,RenderTarget_set_format,_IDL _I32);
 
+HL_PRIM int HL_NAME(RenderTarget_getRecommendedSwapchainFormat2)(bool hintHDR, bool hintSRGB) {
+	return HL_NAME(TinyImageFormat_valueToIndex1)(::getRecommendedSwapchainFormat(hintHDR, hintSRGB));
+}
+DEFINE_PRIM(_I32, RenderTarget_getRecommendedSwapchainFormat2, _BOOL _BOOL);
+
 HL_PRIM HL_CONST pref<Texture>* HL_NAME(RenderTarget_getTexture0)(pref<RenderTarget>* _this) {
 	return alloc_ref_const((forge_render_target_get_texture( _unref(_this) )),Texture);
 }

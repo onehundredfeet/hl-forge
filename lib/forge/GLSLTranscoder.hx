@@ -152,6 +152,15 @@ class GLSLTranscoder {
 
 	static final PUSH_CONSTANT_TAG = "_rootconstant";
 
+	function isSamplerType( t: Type ) {
+		return switch(t) {
+			case TSampler2D, TSamplerCube, TChannel(_): true;
+			case TArray(t, size): isSamplerType(t);
+			default: false;
+		}
+	}
+
+
 	public static function getVariableBufferName(stage:EShaderStage, set:EDescriptorSetSlot, flavour = EGLSLFlavour.Auto):String {
 		if (flavour == EGLSLFlavour.Auto)
 			flavour = _defaultFlavour;
@@ -171,16 +180,13 @@ class GLSLTranscoder {
 		return "_" + getVariableBufferName(_currentStage, set, _flavour) + "." + name;
 	}
 
+
 	function identLookup(v:TVar) {
 		var n = switch (v.kind) {
 			case VarKind.Global: getLookupName(EDescriptorSetSlot.GLOBALS, varName(v));
 			case VarKind.Param:
-				switch (v.type) {
-					case TSampler2D: getLookupName(EDescriptorSetSlot.TEXTURES, varName(v));
-					case TSamplerCube: getLookupName(EDescriptorSetSlot.TEXTURES, varName(v));
-					case TArray(t, size):
-						(t == TSampler2D || t == TSamplerCube) ? getLookupName(EDescriptorSetSlot.TEXTURES,
-							varName(v)) : getLookupName(EDescriptorSetSlot.PARAMS, varName(v));
+				if (isSamplerType(v.type)) getLookupName(EDescriptorSetSlot.TEXTURES, varName(v));
+				else switch (v.type) {
 					case TBuffer(t, size):
 						if (_bufferNameLookup == null)
 							throw "Buffer names are null";
@@ -270,7 +276,9 @@ class GLSLTranscoder {
 			case TBuffer(_):
 				throw "assert";
 			case TChannel(n):
-				add("channel" + n);
+				add("sampler2D");
+			case TTexture2D:
+				add("texture2D");
 		}
 	}
 
@@ -792,7 +800,7 @@ class GLSLTranscoder {
 					case VBool: size;
 				}
 			case TMat3x4: 4 * 3 * 4;
-			default: throw 'Not supported ${t}';
+			default: throw 'Not supported size type ${t}';
 		}
 	}
 
@@ -874,14 +882,19 @@ class GLSLTranscoder {
 		return set == EDescriptorSetSlot.PARAMS;
 	}
 
-	function getBufferedParams(s:ShaderData):Array<TVar> {
-		var params = s.vars.filter((x) -> x.type.match(TBuffer(_)) == false && x.kind == Param);
-		return params.filter((x) -> switch (x.type) {
+	function isBufferableType(t:Type) {
+		return switch (t) {
 			case TSampler2D: false;
 			case TSamplerCube: false;
-			case TArray(t, size): t != TSampler2D && t != TSamplerCube;
+			case TChannel(_): false;
+			case TBuffer(_): false;
+			case TArray(t, size): isBufferableType(t);
 			default: true;
-		});
+		}
+	}
+	function getBufferedParams(s:ShaderData):Array<TVar> {
+		var params = s.vars.filter((x) -> x.kind == Param);
+		return params.filter((x) -> isBufferableType(x.type));
 	}
 
 	function initVars(s:ShaderData, stage:EShaderStage) {
@@ -938,15 +951,17 @@ class GLSLTranscoder {
 			default: false;
 		});
 
+		var tex_binding_idx = 0;
+
+
 		if (sampler_params.length > 0) {
 			add("//Samplers & textures\n");
 
 			// ${getVariableBufferName( stage, EDescriptorSetSlot.TEXTURES, _flavour)}_${v.name}
 
-			var idx = 0;
 //			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, idx++)} ) uniform ${getVariableBufferName(stage, EDescriptorSetSlot.TEXTURES, _flavour)} {\n ');
 			for (v in sampler_params) {
-				add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, idx++)} ) uniform ');
+				add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, tex_binding_idx++)} ) uniform ');
 				switch (v.type) {
 					case TSampler2D:
 						debugTrace('RENDER adding sampler ${v.name}');
@@ -958,11 +973,61 @@ class GLSLTranscoder {
 						false;
 				}
 
-				initVar(v);
+				if (_flavour == Vulkan) {
+					var vt = {id: v.id, name : v.name + "_samp", type : v.type, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
+					initVar(vt);
+	
+					var vsType = switch(v.type) {
+						case TArray(t, size): TArray(TTexture2D, size);
+						case TSampler2D: TTexture2D;
+						default:  v.type;
+					};
+	
+					var vs = {id: v.id + 2000, name : v.name + "_tex", type : vsType, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
+					trace('WTF : vt ${vt.name} vs ${vs.name}');
+					add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, tex_binding_idx++)} ) uniform ');
+					initVar(vs);
+				} else {
+					initVar(v);
+				}
+
 			}
 //			add('} _${getVariableBufferName(stage, EDescriptorSetSlot.TEXTURES, _flavour)};\n');
 
 		}
+
+		var channel_params = params.filter((x) -> switch (x.type) {
+			case TChannel(_): true;
+			case TSamplerCube: true;
+			case TArray(t, size): t.match(TChannel(_));
+			default: false;
+		});
+
+		if (channel_params.length > 0) {
+			add("//Samplers & textures\n");
+
+			// ${getVariableBufferName( stage, EDescriptorSetSlot.TEXTURES, _flavour)}_${v.name}
+
+//			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, idx++)} ) uniform ${getVariableBufferName(stage, EDescriptorSetSlot.TEXTURES, _flavour)} {\n ');
+			for (v in channel_params) {
+				add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, tex_binding_idx++)} ) uniform ');
+				switch (v.type) {
+					case TChannel(size):
+						debugTrace('RENDER adding channel ${v.name} ${size}');
+					case TArray(t, size):
+						debugTrace('RENDER adding channel array ${v.name} ${size}');
+					default:
+						false;
+				}
+
+				initVar(v);
+
+
+			}
+//			add('} _${getVariableBufferName(stage, EDescriptorSetSlot.TEXTURES, _flavour)};\n');
+
+		}
+
 
 		add("//Input\n");
 		for (v in s.vars)
