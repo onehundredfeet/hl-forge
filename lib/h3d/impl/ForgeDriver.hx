@@ -1961,10 +1961,10 @@ class ForgeDriver extends h3d.impl.Driver {
 			case BYTE:
 				DebugTrace.trace('RENDER STRIDE attribute ${a.name} has bytes with ${a.count} length');
 				switch (a.count) {
-					case 1: TinyImageFormat_R8_SINT;
-					case 2: TinyImageFormat_R8G8_SINT;
-					case 3: TinyImageFormat_R8G8B8_SINT;
-					case 4: TinyImageFormat_R8G8B8A8_SINT;
+					case 1: TinyImageFormat_R8_UINT;
+					case 2: TinyImageFormat_R8G8_UINT;
+					case 3: TinyImageFormat_R8G8B8_UINT;
+					case 4: TinyImageFormat_R8G8B8A8_UINT;
 					default: throw('Unsupported count ${a.count}');
 				}
 			case FLOAT: TinyImageFormat_R32_SFLOAT;

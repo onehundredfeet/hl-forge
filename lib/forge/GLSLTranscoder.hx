@@ -211,8 +211,10 @@ class GLSLTranscoder {
 			case TInt:
 				add("int");
 			case TBytes(n):
-				add("vec");
-				add(n);
+				if (n == 1)
+					add("uint");
+				else
+					add("uvec" + n);
 			case TBool:
 				add("bool");
 			case TFloat:
@@ -223,7 +225,7 @@ class GLSLTranscoder {
 				switch (k) {
 					case VFloat:
 					case VInt: add("i");
-					case VBool: add("b");
+					case VBool: add("u");
 				}
 				add("vec");
 				add(size);
