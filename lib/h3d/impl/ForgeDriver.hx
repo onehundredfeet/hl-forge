@@ -1277,7 +1277,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		var tt = shader.fragment.textures;
 		for (i in 0...shader.fragment.texturesCount) {
 			trace('RENDER SAMPLER ADDING SAMPER ${tt.name}');
-			rootDesc.addSampler(_bilinearClamp2DSampler, 'fragmentTextures${0}');
+			rootDesc.addSampler(_bilinearClamp2DSampler, 'fragmentTextures'); // This is still suspect. [RC], need to look deeper into what this is doing
 			tt = tt.next;
 		}
 		var rootSig = _renderer.createRootSig(rootDesc);
