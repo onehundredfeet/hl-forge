@@ -327,7 +327,7 @@ ${SPIRVCROSS_CORELIB}
 )
 
 find_library( SHADERC_LIB shaderc_combined HINTS ${VULKAN_LIB_DIR})
-
+add_definitions(-DFORGE_DEBUG)
 
 if (UNIX)
     # Some special flags are needed for GNU GCC compiler
