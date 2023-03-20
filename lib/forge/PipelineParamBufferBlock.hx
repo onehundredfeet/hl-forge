@@ -42,6 +42,8 @@ class PipelineParamBufferBlock {
     static final QW_BYTES = 4 * 4; // 4 components of 4 bytes each, x, y, z w
     public static function allocate( renderer : Renderer, rootsig : RootSignature, vBytes : Int, fBytes : Int, set : EDescriptorSetSlot, length : Int = 16, depth: Int = 3, scratchCount : Int = 1) {
         var buffer = new PipelineParamBufferBlock();
+
+        trace('RENDER PIPELINE PARAMETER BLOCK Allocating buffer with ${vBytes} vbytes, ${fBytes} fbytes, ${set} set, ${length} length, ${depth} depth');
 //        buffer._vertexBytes = getQuadWordSize(vBytes);
   //      buffer._fragmentBytes = getQuadWordSize(fBytes);
         buffer._vertexBytes = vBytes;
@@ -69,6 +71,7 @@ class PipelineParamBufferBlock {
         fd.setUniformBuffer( buffer._fragmentBytes, buffer._scratch );
         fd.setUsage(true);
         fd.setDynamic(depth);
+        trace('RENDER PIPELINE PARAMETER BLOCK Creating fragment uniform buffer with ${buffer._fragmentBytes} bytes');
 
         for (i in 0...length) {
             buffer._vbuffers.push(vd.load(null));

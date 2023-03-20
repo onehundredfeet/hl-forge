@@ -36,6 +36,7 @@ private class CompiledShader {
 	public var params:DescriptorIndex;
 	public var globalsLength:Int;
 	public var paramsLengthFloats:Int;
+	public var paramsLengthBytes:Int;
 	public var bufferCount:Int;
 	public var textures:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
 	public var texturesCubes:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
@@ -110,6 +111,7 @@ private class CompiledProgram {
 	public var paramBuffers = new Array<forge.PipelineParamBufferBlock>();
 	public var paramCurBuffer = 0;
 	public var lastFrame = -1;
+
 	public function new() {}
 
 	public function resetParamBuffers() {
@@ -1341,8 +1343,9 @@ class ForgeDriver extends h3d.impl.Driver {
 		p.vertex.constantsIndex = rootSig.getDescriptorIndexFromName("_" + GLSLTranscoder.getVariableBufferName(VERTEX, PARAMS));
 		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName("_" + GLSLTranscoder.getVariableBufferName(VERTEX, GLOBALS));
 		//		p.vertex.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0"); // doesn't seem to resolve
-		p.vertex.globalsLength = shader.vertex.globalsSize * 4; // vectors to floats
-		p.vertex.paramsLengthFloats = shader.vertex.paramsSize * 4; // vectors to floats
+		p.vertex.globalsLength = shader.vertex.globalsSize * FLOATS_PER_VECT; // vectors to floats
+		p.vertex.paramsLengthFloats = shader.vertex.paramsSize * FLOATS_PER_VECT; // vectors to floats
+		p.vertex.paramsLengthBytes = shader.vertex.paramsSize * 16; // vectors to bytes
 		if (p.vertex.globalsLength > 0) {
 			p.vertex.globalsBuffer = DynamicUniformBuffer.allocate(p.vertex.globalsLength * SIZEOF_FLOAT, _swap_count);
 			DebugTrace.trace('RENDER SHADER Creating vertex globals descriptor');
@@ -1358,9 +1361,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		DebugTrace.trace('RENDER SHADER DESCRIPTOR p.fragment.globalsIndex ${p.fragment.globalsIndex} p.fragment.globalsDescriptorSetIndex ${p.fragment.globalsDescriptorSetIndex}');
 
 		p.fragment.paramsLengthFloats = shader.fragment.paramsSize * FLOATS_PER_VECT; // vectors to floats
+		p.fragment.paramsLengthBytes = shader.fragment.paramsSize * 16; // vectors to bytes
+
 		if (p.fragment.globalsLength > 0) {
-			p.fragment.globalsBuffer = DynamicUniformBuffer.allocate(p.fragment.globalsLength * FLOATS_PER_VECT,
-				3); // need to use the swap chain depth, but 3 is enough for now
+			p.fragment.globalsBuffer = DynamicUniformBuffer.allocate(p.fragment.globalsLength * SIZEOF_FLOAT,
+				_swap_count); // need to use the swap chain depth, but 3 is enough for now
 			DebugTrace.trace('RENDER SHADER Creating fragment globals descriptor');
 			//			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, GLOBAL_DESCRIPTOR_SET);
 		}
@@ -1489,7 +1494,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		}
 
 		_curShader = p;
-	
+
 		if (_curShader != null) {
 			var vertTotalLength = _curShader.vertex.paramsLengthFloats; // + _curShader.vertex.globalsLength;
 			var fragTotalLength = _curShader.fragment.paramsLengthFloats; // + _curShader.fragment.globalsLength;
@@ -1509,7 +1514,8 @@ class ForgeDriver extends h3d.impl.Driver {
 
 			if (_curShader.lastFrame != _currentFrame) {
 				_curShader.lastFrame = _currentFrame;
-				_curShader.resetParamBuffers();			}
+				_curShader.resetParamBuffers();
+			}
 		}
 		debugTrace('RENDER MATERIAL SHADER all good! ${_curShader}');
 
@@ -1592,6 +1598,8 @@ class ForgeDriver extends h3d.impl.Driver {
 					var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
 					// var offset = _curShader.vertex.globalsLength * 4;
 					var offset = 0;
+					trace('Vert blitting ${_curShader.vertex.paramsLengthFloats} float ie ${_curShader.vertex.paramsLengthFloats * 4} bytes to buffer of length ${buf.vertex.params.length}');
+
 					tmpBuff.blit(offset, hl.Bytes.getArray(buf.vertex.params.toData()), 0, _curShader.vertex.paramsLengthFloats * 4);
 				}
 
@@ -1604,6 +1612,7 @@ class ForgeDriver extends h3d.impl.Driver {
 					var tmpBuff = hl.Bytes.getArray(_fragConstantBuffer);
 					//				var offset = _curShader.fragment.globalsLength * 4;
 					var offset = 0;
+					trace('Frag blitting ${_curShader.fragment.paramsLengthFloats} float ie ${_curShader.fragment.paramsLengthFloats * 4} bytes');
 					tmpBuff.blit(offset, hl.Bytes.getArray(buf.fragment.params.toData()), 0, _curShader.fragment.paramsLengthFloats * 4);
 				}
 			case Textures:
@@ -2271,7 +2280,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (cp.paramCurBuffer >= cp.paramBuffers.length) {
 			var length = cp.paramCurBuffer == 0 ? 4 : 16;
 			trace('RENDER Allocating new param buffer verts ${cp.vertex.paramsLengthFloats * FLOAT_BYTES} frag ${cp.fragment.paramsLengthFloats * FLOAT_BYTES}');
-			var pb = forge.PipelineParamBufferBlock.allocate(_renderer, cp.rootSig, cp.vertex.paramsLengthFloats * FLOAT_BYTES, cp.fragment.paramsLengthFloats* FLOAT_BYTES, PARAMS, length);
+			var pb = forge.PipelineParamBufferBlock.allocate(_renderer, cp.rootSig, cp.vertex.paramsLengthFloats * FLOAT_BYTES,
+				cp.fragment.paramsLengthFloats * FLOAT_BYTES, PARAMS, length);
 			cp.paramBuffers.push(pb);
 		}
 
@@ -2295,6 +2305,20 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (_curShader.vertex.constantsIndex != -1 || _curShader.fragment.constantsIndex != -1) {
 			var pb = getParamBuffer();
 			pb.beginUpdate();
+			{
+				trace('FILLING VERT PARAMS vert length ${_curShader.vertex.paramsLengthBytes}');
+				var qw = Std.int(_curShader.vertex.paramsLengthFloats / 4);
+				for (i in 0...qw) {
+					trace('\tVert qw ${i} ${_vertConstantBuffer[i * 4 + 0]},${_vertConstantBuffer[i * 4 + 1]},${_vertConstantBuffer[i * 4 + 2]},${_vertConstantBuffer[i * 4 + 3]}');
+				}
+			}
+			{
+				trace('FILLING FRAG PARAMS  flength ${_curShader.fragment.paramsLengthBytes}');
+				var qw = Std.int(_curShader.fragment.paramsLengthFloats / 4);
+				for (i in 0...qw) {
+					trace('\tVert qw ${i} ${_fragConstantBuffer[i * 4 + 0]},${_fragConstantBuffer[i * 4 + 1]},${_fragConstantBuffer[i * 4 + 2]},${_fragConstantBuffer[i * 4 + 3]}');
+				}
+			}
 			pb.fill(hl.Bytes.getArray(_vertConstantBuffer), hl.Bytes.getArray(_fragConstantBuffer));
 			pb.bind(_currentCmd);
 			pb.next();
@@ -2860,7 +2884,7 @@ public override function end() {
 	_currentRT = null;
 	_currentDepth = null;
 	_currentCmd.end();
-	
+
 	forge.Native.Globals.waitForAllResourceLoads();
 
 	_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);

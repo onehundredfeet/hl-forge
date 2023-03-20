@@ -218,7 +218,7 @@ class BufferLoadDescExt : public BufferLoadDesc {
             Buffer *tmp = nullptr;
             ppBuffer = &tmp;
 
-            DEBUG_PRINT("Attempting to add resource buffer %d/%d\n", i, _depth);
+            DEBUG_PRINT("Attempting to add resource buffer %d/%d size %d\n", i, _depth, mDesc.mSize );
             if (i == _depth - 1)
                 addResource(this, token); // this may not work, but I don't want to make multiple sync tokens
             else
