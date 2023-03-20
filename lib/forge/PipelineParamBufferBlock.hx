@@ -1,6 +1,7 @@
 // This file is written entirely in the haxe programming language.
 package forge;
 
+import forge.GLSLTranscoder.EDescriptorSetSlot;
 import hl.Bytes;
 import forge.Native.BufferLoadDesc;
 import forge.Native.Buffer;
@@ -9,6 +10,7 @@ import forge.Native.DescriptorSetDesc;
 import forge.Native.DescriptorSet;
 import forge.Native.Renderer;
 import forge.Native.DescriptorSlotMode;
+import forge.Native.DescriptorDataBuilder;
 
 class PipelineParamBufferBlock {
     var _vertexBytes : Int;
@@ -24,7 +26,11 @@ class PipelineParamBufferBlock {
     var _offset : Int = 0;
     var _length : Int;
     var _writeHead : Int = 0;
+    var _currentDepth : Int;
     var _ds : forge.Native.DescriptorSet;
+    var _set : EDescriptorSetSlot;
+    
+
     function new() {}
     public var depth(get,never) : Int;
     function get_depth() return _depth; 
@@ -34,11 +40,12 @@ class PipelineParamBufferBlock {
 
     }
     static final QW_BYTES = 4 * 4;
-    public static function allocate( renderer : Renderer, rootsig : RootSignature, vBytes : Int, fBytes : Int, set : Int, length : Int = 16, depth: Int = 3, scratchCount : Int = 1) {
+    public static function allocate( renderer : Renderer, rootsig : RootSignature, vBytes : Int, fBytes : Int, set : EDescriptorSetSlot, length : Int = 16, depth: Int = 3, scratchCount : Int = 1) {
         var buffer = new PipelineParamBufferBlock();
         buffer._vertexBytes = getQuadWordSize(vBytes);
         buffer._fragmentBytes = getQuadWordSize(fBytes);
         buffer._totalBytes = buffer._vertexBytes + buffer._fragmentBytes;
+        buffer._set = set;
 
         var elementSizeBytes = buffer._totalBytes;
         buffer._depth = depth;
@@ -48,6 +55,7 @@ class PipelineParamBufferBlock {
         buffer._scratch.fill(0, elementSizeBytes * scratchCount, 0);
 
         buffer._vbuffers = [];
+        buffer._fbuffers = [];
         
         var vd = new BufferLoadDesc();
         vd.setUniformBuffer( buffer._vertexBytes, buffer._scratch ); // all zeros
@@ -70,30 +78,71 @@ class PipelineParamBufferBlock {
 		setDesc.maxSets = buffer._depth * buffer._length; // 2^13 = 8192
 		buffer._ds = renderer.addDescriptorSet( setDesc );   
 
+        var vidx = rootsig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(VERTEX, set));
+        var fidx = rootsig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, set));
+
+        for (l in 0...length) {
+            for (d in 0...depth) {
+                var builder = new DescriptorDataBuilder();
+                var ds_idx = l * depth + d;
+                if (vBytes > 0 && vidx >= 0) {
+                    var s0 = builder.addSlot( DBM_UNIFORMS );     
+                    builder.setSlotBindIndex(s0, vidx);
+                    builder.addSlotUniformBuffer( s0, @:privateAccess buffer._vbuffers[l].get(d) );
+                }
+                if (fBytes > 0 && fidx >= 0) {
+                    var s1 = builder.addSlot( DBM_UNIFORMS );     
+                    builder.setSlotBindIndex(s1, fidx);
+                    builder.addSlotUniformBuffer( s1, @:privateAccess buffer._vbuffers[l].get(d) );	
+                }
+                DebugTrace.trace( 'RENDER DESCRIPTORS PipelineParamBufferBlock Creating with ${l} length, ${d} depth ${ds_idx} index');
+    
+                builder.update( renderer, ds_idx, buffer._ds);
+            }
+        }
+       
         return buffer;
     }
     
-    public function reset() {
-        _writeHead = -1;
+    public function nextLayer() {
+        _writeHead = 0;
+        _currentDepth = (_currentDepth + 1) % _depth;
     }
 
     public function full() : Bool {
         return _writeHead == _length;
     }
 
-    public function beginUpdate() : Int {
-        _writeHead ++;
+    public function beginUpdate() : Bool {
         if (_writeHead == _length) {
-            return -1;
+            return false;
         }
-        return _writeHead;
+        return true;
     }
 
-    public function fill( vdata : haxe.io.Bytes,  fdata : haxe.io.Bytes ) {
-        if (vdata != null)
+    public function fill( vdata : hl.Bytes,  fdata : hl.Bytes ) {
+        DebugTrace.trace('RENDER Filling ${_writeHead} depth ${_currentDepth} ${_vertexBytes} ${_fragmentBytes}');
+        if (vdata != null) {
+            _vbuffers[_writeHead].setCurrent(_currentDepth);
             _vbuffers[_writeHead].update(vdata);
-        if (fdata != null)
+        }
+        if (fdata != null) {
+            _fbuffers[_writeHead].setCurrent(_currentDepth);
             _fbuffers[_writeHead].update(fdata);
+        }
     }
 
+    public function bind(cmd: forge.Native.Cmd) {
+        var idx = _currentDepth * _length + _writeHead;
+        DebugTrace.trace('RENDER Binding descriptor set ${_set} to idx ${idx} head ${_writeHead} depth ${_currentDepth}');
+        cmd.bindDescriptorSet(idx, _ds);
+    }
+    public function next() : Bool {
+        _writeHead++;
+
+        if (_writeHead == _length) {
+            return false;
+        }
+        return true;
+    }
 }

@@ -156,9 +156,11 @@ class GLSLTranscoder {
 		if (flavour == EGLSLFlavour.Auto)
 			flavour = _defaultFlavour;
 
-		if (set == EDescriptorSetSlot.PARAMS) {
+		#if PUSH_CONSTANTS
+		if (set == EDescriptorSetSlot.PARAMS && false) {
 			return '${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[set]}${PUSH_CONSTANT_TAG}';
 		}
+		#end
 		// (flavour == EGLSLFlavour.Metal || stage == VERTEX) &&
 		return '${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[set]}';
 	}
@@ -852,12 +854,14 @@ class GLSLTranscoder {
 		TMat2;
 	 */
 	function getLayoutSpec(stage:EShaderStage, set:EDescriptorSetSlot, idx = -1) {
+		#if PUSH_CONSTANTS
 		if (_flavour == EGLSLFlavour.Metal || true) {
 			if (set == EDescriptorSetSlot.PARAMS)
 				return LAYOUT_PUSH_CONSTANT;
 		}
 		if (stage == VERTEX && set == PARAMS)
 			return LAYOUT_PUSH_CONSTANT;
+		#end
 
 		if (idx != -1)
 			return 'set=${set},binding=${idx}';
@@ -905,10 +909,15 @@ class GLSLTranscoder {
 
 			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.PARAMS)} ) uniform ${getVariableBufferName(stage, EDescriptorSetSlot.PARAMS, _flavour)} {\n');
 
+
 			var totalSize = 0;
 			for (v in buffer_params) {
 				add("\t");
+				#if PUSH_CONSTANTS
 				initVar(v, _buildPushConstantSize + totalSize);
+				#else
+				initVar(v);
+				#end
 				totalSize += getSize(v);
 			}
 			trace('RENDER PARAMS OFFSET ${_buildPushConstantSize} TOTAL SIZE ${totalSize} for stage ${stage}');

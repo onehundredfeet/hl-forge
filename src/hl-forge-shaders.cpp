@@ -101,6 +101,7 @@ std::string getMSLFromSPV( const std::vector<uint32_t> &spirv_binary ) {
     mtl_options.set_msl_version(3,0);
 	mslCompiler.set_msl_options(mtl_options);
    mslCompiler.add_discrete_descriptor_set( 0 );
+   mslCompiler.add_discrete_descriptor_set( 1 ); // disable this to re-enable push_constants
 
 	// Compile to MSL
 	std::string source = mslCompiler.compile();
