@@ -989,23 +989,20 @@ class GLSLTranscoder {
 						false;
 				}
 
-				if (_flavour == Vulkan) {
-					var vt = {id: v.id + 2000, name : v.name + "Smplr", type : v.type, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
-					initVar(vt);
-	
-					var vsType = switch(v.type) {
-						case TArray(t, size): TArray(TTexture2D, size);
-						case TSampler2D: TTexture2D;
-						default:  v.type;
-					};
-	
-					var vs = {id: v.id, name : v.name, type : vsType, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
-					trace('WTF : vt ${vt.name} vs ${vs.name}');
-					add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, tex_binding_idx++)} ) uniform ');
-					initVar(vs);
-				} else {
-					initVar(v);
-				}
+				var vt = {id: v.id + 2000, name : v.name + "Smplr", type : v.type, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
+				initVar(vt);
+
+				var vsType = switch(v.type) {
+					case TArray(t, size): TArray(TTexture2D, size);
+					case TSampler2D: TTexture2D;
+					default:  v.type;
+				};
+
+				var vs = {id: v.id, name : v.name, type : vsType, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
+				trace('WTF : vt ${vt.name} vs ${vs.name}');
+				add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, tex_binding_idx++)} ) uniform ');
+				initVar(vs);
+
 
 			}
 //			add('} _${getVariableBufferName(stage, EDescriptorSetSlot.TEXTURES, _flavour)};\n');
