@@ -39,11 +39,14 @@ class PipelineParamBufferBlock {
         return Std.int((bytes + QW_BYTES - 1 ) / QW_BYTES) * QW_BYTES;
 
     }
-    static final QW_BYTES = 4 * 4;
+    static final QW_BYTES = 4 * 4; // 4 components of 4 bytes each, x, y, z w
     public static function allocate( renderer : Renderer, rootsig : RootSignature, vBytes : Int, fBytes : Int, set : EDescriptorSetSlot, length : Int = 16, depth: Int = 3, scratchCount : Int = 1) {
         var buffer = new PipelineParamBufferBlock();
-        buffer._vertexBytes = getQuadWordSize(vBytes);
-        buffer._fragmentBytes = getQuadWordSize(fBytes);
+//        buffer._vertexBytes = getQuadWordSize(vBytes);
+  //      buffer._fragmentBytes = getQuadWordSize(fBytes);
+        buffer._vertexBytes = vBytes;
+        buffer._fragmentBytes = fBytes;
+
         buffer._totalBytes = buffer._vertexBytes + buffer._fragmentBytes;
         buffer._set = set;
 
@@ -95,7 +98,7 @@ class PipelineParamBufferBlock {
                     builder.setSlotBindIndex(s1, fidx);
                     builder.addSlotUniformBuffer( s1, @:privateAccess buffer._vbuffers[l].get(d) );	
                 }
-                DebugTrace.trace( 'RENDER DESCRIPTORS PipelineParamBufferBlock Creating with ${l} length, ${d} depth ${ds_idx} index');
+                DebugTrace.trace( 'RENDER DESCRIPTORS PipelineParamBufferBlock Creating with ${l} length, ${d} depth ${ds_idx} index - vidx ${vidx} fidx ${fidx}');
     
                 builder.update( renderer, ds_idx, buffer._ds);
             }
@@ -121,7 +124,7 @@ class PipelineParamBufferBlock {
     }
 
     public function fill( vdata : hl.Bytes,  fdata : hl.Bytes ) {
-        DebugTrace.trace('RENDER Filling ${_writeHead} depth ${_currentDepth} ${_vertexBytes} ${_fragmentBytes}');
+        DebugTrace.trace('RENDER Filling wh ${_writeHead} depth ${_currentDepth} vb ${_vertexBytes} fb ${_fragmentBytes} vd ${vdata != null} fd ${fdata != null}');
         if (vdata != null) {
             _vbuffers[_writeHead].setCurrent(_currentDepth);
             _vbuffers[_writeHead].update(vdata);
@@ -133,7 +136,8 @@ class PipelineParamBufferBlock {
     }
 
     public function bind(cmd: forge.Native.Cmd) {
-        var idx = _currentDepth * _length + _writeHead;
+        var idx = _currentDepth *  _writeHead + _currentDepth;
+        
         DebugTrace.trace('RENDER Binding descriptor set ${_set} to idx ${idx} head ${_writeHead} depth ${_currentDepth}');
         cmd.bindDescriptorSet(idx, _ds);
     }

@@ -35,7 +35,7 @@ private class CompiledShader {
 	public var globalProgramDescriptorSet:forge.Native.DescriptorSet;
 	public var params:DescriptorIndex;
 	public var globalsLength:Int;
-	public var paramsLength:Int;
+	public var paramsLengthFloats:Int;
 	public var bufferCount:Int;
 	public var textures:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
 	public var texturesCubes:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
@@ -1342,7 +1342,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName("_" + GLSLTranscoder.getVariableBufferName(VERTEX, GLOBALS));
 		//		p.vertex.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0"); // doesn't seem to resolve
 		p.vertex.globalsLength = shader.vertex.globalsSize * 4; // vectors to floats
-		p.vertex.paramsLength = shader.vertex.paramsSize * 4; // vectors to floats
+		p.vertex.paramsLengthFloats = shader.vertex.paramsSize * 4; // vectors to floats
 		if (p.vertex.globalsLength > 0) {
 			p.vertex.globalsBuffer = DynamicUniformBuffer.allocate(p.vertex.globalsLength * SIZEOF_FLOAT, _swap_count);
 			DebugTrace.trace('RENDER SHADER Creating vertex globals descriptor');
@@ -1357,7 +1357,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		DebugTrace.trace('RENDER SHADER DESCRIPTOR p.vertex.globalsIndex ${p.vertex.globalsIndex} p.vertex.globalsDescriptorSetIndex ${p.vertex.globalsDescriptorSetIndex}');
 		DebugTrace.trace('RENDER SHADER DESCRIPTOR p.fragment.globalsIndex ${p.fragment.globalsIndex} p.fragment.globalsDescriptorSetIndex ${p.fragment.globalsDescriptorSetIndex}');
 
-		p.fragment.paramsLength = shader.fragment.paramsSize * FLOATS_PER_VECT; // vectors to floats
+		p.fragment.paramsLengthFloats = shader.fragment.paramsSize * FLOATS_PER_VECT; // vectors to floats
 		if (p.fragment.globalsLength > 0) {
 			p.fragment.globalsBuffer = DynamicUniformBuffer.allocate(p.fragment.globalsLength * FLOATS_PER_VECT,
 				3); // need to use the swap chain depth, but 3 is enough for now
@@ -1491,8 +1491,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		_curShader = p;
 	
 		if (_curShader != null) {
-			var vertTotalLength = _curShader.vertex.paramsLength; // + _curShader.vertex.globalsLength;
-			var fragTotalLength = _curShader.fragment.paramsLength; // + _curShader.fragment.globalsLength;
+			var vertTotalLength = _curShader.vertex.paramsLengthFloats; // + _curShader.vertex.globalsLength;
+			var fragTotalLength = _curShader.fragment.paramsLengthFloats; // + _curShader.fragment.globalsLength;
 			// _vertConstantBuffer is in units of floats
 			// total length should also be in floats, but may be in vectors
 			if (_vertConstantBuffer.length < vertTotalLength)
@@ -1500,8 +1500,8 @@ class ForgeDriver extends h3d.impl.Driver {
 			if (_fragConstantBuffer.length < fragTotalLength)
 				_fragConstantBuffer.resize(fragTotalLength);
 
-			DebugTrace.trace('RENDER SHADER PARAMS length v ${vertTotalLength} v ${_curShader.vertex.globalsLength} f ${_curShader.vertex.paramsLength}');
-			DebugTrace.trace('RENDER SHADER PARAMS length f ${fragTotalLength} v ${_curShader.fragment.globalsLength} f ${_curShader.fragment.paramsLength}');
+			DebugTrace.trace('RENDER SHADER PARAMS length v ${vertTotalLength} v ${_curShader.vertex.globalsLength} f ${_curShader.vertex.paramsLengthFloats}');
+			DebugTrace.trace('RENDER SHADER PARAMS length f ${fragTotalLength} v ${_curShader.fragment.globalsLength} f ${_curShader.fragment.paramsLengthFloats}');
 
 			_vertexTextures.resize(_curShader.vertex.textureCount());
 			_fragmentTextures.resize(_curShader.fragment.textureCount());
@@ -1583,28 +1583,28 @@ class ForgeDriver extends h3d.impl.Driver {
 			//					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
 
 			case Params: // trace ('Upload Globals & Params');
-				if (_curShader.vertex.paramsLength > 0) {
+				if (_curShader.vertex.paramsLengthFloats > 0) {
 					if (buf.vertex.params == null)
 						throw "Vertex Params are expected on this shader";
-					if (_curShader.vertex.paramsLength > buf.vertex.params.length)
-						throw 'Vertex Params mismatch ${_curShader.vertex.paramsLength} vs ${buf.vertex.params.length}  in ${_curShader.vertex.md5}';
+					if (_curShader.vertex.paramsLengthFloats > buf.vertex.params.length)
+						throw 'Vertex Params mismatch ${_curShader.vertex.paramsLengthFloats} vs ${buf.vertex.params.length}  in ${_curShader.vertex.md5}';
 
 					var tmpBuff = hl.Bytes.getArray(_vertConstantBuffer);
 					// var offset = _curShader.vertex.globalsLength * 4;
 					var offset = 0;
-					tmpBuff.blit(offset, hl.Bytes.getArray(buf.vertex.params.toData()), 0, _curShader.vertex.paramsLength * 4);
+					tmpBuff.blit(offset, hl.Bytes.getArray(buf.vertex.params.toData()), 0, _curShader.vertex.paramsLengthFloats * 4);
 				}
 
-				if (_curShader.fragment.paramsLength > 0) {
+				if (_curShader.fragment.paramsLengthFloats > 0) {
 					if (buf.fragment.params == null)
 						throw "Fragment Params are expected on this shader";
-					if (_curShader.fragment.paramsLength > buf.fragment.params.length)
-						throw 'fragment params mismatch ${_curShader.fragment.paramsLength} vs ${buf.vertex.params.length}';
+					if (_curShader.fragment.paramsLengthFloats > buf.fragment.params.length)
+						throw 'fragment params mismatch ${_curShader.fragment.paramsLengthFloats} vs ${buf.fragment.params.length}';
 
 					var tmpBuff = hl.Bytes.getArray(_fragConstantBuffer);
 					//				var offset = _curShader.fragment.globalsLength * 4;
 					var offset = 0;
-					tmpBuff.blit(offset, hl.Bytes.getArray(buf.fragment.params.toData()), 0, _curShader.fragment.paramsLength * 4);
+					tmpBuff.blit(offset, hl.Bytes.getArray(buf.fragment.params.toData()), 0, _curShader.fragment.paramsLengthFloats * 4);
 				}
 			case Textures:
 				DebugTrace.trace('RENDER TEXTURES PIPELINE PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length} ');
@@ -2257,6 +2257,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		}
 	}
 
+	static inline final FLOAT_BYTES = 4;
+
 	function getParamBuffer() {
 		var cp = _curShader;
 		if (cp.paramCurBuffer < cp.paramBuffers.length) {
@@ -2268,7 +2270,8 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		if (cp.paramCurBuffer >= cp.paramBuffers.length) {
 			var length = cp.paramCurBuffer == 0 ? 4 : 16;
-			var pb = forge.PipelineParamBufferBlock.allocate(_renderer, cp.rootSig, cp.vertex.paramsLength, cp.fragment.paramsLength, PARAMS, length);
+			trace('RENDER Allocating new param buffer verts ${cp.vertex.paramsLengthFloats * FLOAT_BYTES} frag ${cp.fragment.paramsLengthFloats * FLOAT_BYTES}');
+			var pb = forge.PipelineParamBufferBlock.allocate(_renderer, cp.rootSig, cp.vertex.paramsLengthFloats * FLOAT_BYTES, cp.fragment.paramsLengthFloats* FLOAT_BYTES, PARAMS, length);
 			cp.paramBuffers.push(pb);
 		}
 
@@ -2281,11 +2284,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		//		trace ('PARAMS Pushing Vertex Constants ${_temp} floats ${total / 4} vectors: [0] = x ${x} y ${y} z ${z} w ${w}');
 		#if PUSH_CONSTANTS
 		if (_curShader.vertex.constantsIndex != -1) {
-			DebugTrace.trace('RENDER CALLSTACK CONSTANTS pushing vertex parameters ${_curShader.vertex.constantsIndex} ${_curShader.vertex.paramsLength}');
+			DebugTrace.trace('RENDER CALLSTACK CONSTANTS pushing vertex parameters ${_curShader.vertex.constantsIndex} ${_curShader.vertex.paramsLengthFloats}');
 			_currentCmd.pushConstants(_curShader.rootSig, _curShader.vertex.constantsIndex, hl.Bytes.getArray(_vertConstantBuffer));
 		}
 		if (_curShader.fragment.constantsIndex != -1) {
-			DebugTrace.trace('RENDER CALLSTACK CONSTANTS pushing fragment parameters ${_curShader.fragment.paramsLength}');
+			DebugTrace.trace('RENDER CALLSTACK CONSTANTS pushing fragment parameters ${_curShader.fragment.paramsLengthFloats}');
 			_currentCmd.pushConstants(_curShader.rootSig, _curShader.fragment.constantsIndex, hl.Bytes.getArray(_fragConstantBuffer));
 		}
 		#else
