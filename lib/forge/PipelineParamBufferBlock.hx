@@ -84,8 +84,8 @@ class PipelineParamBufferBlock {
 		setDesc.maxSets = buffer._depth * buffer._length; // 2^13 = 8192
 		buffer._ds = renderer.addDescriptorSet( setDesc );   
 
-        var vidx = rootsig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(VERTEX, set));
-        var fidx = rootsig.getDescriptorIndexFromName( "_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, set));
+        var vidx = rootsig.getDescriptorIndexFromName( GLSLTranscoder.getVariableBufferName(VERTEX, set));
+        var fidx = rootsig.getDescriptorIndexFromName( GLSLTranscoder.getVariableBufferName(FRAGMENT, set));
 
         for (l in 0...length) {
             for (d in 0...depth) {
