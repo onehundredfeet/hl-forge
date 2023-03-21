@@ -119,14 +119,15 @@ class PipelineTextureSetBlock {
 			if (!found) {
 				//            trace('\tRENDER TEXTURE FRAGMENT ${i} ${tt.name} ${tt.type}');
 				switch (tt.type) {
-					case TTexture2D, TSampler2D:
-						var id = rootsig.getDescriptorIndexFromName(fragment.shaderVarNames.get(tt.pos));
-						var ids = rootsig.getDescriptorIndexFromName(fragment.shaderVarNames.get(tt.pos) + "Smplr");
-						trace('\tRENDER UNIQUE TEXTURE id ${i} name ${tt.name} type ${tt.type} shader id ${id}');
+					case TTexture2D, TSampler2D, TChannel(_):
+                        var tname =  (tt.pos == -1) ? tt.name : fragment.shaderVarNames.get(tt.pos);
+						var id = rootsig.getDescriptorIndexFromName(tname);
+						var ids = rootsig.getDescriptorIndexFromName(tname + "Smplr");
+						trace('\tRENDER UNIQUE TEXTURE id ${i} name ${tt.name} ppos ${tt.pos} look name ${tname} type ${tt.type} shader id ${id}');
 						funiques_id.push(id);
 						funiques_param.push(tt);
 						found = true;
-                        if (id == -1) throw 'RENDER UNIQUE TEXTURE NOT FOUND ${tt.name}';
+                        if (id == -1) throw 'ALLOCATE RENDER UNIQUE TEXTURE NOT FOUND ${tt.name}';
                         builder.addSlotTexture(ts, null);
                         builder.setSlotBindIndex(ts, id);
                         if (ids != id + 1) throw 'RENDER UNIQUE TEXTURE SAMPLER NOT FOUND ${tt.name} ${ids} ${id}';
@@ -202,7 +203,7 @@ class PipelineTextureSetBlock {
 
     public function fill(renderer:Renderer, vertex:Vector<h3d.mat.Texture>, fragmentTex:Vector<h3d.mat.Texture>) {
 		var tt = _fcs.shader.textures;
-
+        
         var slotIdx = 0;
         for (i in 0..._fcs.shader.texturesCount) {
 			var found = false;
@@ -217,8 +218,16 @@ class PipelineTextureSetBlock {
 			if (!found) {
 				//            trace('\tRENDER TEXTURE FRAGMENT ${i} ${tt.name} ${tt.type}');
 				switch (tt.type) {
-					case TTexture2D, TSampler2D:
-                        _builder.setSlotTexture(slotIdx, 0, @:privateAccess fragmentTex[i].t.t);
+					case TTexture2D, TSampler2D, TChannel(_):
+                        var t = @:privateAccess fragmentTex[i].t;
+						if (t == null)
+							throw "Texture is null";
+						var ft = (t.rt != null) ? t.rt.rt.getTexture() : t.t;
+
+                        if (@:privateAccess ft == null) {
+                            throw 'FILL RENDER UNIQUE TEXTURE NOT FOUND ${tt.name} -> ${fragmentTex[i].name}';
+                        }
+                        _builder.setSlotTexture(slotIdx, 0, ft);
 						found = true;
 					case TArray(_):
 					default:

@@ -220,11 +220,15 @@ class GLSLTranscoder {
 
 
 	function identLookup(v:TVar) {
+		if (isSamplerType(v.type)) {
+			add(getLookupName(EDescriptorSetSlot.TEXTURES, varName(v)));
+			return;
+		}
+
 		var n = switch (v.kind) {
 			case VarKind.Global: getLookupName(EDescriptorSetSlot.GLOBALS, varName(v));
 			case VarKind.Param:
-				if (isSamplerType(v.type)) getLookupName(EDescriptorSetSlot.TEXTURES, varName(v));
-				else switch (v.type) {
+				switch (v.type) {
 					case TBuffer(t, size):
 						if (_bufferNameLookup == null)
 							throw "Buffer names are null";
@@ -314,7 +318,7 @@ class GLSLTranscoder {
 			case TBuffer(_):
 				throw "assert";
 			case TChannel(n):
-				add("sampler2D");
+				add("sampler");
 			case TTexture2D:
 				add("texture2D");
 		}
@@ -965,9 +969,9 @@ class GLSLTranscoder {
 		var nonBufferVars = s.vars.filter((x) -> x.type.match(TBuffer(_)) == false);
 		var bufferVars = s.vars.filter((x) -> x.type.match(TBuffer(_)));
 
-		var globals = nonBufferVars.filter((x) -> x.kind == Global);
-		var params = nonBufferVars.filter((x) -> x.kind == Param);
-		var buffer_params = getBufferedParams(s);
+		var globals = nonBufferVars.filter((x) -> x.kind == Global && isBufferableType(x.type));
+		var params = nonBufferVars.filter((x) -> x.kind == Param && isBufferableType(x.type));
+//		var buffer_params = getBufferedParams(s);
 
 		if (globals.length > 0) {
 			add('// Globals - ${EDescriptorSetSlot.GLOBALS} -> ${getLayoutSpec(stage, EDescriptorSetSlot.GLOBALS)}\n');
@@ -979,14 +983,14 @@ class GLSLTranscoder {
 
 			add('} ${getVariableBufferName( stage, EDescriptorSetSlot.GLOBALS), _flavour};\n');
 		}
-		if (buffer_params.length > 0) {
+		if (params.length > 0) {
 			add('// Params - ${EDescriptorSetSlot.PARAMS} -> ${getLayoutSpec(stage, EDescriptorSetSlot.PARAMS)}\n');
 
 			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.PARAMS)} ) uniform ${getVariableBufferTypeName(stage, EDescriptorSetSlot.PARAMS, _flavour)} {\n');
 
 
 			var totalSize = 0;
-			for (v in buffer_params) {
+			for (v in params) {
 				add("\t");
 				#if PUSH_CONSTANTS
 				initVar(v, _buildPushConstantSize + totalSize);
@@ -1005,9 +1009,8 @@ class GLSLTranscoder {
 		}
 
 		var sampler_params = s.vars.filter((x) -> switch (x.type) {
-			case TSampler2D: true;
-			case TSamplerCube: true;
-			case TArray(t, size): t == TSampler2D || t == TSamplerCube;
+			case TSampler2D, TChannel(_), TSamplerCube: true;
+			case TArray(t, size): t == TSampler2D || t.match(TChannel(_)) || t == TSamplerCube;
 			default: false;
 		});
 
@@ -1023,7 +1026,7 @@ class GLSLTranscoder {
 			for (v in sampler_params) {
 				add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, tex_binding_idx++)} ) uniform ');
 				switch (v.type) {
-					case TSampler2D:
+					case TSampler2D, TChannel(_):
 						debugTrace('RENDER adding sampler ${v.name}');
 					case TArray(t, size):
 						debugTrace('RENDER adding sampler array ${v.name}');
@@ -1040,7 +1043,7 @@ class GLSLTranscoder {
 
 				var vsType = switch(v.type) {
 					case TArray(t, size): TArray(TTexture2D, size);
-					case TSampler2D: TTexture2D;
+					case TSampler2D, TChannel(_): TTexture2D;
 					default:  v.type;
 				};
 
