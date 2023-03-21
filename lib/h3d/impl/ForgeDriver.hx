@@ -1,5 +1,6 @@
 package h3d.impl;
 
+import forge.PipelineTextureSetBlock;
 import forge.GLSLTranscoder;
 import forge.GLSLTranscoder.EGLSLFlavour;
 import haxe.crypto.Crc32;
@@ -21,106 +22,11 @@ import h3d.impl.GraphicsDriver;
 import forge.Native.TextureCreationFlags;
 import forge.DebugTrace;
 import forge.EnumTools;
-
-private typedef DescriptorIndex = Null<Int>;
-private typedef Program = forge.Forge.Program;
-private typedef ForgeShader = forge.Native.Shader;
-
-private class CompiledShader {
-	public var s:ForgeShader;
-	public var vertex:Bool;
-	public var constantsIndex:DescriptorIndex;
-	public var globalsIndex:DescriptorIndex;
-	public var globalsDescriptorSetIndex:DescriptorIndex;
-	public var globalProgramDescriptorSet:forge.Native.DescriptorSet;
-	public var params:DescriptorIndex;
-	public var globalsLength:Int;
-	public var paramsLengthFloats:Int;
-	public var paramsLengthBytes:Int;
-	public var bufferCount:Int;
-	public var textures:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
-	public var texturesCubes:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
-	public var buffers:Array<DescriptorIndex>;
-	public var shader:hxsl.RuntimeShader.RuntimeShaderData;
-	public var textureIndex:DescriptorIndex;
-	public var textureCubeIndex:DescriptorIndex;
-	public var samplerIndex:DescriptorIndex;
-	public var samplerCubeIndex:DescriptorIndex;
-	public var textureSlot:Int;
-	public var samplerSlot:Int;
-	public var md5:String;
-	public var globalsBuffer:DynamicUniformBuffer;
-	public var globalsLastUpdated:Int = -1;
-
-	public function textureCount():Int {
-		return textures != null ? textures.length : 0;
-	}
-
-	public function textureCubeCount():Int {
-		return texturesCubes != null ? texturesCubes.length : 0;
-	}
-
-	//	public var textureDataBuilder:forge.Native.DescriptorDataBuilder;
-	//	public var samplerDataBuilder:forge.Native.DescriptorDataBuilder;
-
-	public function new(s, vertex, shader) {
-		this.s = s;
-		this.vertex = vertex;
-		this.shader = shader;
-		this.bufferCount = shader.bufferCount;
-		shader.buffers;
-	}
-}
+import forge.CompiledShader;
+import forge.CompiledProgram;
+import forge.GLSLTranscoder;
 
 typedef ComputePipeline = {pipeline:forge.Native.Pipeline, rootconstant:Int, shader:forge.Native.Shader, rootsig:forge.Native.RootSignature};
-
-@:enum
-abstract CompiledAttributeType(Int) from Int to Int {
-	public var UNKNOWN = 0;
-	public var BYTE = 1;
-	public var FLOAT = 2;
-	public var VECTOR = 3;
-}
-
-private class CompiledAttribute {
-	public var index:Int;
-	public var type:CompiledAttributeType;
-	public var sizeBytes:Int;
-	public var count:Int;
-	public var divisor:Int;
-	public var offsetBytes:Int;
-	public var name:String;
-	public var strideBytes:Int;
-	public var semantic:forge.Native.ShaderSemantic;
-
-	public function new() {}
-}
-
-private class CompiledProgram {
-	public var id:Int;
-	public var p:Program;
-	public var rootSig:forge.Native.RootSignature;
-	public var forgeShader:forge.Native.Shader;
-	public var vertex:CompiledShader;
-	public var fragment:CompiledShader;
-	public var globalDescriptorSet:forge.Native.DescriptorSet;
-	public var inputs:InputNames;
-	public var naturalLayout:forge.Native.VertexLayout;
-	public var attribs:Array<CompiledAttribute>;
-	public var hasAttribIndex:Array<Bool>;
-	public var paramBuffers = new Array<forge.PipelineParamBufferBlock>();
-	public var paramCurBuffer = 0;
-	public var lastFrame = -1;
-
-	public function new() {}
-
-	public function resetParamBuffers() {
-		paramCurBuffer = 0;
-		for (p in paramBuffers) {
-			p.nextLayer();
-		}
-	}
-}
 
 private class CompiledMaterial {
 	public function new() {}
@@ -173,9 +79,9 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _fragConstantBuffer = new Array<Float>();
 	var _currentSwapIndex = 0;
 
-	var _vertexTextures = new Array<h3d.mat.Texture>();
-	var _fragmentTextures = new Array<h3d.mat.Texture>();
-	var _fragmentTextureCubes = new Array<h3d.mat.Texture>();
+	var _vertexTextures = [for (i in 0...TEX_TYPE_COUNT) new Array<h3d.mat.Texture>()];
+	var _fragmentTextures = [for (i in 0...TEX_TYPE_COUNT) new Array<h3d.mat.Texture>()];
+
 	var _swapRenderTargets = new Array<RenderTarget>();
 	var _fragmentUniformBuffers = new Array<VertexBufferExt>();
 
@@ -495,11 +401,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		depthRT.sampleQuality = 0;
 		depthRT.sampleCount = SAMPLE_COUNT_1;
 		depthRT.startState = RESOURCE_STATE_DEPTH_WRITE;
-//		depthRT.mClearValue.depth = 0.0f;
-//		depthRT.mClearValue.stencil = 0;
-		//depthRT.mClearValue = depthStencilClear;
-		//depthRT.mSampleCount = SAMPLE_COUNT_1;
-		//depthRT.mSampleQuality = 0;
+		//		depthRT.mClearValue.depth = 0.0f;
+		//		depthRT.mClearValue.stencil = 0;
+		// depthRT.mClearValue = depthStencilClear;
+		// depthRT.mSampleCount = SAMPLE_COUNT_1;
+		// depthRT.mSampleQuality = 0;
 
 		if (b.format != null) {
 			//			DebugTrace.trace('b is ${b} format is ${b != null ? b.format : null}');
@@ -1045,7 +951,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		}
 	 */
 	var _programIds = 0;
-	var _bilinearClamp2DSampler:forge.Native.Sampler;
+	var _globalSamplers:Array<forge.Native.Sampler>;
 
 	/*
 		function convertGLSLToMetalBin(glslsource : String, file_root : String, shaderType : ShaderType)
@@ -1200,6 +1106,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
+		trace('Compiling program ${shader.id}');
 		var flavour = switch (_backend) {
 			case Metal: EGLSLFlavour.Metal;
 			case Vulkan: EGLSLFlavour.Vulkan;
@@ -1260,50 +1167,108 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var rootDesc = new forge.Native.RootSignatureDesc();
 
-		if (_bilinearClamp2DSampler == null) {
-			var samplerDesc = new forge.Native.SamplerDesc();
-			samplerDesc.mMinFilter = FILTER_LINEAR;
-			samplerDesc.mMagFilter = FILTER_LINEAR;
-			samplerDesc.mAddressU = ADDRESS_MODE_CLAMP_TO_EDGE;
-			samplerDesc.mAddressV = ADDRESS_MODE_CLAMP_TO_EDGE;
-			samplerDesc.mAddressW = ADDRESS_MODE_CLAMP_TO_EDGE;
-			samplerDesc.mMipMapMode = MIPMAP_MODE_NEAREST;
-			samplerDesc.mMipLodBias = 0.0;
-			samplerDesc.mMaxAnisotropy = 0.0;
+		if (_globalSamplers == null) {
+			_globalSamplers = [];
+			for (i in 0...ETextureType.TEX_TYPE_COUNT) {
+				switch (i) {
+					case ETextureType.TEX_TYPE_2D:
+					case ETextureType.TEX_TYPE_CUBE:
+					case ETextureType.TEX_TYPE_RT:
+					default:
+						throw 'Invalid texture type';
+				}
+				var samplerDesc = new forge.Native.SamplerDesc();
+				samplerDesc.mMinFilter = FILTER_LINEAR;
+				samplerDesc.mMagFilter = FILTER_LINEAR;
+				samplerDesc.mAddressU = ADDRESS_MODE_CLAMP_TO_EDGE;
+				samplerDesc.mAddressV = ADDRESS_MODE_CLAMP_TO_EDGE;
+				samplerDesc.mAddressW = ADDRESS_MODE_CLAMP_TO_EDGE;
+				samplerDesc.mMipMapMode = MIPMAP_MODE_NEAREST;
+				samplerDesc.mMipLodBias = 0.0;
+				samplerDesc.mMaxAnisotropy = 0.0;
 
-			_bilinearClamp2DSampler = _renderer.createSampler(samplerDesc);
+				_globalSamplers[i] = _renderer.createSampler(samplerDesc);
+			}
+
 			forge.Native.Globals.waitForAllResourceLoads();
 		}
+		DebugTrace.trace('RENDER Adding fragment shader');
 
 		rootDesc.addShader(fgShader);
 
 		var tt = shader.fragment.textures;
-		for (i in 0...shader.fragment.texturesCount) {
-			DebugTrace.trace('RENDER SAMPLER ADDING SAMPER ${tt.name}');
-			rootDesc.addSampler(_bilinearClamp2DSampler, 'fragmentTextures'); // This is still suspect. [RC], need to look deeper into what this is doing
-			tt = tt.next;
-		}
+		/*
+			for (i in 0...shader.fragment.texturesCount) {
+				DebugTrace.trace('RENDER SAMPLER ADDING SAMPER ${tt.name}');
+				rootDesc.addSampler(_bilinearClamp2DSampler, 'fragmentTextures'); // This is still suspect. [RC], need to look deeper into what this is doing
+				tt = tt.next;
+			}
+		 */
 		var rootSig = _renderer.createRootSig(rootDesc);
 		p.rootSig = rootSig;
 
 		forge.Native.Globals.waitForAllResourceLoads();
 
+		if (shader.vertex.texturesCount > 0) {
+			var tt = shader.vertex.textures;
+
+			for (i in 0...shader.vertex.texturesCount) {
+				var arrayType = switch (tt.type) {
+					case TChannel(_): TEX_TYPE_RT;
+					case TSampler2D: TEX_TYPE_2D;
+					case TSamplerCube: TEX_TYPE_CUBE;
+					default: throw 'Not a supported texture type ${tt.type}';
+				}
+				var arr = p.vertex.getOrCreateTextureArray(arrayType);
+				arr.count++;
+
+				tt = tt.next;
+			}
+		}
+
 		if (shader.fragment.texturesCount > 0) {
 			var tt = shader.fragment.textures;
 
-			DebugTrace.trace('RENDER TEXTURE name ${tt.name} index ${tt.index} instance ${tt.instance} pos ${tt.pos} type ${tt.type} next ${tt.next}');
-
-			// var ds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
-			// p.fragment.textureDS = ds;
-
-			// var sds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
-			// p.fragment.samplerDS = sds;
-
-			p.fragment.textures = new Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>();
-			p.fragment.texturesCubes = new Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>();
 			for (i in 0...shader.fragment.texturesCount) {
+				var arrayType = switch (tt.type) {
+					case TChannel(_): TEX_TYPE_RT;
+					case TSampler2D: TEX_TYPE_2D;
+					case TSamplerCube: TEX_TYPE_CUBE;
+					default: throw 'Not a supported texture type ${tt.type}';
+				}
+				var arr = p.fragment.getOrCreateTextureArray(arrayType);
+				arr.count++;
+
+				tt = tt.next;
+			}
+		}
+
+		// DebugTrace.trace('RENDER TEXTURE name ${tt.name} index ${tt.index} instance ${tt.instance} pos ${tt.pos} type ${tt.type} next ${tt.next}');
+
+		// var ds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
+		// p.fragment.textureDS = ds;
+
+		// var sds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
+		// p.fragment.samplerDS = sds;
+
+		//			p.fragment.textures = new Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>();
+		//			p.fragment.texturesCubes = new Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>();
+		#if false
+		for (i in 0...shader.fragment.texturesCount) {
+			var arrayType = switch (tt.type) {
+				case TChannel(_): TEX_TYPE_RT;
+				case TSampler2D: TEX_TYPE_2D;
+				case TSamplerCube: TEX_TYPE_CUBE;
+				default: throw 'Not a supported texture type ${tt.type}';
+			}
+			var arr = p.fragment.getOrCreateTextureArray(arrayType);
+			var trec = new CompiledTextureRef();
+			arr.textures.push(trec);
+			/*
 				switch (tt.type) {
-					case TSampler2D, TChannel(_):
+					case TChannel(size):
+						
+					case TSampler2D:
 						var xx = {u: p.fragment.textureIndex, t: tt.type, mode: 0};
 						p.fragment.textures.push(xx);
 
@@ -1315,10 +1280,37 @@ class ForgeDriver extends h3d.impl.Driver {
 					default:
 						throw 'Not a supported texture type ${tt.type}';
 				}
+			 */
 
-				tt = tt.next;
+			tt = tt.next;
+		}
+		#end
+		/*
+			for (i in 0...TEX_TYPE_COUNT) {
+				var arr = p.fragment.textureArrays[i];
+				if (arr != null) {
+					switch (i) {
+						case TEX_TYPE_RT:
+							arr.textureIndex = rootSig.getDescriptorIndexFromName("fragmentChannels");
+							arr.samplerIndex = rootSig.getDescriptorIndexFromName("fragmentChannelsSmplr");
+							break;
+						case TEX_TYPE_2D:
+							arr.textureIndex = rootSig.getDescriptorIndexFromName("fragmentTextures");
+							arr.samplerIndex = rootSig.getDescriptorIndexFromName("fragmentTexturesSmplr");
+							break;
+						case TEX_TYPE_CUBE:
+							arr.textureIndex = rootSig.getDescriptorIndexFromName("fragmentTexturesCube");
+							arr.samplerIndex = rootSig.getDescriptorIndexFromName("fragmentTexturesCubeSmplr");
+							break;
+						default:
+							throw 'Not a supported texture array type ${i}';
+					}
+
+					DebugTrace.trace('RENDER FRAGMENT TEXTURE ARRAY ${i} tdi ${arr.textureIndex} tsi ${arr.samplerIndex}');
+				}
 			}
-
+		 */
+		/*
 			if (p.fragment.textureCount() > 0) {
 				p.fragment.textureIndex = rootSig.getDescriptorIndexFromName("fragmentTextures");
 				p.fragment.samplerIndex = rootSig.getDescriptorIndexFromName("fragmentTexturesSmplr");
@@ -1333,8 +1325,10 @@ class ForgeDriver extends h3d.impl.Driver {
 				p.fragment.textureCubeIndex = -1;
 				p.fragment.samplerCubeIndex = -1;
 			}
-		}
+		 */
+		// }
 
+		trace('GOT HERE: A');
 		// get inputs
 		var GLOBAL_DESCRIPTOR_SET = forge.Native.DescriptorUpdateFrequency.fromValue(EDescriptorSetSlot.GLOBALS);
 
@@ -1386,7 +1380,6 @@ class ForgeDriver extends h3d.impl.Driver {
 		// fragmentTexturesSmplr = 2
 		// var textureSampIndex = p.fragment.samplerIndex;
 		// spvDescriptorSetBuffer0 = -1
-		DebugTrace.trace('RENDER TEXTURE tdi ${p.fragment.textureIndex} tsi ${p.fragment.samplerIndex} tcdi ${p.fragment.textureCubeIndex} tcsi ${p.fragment.samplerCubeIndex}');
 		DebugTrace.trace('PARAMS Indices vg ${p.vertex.constantsIndex} vp ${p.vertex.params} fg ${p.fragment.constantsIndex} fp ${p.fragment.params}');
 
 		initShader(p, p.vertex, shader.vertex, shader, rootSig);
@@ -1507,13 +1500,9 @@ class ForgeDriver extends h3d.impl.Driver {
 			DebugTrace.trace('RENDER SHADER PARAMS length v ${vertTotalLength} v ${_curShader.vertex.globalsLength} f ${_curShader.vertex.paramsLengthFloats}');
 			DebugTrace.trace('RENDER SHADER PARAMS length f ${fragTotalLength} v ${_curShader.fragment.globalsLength} f ${_curShader.fragment.paramsLengthFloats}');
 
-			_vertexTextures.resize(_curShader.vertex.textureCount());
-			_fragmentTextures.resize(_curShader.fragment.textureCount());
-			_fragmentTextureCubes.resize(_curShader.fragment.textureCubeCount());
-
 			if (_curShader.lastFrame != _currentFrame) {
 				_curShader.lastFrame = _currentFrame;
-				_curShader.resetParamBuffers();
+				_curShader.resetBlocks();
 			}
 		}
 		DebugTrace.trace('RENDER MATERIAL SHADER all good! ${_curShader}');
@@ -1617,68 +1606,39 @@ class ForgeDriver extends h3d.impl.Driver {
 			case Textures:
 				DebugTrace.trace('RENDER TEXTURES PIPELINE PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length} ');
 
-				if (buf.vertex.tex.length < _vertexTextures.length)
-					throw "Not enough vertex textures";
-
-				var bufTexCount = 0;
-				var bufTexCubeCount = 0;
-
-				for (t in buf.fragment.tex) {
-					if (t.flags.has(Cube))
-						bufTexCubeCount++;
-					else
-						bufTexCount++;
+				// Make sure that we have the minimum number of textures for the shader
+				for (i in 0...TEX_TYPE_COUNT) {
+					_vertexTextures[i].resize(0);
+					_fragmentTextures[i].resize(0);
 				}
-				if (bufTexCount < _fragmentTextures.length)
-					throw "Not enough fragment textures";
-				if (bufTexCubeCount < _fragmentTextureCubes.length)
-					throw "Not enough fragment texture cubes";
+				for (i in 0...2) {
+					var texturesList = i == 0 ? buf.vertex.tex : buf.fragment.tex;
+					var targetTextureArrays = i == 0 ? _vertexTextures : _fragmentTextures;
 
-				for (i in 0..._vertexTextures.length) {
-					_vertexTextures[i] = buf.vertex.tex[i];
-				}
-				var source2DIdx = 0;
-				for (i in 0..._fragmentTextures.length) {
-					while (buf.fragment.tex[source2DIdx].flags.has(Cube)) {
-						source2DIdx++;
-					}
-					_fragmentTextures[i] = buf.fragment.tex[source2DIdx++];
-					var t = _fragmentTextures[i];
-
-					t.lastFrame = _currentFrame;
-
-					if (t.t.rt != null) {
-						var rtt = t.t.rt.rt.getTexture();
-						if (rtt == null) {
-							throw "Render target texture is null";
+					for (t in texturesList) {
+						if (t.flags.has(Cube)) {
+							targetTextureArrays[TEX_TYPE_CUBE].push(t);
+							if (t.t == null)
+								throw "Cube Texture is null";
+							if (t.t.t == null)
+								throw "Forge Cube texture is null";
+						} else if (t.flags.has(Target)) {
+							targetTextureArrays[TEX_TYPE_RT].push(t);
+							if (t.t.rt == null)
+								throw "Render target is null";
+							var rtt = t.t.rt.rt.getTexture();
+							if (rtt == null) {
+								throw "Render target texture is null";
+							}
+						} else {
+							targetTextureArrays[TEX_TYPE_2D].push(t);
+							if (t.t == null)
+								throw "Texture 2D is null";
+							if (t.t.t == null)
+								throw "Forge texture 2D is null";
 						}
-					} else {
-						if (t.t == null)
-							throw "Texture is null";
-						if (t.t.t == null)
-							throw "Forge texture is null";
-					}
-				}
-				var sourceCubeIdx = 0;
-				for (i in 0..._fragmentTextureCubes.length) {
-					while (!buf.fragment.tex[sourceCubeIdx].flags.has(Cube)) {
-						sourceCubeIdx++;
-					}
-					_fragmentTextureCubes[i] = buf.fragment.tex[sourceCubeIdx++];
-					var t = _fragmentTextureCubes[i];
 
-					t.lastFrame = _currentFrame;
-
-					if (t.t.rt != null) {
-						var rtt = t.t.rt.rt.getTexture();
-						if (rtt == null) {
-							throw "Render target texture is null";
-						}
-					} else {
-						if (t.t == null)
-							throw "Texture is null";
-						if (t.t.t == null)
-							throw "Forge texture is null";
+						t.lastFrame = _currentFrame;
 					}
 				}
 
@@ -2204,9 +2164,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		// Get pipeline combination
 		var cmat = _materialInternalMap.get(cmatidx);
 		DebugTrace.trace('RENDER PIPELINE Signature  xx.h ${hv.high} | xx.l ${hv.low} pipeid ${cmatidx}');
-		var shaderFragTextureCount = _curShader.fragment.textureCount(); // .textures == null ? 0 : _curShader.fragment.textures.length;
-		var shaderFragTextureCubeCount = _curShader.fragment.textureCubeCount(); // .textures == null ? 0 : _curShader.fragment.textures.length;
-		DebugTrace.trace('RENDER PIPELINE texture count ${shaderFragTextureCount} vs ${_fragmentTextures.length} 2D | ${shaderFragTextureCubeCount} Cubes');
+
+		for (i in 0...TEX_TYPE_COUNT) {
+			var shaderFragTextureCount = _curShader.fragment.textureCount(i); // .textures == null ? 0 : _curShader.fragment.textures.length;
+			DebugTrace.trace('RENDER PIPELINE texture count ${shaderFragTextureCount} vs ${_fragmentTextures[i].length}');
+		}
 
 		if (cmat == null) {
 			cmat = new CompiledMaterial();
@@ -2368,10 +2330,30 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	static inline final TBDT_2D = 0x1;
 	static inline final TBDT_CUBE = 0x2;
+	static inline final TBDT_RT = 0x4;
 	static inline final TBDT_2D_AND_CUBE = TBDT_2D | TBDT_CUBE;
 	static inline final TBDT_2D_IDX = 0;
 	static inline final TBDT_CUBE_IDX = 1;
 	static inline final TBDT_2D_AND_CUBE_IDX = 2;
+
+	function getTextureBlock() {
+		var cp = _curShader;
+		if (cp.textureCurBlock < cp.textureBlocks.length) {
+			var bp = cp.textureBlocks[cp.textureCurBlock];
+			if (bp.full()) {
+				cp.textureCurBlock++;
+			}
+		}
+
+		if (cp.textureCurBlock >= cp.textureBlocks.length) {
+			var length = cp.textureCurBlock == 0 ? 4 : 16;
+			DebugTrace.trace('RENDER Allocating new texture block verts ${cp.vertex.paramsLengthFloats * FLOAT_BYTES} frag ${cp.fragment.paramsLengthFloats * FLOAT_BYTES}');
+			var tsb = PipelineTextureSetBlock.allocate(_renderer, cp.rootSig, cp.vertex, cp.fragment, _globalSamplers, length);
+			cp.textureBlocks.push(tsb);
+		}
+
+		return cp.textureBlocks[cp.textureCurBlock];
+	}
 
 	function bindTextures() {
 		DebugTrace.trace("RENDER CALLSTACK bindTextures");
@@ -2379,396 +2361,318 @@ class ForgeDriver extends h3d.impl.Driver {
 			throw "Can't bind textures on null pipeline";
 		if (_curShader == null)
 			throw "Can't bind textures on null shader";
-
-		//		if (s.textures == null) {
-		//			DebugTrace.trace("WARNING: No texture array on compiled shader, may be a missing feature, also could just have no textures");
-		//			return;
-		//		}
-
-		var shaderFragTextureCount = _curShader.fragment.textureCount();
-		var shaderFragTextureCubeCount = _curShader.fragment.textureCubeCount();
-
-		if (shaderFragTextureCount > _fragmentTextures.length) {
-			throw('Not enough textures for shader, provided  ${_fragmentTextures.length} but needs ${shaderFragTextureCount}');
-		}
-		if (shaderFragTextureCubeCount > _fragmentTextureCubes.length) {
-			throw('Not enough textures for shader, provided  ${_fragmentTextures.length} but needs ${shaderFragTextureCount}');
-		}
-
-		if (shaderFragTextureCount != _fragmentTextures.length) {
-			DebugTrace.trace('RENDER WARNING shader texture count ${shaderFragTextureCount} doesn\'t match provided texture count ${_fragmentTextures.length}');
-		}
-		if (shaderFragTextureCubeCount != _fragmentTextureCubes.length) {
-			DebugTrace.trace('RENDER WARNING shader texture cube count ${shaderFragTextureCount} doesn\'t match provided texture cube count ${_fragmentTextures.length}');
-		}
-		if (shaderFragTextureCount > 0 || shaderFragTextureCubeCount > 0) {
-			//		if (_curShader.vertex.textures.length == 0) return;
-			var fragmentSeed = 0x3917437;
-
-			var textureMode = 0;
-			if (shaderFragTextureCount > 0)
-				textureMode |= TBDT_2D;
-			if (shaderFragTextureCubeCount > 0)
-				textureMode |= TBDT_CUBE;
-			var textureModeIdx = switch (textureMode) {
-				case TBDT_2D: TBDT_2D_IDX;
-				case TBDT_CUBE: TBDT_CUBE_IDX;
-				case TBDT_2D_AND_CUBE: TBDT_2D_AND_CUBE_IDX;
-				default: throw("Unrecognized texture mode");
+		if (_curShader.fragment.hasTextures() || _curShader.vertex.hasTextures()) {
+			#if !old_binder
+			var block = getTextureBlock();
+			block.beginUpdate();
+			block.fill(_renderer, _vertexTextures, _fragmentTextures);
+			block.bind(_currentCmd);
+			block.next();
+			#else
+			for (i in 0...TEX_TYPE_COUNT) {
+				if (_vertexTextures[i].length < _curShader.vertex.textureCount(i))
+					throw 'Not enough vertex textures for array ${i}';
+				if (_fragmentTextures[i].length < _curShader.fragment.textureCount(i))
+					throw 'Not enough fragment textures for array ${i}';
+				if (_vertexTextures[i].length != _curShader.vertex.textureCount(i))
+					DebugTrace.trace('RENDER WARNING shader vertex texture count ${_curShader.vertex.textureCount(i)} doesn\'t match provided texture count ${_vertexTextures[i].length}');
+				if (_fragmentTextures[i].length != _curShader.fragment.textureCount(i))
+					DebugTrace.trace('RENDER WARNING shader fragment texture count ${_curShader.fragment.textureCount(i)} doesn\'t match provided texture count ${_vertexTextures[i].length}');
 			}
 
-			var crc = new Crc32();
+			if (_curShader.fragment.hasTextures() || _curShader.vertex.hasTextures()) {
+				//		if (_curShader.vertex.textures.length == 0) return;
+				var fragmentSeed = 0x3917437;
 
-			crcInt(crc, fragmentSeed);
-			crcInt(crc, _currentPipeline._hash.low);
-			crcInt(crc, _currentPipeline._hash.high);
+				var textureMode = 0;
+				for (i in 0...TEX_TYPE_COUNT) {
+					if (_curShader.vertex.textureCount(i) > 0) {
+						textureMode |= 1 << i;
+					}
+					if (_curShader.fragment.textureCount(i) > 0) {
+						textureMode |= 1 << (i + TEX_TYPE_COUNT);
+					}
+				}
 
-			crcInt(crc, shaderFragTextureCount);
-			for (i in 0...shaderFragTextureCount) {
-				crcInt(crc, _fragmentTextures[i].id);
-			}
-			crcInt(crc, shaderFragTextureCubeCount);
-			for (i in 0...shaderFragTextureCubeCount) {
-				crcInt(crc, _fragmentTextureCubes[i].id);
-			}
+				var crc = new Crc32();
 
-			var tds = _textureDescriptorMap.get(crc.get());
+				crcInt(crc, fragmentSeed);
+				crcInt(crc, textureMode);
+				crcInt(crc, _currentPipeline._hash.low);
+				crcInt(crc, _currentPipeline._hash.high);
 
-			if (tds == null) {
-				DebugTrace.trace('RENDER Adding texture ${crc.get()} mode ${textureModeIdx}');
-				var descriptorSets = _backend == Metal ? 2 : 1;
-				var ds = _renderer.createDescriptorSet(_curShader.rootSig, EDescriptorSetSlot.TEXTURES, descriptorSets, 0);
+				for (i in 0...TEX_TYPE_COUNT) {
+					crcInt(crc, _curShader.fragment.textureCount(i));
+					for (j in 0..._curShader.fragment.textureCount(i)) {
+						crcInt(crc, _fragmentTextures[i][j].id);
+					}
+					crcInt(crc, _curShader.vertex.textureCount(i));
+					for (j in 0..._curShader.vertex.textureCount(i)) {
+						crcInt(crc, _vertexTextures[i][j].id);
+					}
+				}
 
-				if (_textureDataBuilder == null) {
-					DebugTrace.trace('RENDER TExture builder is null, creating one');
-					_textureDataBuilder = new Array<forge.Native.DescriptorDataBuilder>();
+				// probably want to do this inside each pipeline?
+				// This is generating a new descriptor set for each unique combination of textures
+				var tds = _textureDescriptorMap.get(crc.get());
 
-					for (i in 0...3) {
-						var textureMode = switch (i) {
-							case TBDT_2D_IDX: TBDT_2D;
-							case TBDT_CUBE_IDX: TBDT_CUBE;
-							case TBDT_2D_AND_CUBE_IDX: TBDT_2D_AND_CUBE;
-							default: throw("Unrecognized texture mode");
-						}
-						// 2D Case
+				if (tds == null) {
+					DebugTrace.trace('RENDER Adding texture ${crc.get()} mode ${textureMode}');
+					var descriptorSets = _backend == Metal ? 2 : 1;
+					var ds = _renderer.createDescriptorSet(_curShader.rootSig, EDescriptorSetSlot.TEXTURES, descriptorSets, 0);
+
+					if (_textureDataBuilder == null) {
+						DebugTrace.trace('RENDER TExture builder is null, creating one');
+						_textureDataBuilder = new Array<forge.Native.DescriptorDataBuilder>();
+
 						var cdb = new forge.Native.DescriptorDataBuilder();
 
-						if (textureMode & TBDT_2D != 0) {
-							switch (_backend) {
-								case Metal:
-									var s = cdb.addSlot(DBM_TEXTURES);
-									cdb.setSlotBindName(s, "fragmentTextures");
-									s = cdb.addSlot(DBM_SAMPLERS);
-									cdb.setSlotBindName(s, "fragmentTexturesSmplr");
-								case Vulkan:
-									var s = cdb.addSlot(DBM_TEXTURES);
-									cdb.setSlotBindName(s, "fragmentTextures");
-									s = cdb.addSlot(DBM_SAMPLERS);
-									cdb.setSlotBindName(s, "fragmentTexturesSmplr");
+						for (i in 0...TEX_TYPE_COUNT) {
+							// 2D Case
+							if (textureMode & (1 << i) != 0) {
+								var s = cdb.addSlot(DBM_TEXTURES);
+								cdb.setSlotBindName(s, VERTEX_TEX_ARRAY_SHADER_NAME[i]);
+								s = cdb.addSlot(DBM_SAMPLERS);
+								cdb.setSlotBindName(s, VERTEX_TEX_ARRAY_SAMPLER_SHADER_NAME[i]);
 							}
+
+							// fragments
+							if (textureMode & (1 << (i + TEX_TYPE_COUNT)) != 0) {
+								var s = cdb.addSlot(DBM_TEXTURES);
+								cdb.setSlotBindName(s, FRAGMENT_TEX_ARRAY_SHADER_NAME[i]);
+								s = cdb.addSlot(DBM_SAMPLERS);
+								cdb.setSlotBindName(s, FRAGMENT_TEX_ARRAY_SAMPLER_SHADER_NAME[i]);
+							}
+							_textureDataBuilder.push(cdb);
+						}
+					} else {
+						DebugTrace.trace('TExture builder is not null');
+
+						for (i in 0...TEX_TYPE_COUNT) {
+							// 2D Case
+							if (textureMode & (1 << i) != 0) {
+								var s = cdb.addSlot(DBM_TEXTURES);
+								cdb.setSlotBindName(s, VERTEX_TEX_ARRAY_SHADER_NAME[i]);
+								s = cdb.addSlot(DBM_SAMPLERS);
+								cdb.setSlotBindName(s, VERTEX_TEX_ARRAY_SAMPLER_SHADER_NAME[i]);
+							}
+
+							// fragments
+							if (textureMode & (1 << (i + TEX_TYPE_COUNT)) != 0) {
+								var s = cdb.addSlot(DBM_TEXTURES);
+								cdb.setSlotBindName(s, FRAGMENT_TEX_ARRAY_SHADER_NAME[i]);
+								s = cdb.addSlot(DBM_SAMPLERS);
+								cdb.setSlotBindName(s, FRAGMENT_TEX_ARRAY_SAMPLER_SHADER_NAME[i]);
+							}
+							_textureDataBuilder.push(cdb);
 						}
 
-						if (textureMode & TBDT_CUBE != 0) {
-							var s = cdb.addSlot(DBM_TEXTURES);
-							cdb.setSlotBindName(s, "fragmentTexturesCube");
-							s = cdb.addSlot(DBM_SAMPLERS);
-							cdb.setSlotBindName(s, "fragmentTexturesCubeSmplr");
+						// Needs to be a better way to do this
+						switch (textureMode) {
+							case TBDT_2D:
+								_textureDataBuilder[TBDT_2D_IDX].clearSlotData(0);
+								if (_backend == Metal)
+									_textureDataBuilder[TBDT_2D_IDX].clearSlotData(1);
+							case TBDT_CUBE:
+								_textureDataBuilder[TBDT_CUBE_IDX].clearSlotData(0);
+								if (_backend == Metal)
+									_textureDataBuilder[TBDT_CUBE_IDX].clearSlotData(1);
+							case TBDT_2D_AND_CUBE:
+								_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(0);
+								_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(1);
+								_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(2);
+								_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(3);
+							default:
+								throw("Unrecognized texture mode");
 						}
-						_textureDataBuilder.push(cdb);
 					}
+
+					var tdb = _textureDataBuilder[textureModeIdx];
+
+					DebugTrace.trace('RENDER shader fragment texture count is ${shaderFragTextureCount}');
+
+					for (i in 0...shaderFragTextureCount) {
+						var t = _fragmentTextures[i];
+						if (t.t == null)
+							throw "Texture is null";
+						var ft = (t.t.rt != null) ? t.t.rt.rt.getTexture() : t.t.t;
+
+						if (ft == null)
+							throw "Forge texture is null";
+
+						switch (_backend) {
+							case Metal:
+								tdb.addSlotTexture(0, ft);
+								tdb.addSlotSampler(1, _bilinearClamp2DSampler);
+							case Vulkan:
+								tdb.addSlotTexture(0, ft);
+								tdb.addSlotSampler(1, _bilinearClamp2DSampler);
+						}
+					}
+
+					for (i in 0...shaderFragTextureCubeCount) {
+						var t = _fragmentTextureCubes[i];
+						if (t.t == null)
+							throw "Texture is null";
+						var ft = (t.t.rt != null) ? t.t.rt.rt.getTexture() : t.t.t;
+
+						if (ft == null)
+							throw "Forge texture is null";
+						var slot = (textureMode & TBDT_2D != 0) ? 2 : 0;
+						switch (_backend) {
+							case Metal:
+								tdb.addSlotTexture(slot, ft);
+								tdb.addSlotSampler(slot + 1, _bilinearClamp2DSampler);
+							case Vulkan:
+								tdb.addSlotTexture(slot, ft);
+						}
+					}
+
+					DebugTrace.trace('RENDER shader updating descriptor set');
+					tdb.update(_renderer, 0, ds);
+
+					tds = {
+						mat: _currentPipeline,
+						tex: _fragmentTextures.copy(),
+						texCubes: _fragmentTextureCubes.copy(),
+						ds: ds
+					};
+					_textureDescriptorMap.set(crc.get(), tds);
+					DebugTrace.trace('RENDER Done setting up textures');
 				} else {
-					DebugTrace.trace('TExture builder is not null');
-
-					// Needs to be a better way to do this
-					switch (textureMode) {
-						case TBDT_2D:
-							_textureDataBuilder[TBDT_2D_IDX].clearSlotData(0);
-							if (_backend == Metal)
-								_textureDataBuilder[TBDT_2D_IDX].clearSlotData(1);
-						case TBDT_CUBE:
-							_textureDataBuilder[TBDT_CUBE_IDX].clearSlotData(0);
-							if (_backend == Metal)
-								_textureDataBuilder[TBDT_CUBE_IDX].clearSlotData(1);
-						case TBDT_2D_AND_CUBE:
-							_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(0);
-							_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(1);
-							_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(2);
-							_textureDataBuilder[TBDT_2D_AND_CUBE_IDX].clearSlotData(3);
-						default:
-							throw("Unrecognized texture mode");
-					}
+					DebugTrace.trace('RENDER TEXTURE Reusing texture ${crc.get()}');
 				}
 
-				var tdb = _textureDataBuilder[textureModeIdx];
-
-				DebugTrace.trace('RENDER shader fragment texture count is ${shaderFragTextureCount}');
-
-				for (i in 0...shaderFragTextureCount) {
-					var t = _fragmentTextures[i];
-					if (t.t == null)
-						throw "Texture is null";
-					var ft = (t.t.rt != null) ? t.t.rt.rt.getTexture() : t.t.t;
-
-					if (ft == null)
-						throw "Forge texture is null";
-
-					switch (_backend) {
-						case Metal:
-							tdb.addSlotTexture(0, ft);
-							tdb.addSlotSampler(1, _bilinearClamp2DSampler);
-						case Vulkan:
-							tdb.addSlotTexture(0, ft);
-							tdb.addSlotSampler(1, _bilinearClamp2DSampler);
-					}
-				}
-
-				for (i in 0...shaderFragTextureCubeCount) {
-					var t = _fragmentTextureCubes[i];
-					if (t.t == null)
-						throw "Texture is null";
-					var ft = (t.t.rt != null) ? t.t.rt.rt.getTexture() : t.t.t;
-
-					if (ft == null)
-						throw "Forge texture is null";
-					var slot = (textureMode & TBDT_2D != 0) ? 2 : 0;
-					switch (_backend) {
-						case Metal:
-							tdb.addSlotTexture(slot, ft);
-							tdb.addSlotSampler(slot + 1, _bilinearClamp2DSampler);
-						case Vulkan:
-							tdb.addSlotTexture(slot, ft);
-					}
-				}
-
-				DebugTrace.trace('RENDER shader updating descriptor set');
-				tdb.update(_renderer, 0, ds);
-
-				tds = {
-					mat: _currentPipeline,
-					tex: _fragmentTextures.copy(),
-					texCubes: _fragmentTextureCubes.copy(),
-					ds: ds
-				};
-				_textureDescriptorMap.set(crc.get(), tds);
-				DebugTrace.trace('RENDER Done setting up textures');
-			} else {
-				DebugTrace.trace('RENDER TEXTURE Reusing texture ${crc.get()}');
+				DebugTrace.trace('RENDER BINDING TEXTURE descriptor tex ${shaderFragTextureCount} texCube ${shaderFragTextureCubeCount}');
+				_currentCmd.bindDescriptorSet(0, tds.ds);
 			}
-
-			DebugTrace.trace('RENDER BINDING TEXTURE descriptor tex ${shaderFragTextureCount} texCube ${shaderFragTextureCubeCount}');
-			_currentCmd.bindDescriptorSet(0, tds.ds);
+			#end
 		} else {
 			DebugTrace.trace('RENDER No textures specified in shader');
 		}
-	#if false
-	for (i in 0...buf.tex.length) {
-		var t = buf.tex[i];
+	}
 
-		s.textureDataBuilder.addSlotTexture(0, t.t.t);
-		if (_bilinearClamp2DSampler == null)
-			throw "sampler is null";
-		s.samplerDataBuilder.addSlotSampler(0, _bilinearClamp2DSampler);
+	public override function selectMaterial(pass:h3d.mat.Pass) {
+		//		DebugTrace.trace('RENDER MATERIAL SHADER selectMaterial PASS NAME: "${pass.name}" ${[for (s in pass.getShaders()) '${s.toString()} : ${s.name}']}');
 
-		var pt = s.textures[i];
-		if (t == null || t.isDisposed()) {
-			throw "missing texture path unsupported";
-			switch (pt.t) {
-				case TSampler2D:
-					var color = h3d.mat.Defaults.loadingTextureColor;
-					t = h3d.mat.Texture.fromColor(color, (color >>> 24) / 255);
-				case TSamplerCube:
-					t = h3d.mat.Texture.defaultCubeTexture();
-				default:
-					throw "Missing texture";
-			}
+		// culling
+		// stencil
+		// mode
+		// blending
+
+		_currentState.reset();
+
+		// @:privateAccess selectStencilBits(s.opBits, s.maskBits);
+		buildBlendState(_currentState.blend(), pass);
+		buildRasterState(_currentState.raster(), pass);
+		buildDepthState(_currentState.depth(), pass);
+
+		_currentPipeline = null;
+		_currentPass = pass;
+	}
+
+	var _curBuffer:h3d.Buffer;
+	var _bufferBinder = new forge.Native.BufferBinder();
+	var _curMultiBuffer:Buffer.BufferOffset;
+
+	public override function selectMultiBuffers(buffers:Buffer.BufferOffset) {
+		DebugTrace.trace('RENDER CALLSTACK selectMultiBuffers');
+		_curMultiBuffer = buffers;
+		_curBuffer = null;
+	}
+
+	public function bindMultiBuffers() {
+		DebugTrace.trace('RENDER CALLSTACK bindMultiBuffers ${_curShader.attribs.length}');
+		if (_curMultiBuffer == null)
+			throw "Multibuffers are null";
+		var curBufferView = _curMultiBuffer;
+
+		_bufferBinder.reset();
+		var strideCountBytes = 0;
+		for (a in _curShader.attribs) {
+			var bb = curBufferView.buffer;
+			var mb = bb.buffer;
+			// trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
+			var isByteBuffer = mb.flags.has(ByteBuffer);
+			var elementSize = isByteBuffer ? 1 : 4;
+			var vb = @:privateAccess mb.vbuf;
+			var b = @:privateAccess vb.b;
+			// DebugTrace.trace('FILTER prebinding buffer b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} si ${a.size} bbvc ${bb.vertices} mbstr ${mb.stride} mbsi ${mb.size} bo ${buffers.offset} - ${_curShader.inputs.names[a.index]}' );
+			// _bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
+
+			strideCountBytes += a.sizeBytes;
+			_bufferBinder.add(b, mb.strideBytes, curBufferView.offset * elementSize);
+			DebugTrace.trace('RENDER STRIDE ${mb.strideBytes} OFFSET ${curBufferView.offset * elementSize} attr ${a.name} offset ${curBufferView.offset} offset bytes ${curBufferView.offset * elementSize}');
+			// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
+			// gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
+			// updateDivisor(a);
+			curBufferView = curBufferView.next;
 		}
-		if (t != null && t.t == null && t.realloc != null) {
-			var ts = _curShader;
-			t.alloc();
-			t.realloc(); // why re-alloc after allocing?
-			if (_curShader != ts) {
-				// realloc triggered a shader change !
-				// we need to reset the original shader and reupload everything
-				throw("Shader reallocation!!! Seems like bad architecture.");
+		DebugTrace.trace('RENDER STRIDE shader stride ${strideCountBytes} vs pipe ${_currentPipeline._stride} ');
 
-				return;
-			}
+		// if (_currentPipeline._stride  != mb.strideBytes) throw "Shader - buffer stride mistmatch";
+
+		// DebugTrace.trace('Binding vertex buffer');
+		_currentCmd.bindVertexBuffer(_bufferBinder);
+	}
+
+	var _curIndexBuffer:IndexBuffer;
+	var _firstDraw = true;
+
+	public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
+		DebugTrace.trace('RENDER CALLSTACK draw INDEXED tri count ${ntriangles} index count ${ntriangles * 3} start ${startIndex} is32 ${ibuf.is32}');
+
+		bindPipeline();
+		pushParameters();
+		bindTextures();
+		bindBuffers();
+		if (_curBuffer != null)
+			bindBuffer();
+		else if (_curMultiBuffer != null)
+			bindMultiBuffers();
+		else
+			throw "No bound vertex data";
+
+		// if (!_firstDraw) return;
+		_firstDraw = false;
+		if (ibuf != _curIndexBuffer) {
+			_curIndexBuffer = ibuf;
 		}
-		t.lastFrame = _currentFrame;
 
-		if (pt.u == null)
-			continue;
+		// cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
+		// cmdBindDescriptorSet(cmd, gFrameIndex * 2 + 0, pDescriptorSetUniforms);
+		// cmdBindDescriptorSet(cmd, 0, pDescriptorSetShadow[1]);
+		// DebugTrace.trace('Binding index buffer');
+		_currentCmd.bindIndexBuffer(ibuf.b, ibuf.is32 ? INDEX_TYPE_UINT32 : INDEX_TYPE_UINT16, 0);
+		// DebugTrace.trace('Drawing ${ntriangles} triangles');
+		_currentCmd.drawIndexed(ntriangles * 3, startIndex, 0);
 
-		var idx = s.vertex ? i : _curShader.vertex.textures.length + i;
-
-		if (_boundTextures[idx] != t.t) {
-			_boundTextures[idx] = t.t;
-
-			DebugTrace.trace('Bindnig texture ${t.id} to ${idx}');
-			#if multidriver
-			if (t.t.driver != this)
-				throw "Invalid texture context";
-			#end
-
-			/*
-					var mode = getBindType(t);
-					if( mode != pt.mode )
-						throw "Texture format mismatch: "+t+" should be "+pt.t;
-					gl.activeTexture(GL.TEXTURE0 + idx);
-					gl.uniform1i(pt.u, idx);
-					gl.bindTexture(mode, t.t.t);
-					lastActiveIndex = idx;
-				 */
-		}
 		/*
-				var mip = Type.enumIndex(t.mipMap);
-				var filter = Type.enumIndex(t.filter);
-				var wrap = Type.enumIndex(t.wrap);
-				var bits = mip | (filter << 3) | (wrap << 6);
-				if( bits != t.t.bits ) {
-					t.t.bits = bits;
-					throw "Not implemented";
-					/*
-					var flags = TFILTERS[mip][filter];
-					var mode = pt.mode;
-					gl.texParameteri(mode, GL.TEXTURE_MAG_FILTER, flags[0]);
-					gl.texParameteri(mode, GL.TEXTURE_MIN_FILTER, flags[1]);
-					var w = TWRAP[wrap];
-					gl.texParameteri(mode, GL.TEXTURE_WRAP_S, w);
-					gl.texParameteri(mode, GL.TEXTURE_WRAP_T, w);
-			 */
-	}
-		* /} // DebugTrace.trace('RENDER updating texture desc');
-
-	s.textureDataBuilder.update(_renderer);
-	s.samplerDataBuilder.update(_renderer);
-	s.textureDataBuilder.bind(_currentCmd);
-	s.samplerDataBuilder.bind(_currentCmd);
-	#end
-}
-
-public override function selectMaterial(pass:h3d.mat.Pass) {
-	//		DebugTrace.trace('RENDER MATERIAL SHADER selectMaterial PASS NAME: "${pass.name}" ${[for (s in pass.getShaders()) '${s.toString()} : ${s.name}']}');
-
-	// culling
-	// stencil
-	// mode
-	// blending
-
-	_currentState.reset();
-
-	// @:privateAccess selectStencilBits(s.opBits, s.maskBits);
-	buildBlendState(_currentState.blend(), pass);
-	buildRasterState(_currentState.raster(), pass);
-	buildDepthState(_currentState.depth(), pass);
-
-	_currentPipeline = null;
-	_currentPass = pass;
-}
-
-var _curBuffer:h3d.Buffer;
-var _bufferBinder = new forge.Native.BufferBinder();
-
-var _curMultiBuffer:Buffer.BufferOffset;
-
-public override function selectMultiBuffers(buffers:Buffer.BufferOffset) {
-	DebugTrace.trace('RENDER CALLSTACK selectMultiBuffers');
-	_curMultiBuffer = buffers;
-	_curBuffer = null;
-}
-
-public function bindMultiBuffers() {
-	DebugTrace.trace('RENDER CALLSTACK bindMultiBuffers ${_curShader.attribs.length}');
-	if (_curMultiBuffer == null)
-		throw "Multibuffers are null";
-	var curBufferView = _curMultiBuffer;
-
-	_bufferBinder.reset();
-	var strideCountBytes = 0;
-	for (a in _curShader.attribs) {
-		var bb = curBufferView.buffer;
-		var mb = bb.buffer;
-		// trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
-		var isByteBuffer = mb.flags.has(ByteBuffer);
-		var elementSize = isByteBuffer ? 1 : 4;
-		var vb = @:privateAccess mb.vbuf;
-		var b = @:privateAccess vb.b;
-		// DebugTrace.trace('FILTER prebinding buffer b ${b} i ${a.index} o ${a.offset} t ${a.type} d ${a.divisor} si ${a.size} bbvc ${bb.vertices} mbstr ${mb.stride} mbsi ${mb.size} bo ${buffers.offset} - ${_curShader.inputs.names[a.index]}' );
-		// _bufferBinder.add( b, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
-
-		strideCountBytes += a.sizeBytes;
-		_bufferBinder.add(b, mb.strideBytes, curBufferView.offset * elementSize);
-		DebugTrace.trace('RENDER STRIDE ${mb.strideBytes} OFFSET ${curBufferView.offset * elementSize} attr ${a.name} offset ${curBufferView.offset} offset bytes ${curBufferView.offset * elementSize}');
-		// gl.bindBuffer(GL.ARRAY_BUFFER, @:privateAccess buffers.buffer.buffer.vbuf.b);
-		// gl.vertexAttribPointer(a.index, a.size, a.type, false, buffers.buffer.buffer.stride * 4, buffers.offset * 4);
-		// updateDivisor(a);
-		curBufferView = curBufferView.next;
-	}
-	DebugTrace.trace('RENDER STRIDE shader stride ${strideCountBytes} vs pipe ${_currentPipeline._stride} ');
-
-	// if (_currentPipeline._stride  != mb.strideBytes) throw "Shader - buffer stride mistmatch";
-
-	// DebugTrace.trace('Binding vertex buffer');
-	_currentCmd.bindVertexBuffer(_bufferBinder);
-}
-
-var _curIndexBuffer:IndexBuffer;
-var _firstDraw = true;
-
-public override function draw(ibuf:IndexBuffer, startIndex:Int, ntriangles:Int) {
-	DebugTrace.trace('RENDER CALLSTACK draw INDEXED tri count ${ntriangles} index count ${ntriangles * 3} start ${startIndex} is32 ${ibuf.is32}');
-
-	bindPipeline();
-	pushParameters();
-	bindTextures();
-	bindBuffers();
-	if (_curBuffer != null)
-		bindBuffer();
-	else if (_curMultiBuffer != null)
-		bindMultiBuffers();
-	else
-		throw "No bound vertex data";
-
-	// if (!_firstDraw) return;
-	_firstDraw = false;
-	if (ibuf != _curIndexBuffer) {
-		_curIndexBuffer = ibuf;
-	}
-
-	// cmdBindDescriptorSet(cmd, 0, pDescriptorSetTexture);
-	// cmdBindDescriptorSet(cmd, gFrameIndex * 2 + 0, pDescriptorSetUniforms);
-	// cmdBindDescriptorSet(cmd, 0, pDescriptorSetShadow[1]);
-	// DebugTrace.trace('Binding index buffer');
-	_currentCmd.bindIndexBuffer(ibuf.b, ibuf.is32 ? INDEX_TYPE_UINT32 : INDEX_TYPE_UINT16, 0);
-	// DebugTrace.trace('Drawing ${ntriangles} triangles');
-	_currentCmd.drawIndexed(ntriangles * 3, startIndex, 0);
-
-	/*
 			if( ibuf.is32 )
 				gl.drawElements(drawMode, ntriangles * 3, GL.UNSIGNED_INT, startIndex * 4);
 			else
 				gl.drawElements(drawMode, ntriangles * 3, GL.UNSIGNED_SHORT, startIndex * 2);
 		 */
-	DebugTrace.trace('RENDER CALLSTACK drawing complete');
-}
+		DebugTrace.trace('RENDER CALLSTACK drawing complete');
+	}
 
-public override function selectBuffer(v:Buffer) {
-	_curBuffer = v;
-	_curMultiBuffer = null;
-	DebugTrace.trace('RENDER CALLSTACK selectBuffer raw: ${v != null ? v.flags.has(RawFormat) : false}');
-}
+	public override function selectBuffer(v:Buffer) {
+		_curBuffer = v;
+		_curMultiBuffer = null;
+		DebugTrace.trace('RENDER CALLSTACK selectBuffer raw: ${v != null ? v.flags.has(RawFormat) : false}');
+	}
 
-public function bindBuffer() {
-	if (!renderReady())
-		return;
-	DebugTrace.trace('RENDER CALLSTACK bindBuffer');
+	public function bindBuffer() {
+		if (!renderReady())
+			return;
+		DebugTrace.trace('RENDER CALLSTACK bindBuffer');
 
-	if (_currentPipeline == null)
-		throw "No pipeline defined";
+		if (_currentPipeline == null)
+			throw "No pipeline defined";
 
-	//		DebugTrace.trace('selecting buffer ${v.id}');
+		//		DebugTrace.trace('selecting buffer ${v.id}');
 
-	/*
+		/*
 			if( v == _curBuffer )
 				return;
 			if( _curBuffer != null && v.buffer == _curBuffer.buffer && v.buffer.flags.has(RawFormat) == _curBuffer.flags.has(RawFormat) ) {
@@ -2776,155 +2680,155 @@ public function bindBuffer() {
 				return;
 			}
 		 */
-	var v = _curBuffer;
+		var v = _curBuffer;
 
-	_bufferBinder.reset();
+		_bufferBinder.reset();
 
-	var m = @:privateAccess v.buffer;
-	var vbuf = @:privateAccess v.buffer.vbuf;
-	var b = @:privateAccess vbuf.b;
-	// if( m.stride < _curShader.stride )
-	//	throw "Buffer stride (" + m.stride + ") and shader stride (" + _curShader.stride + ") mismatch";
+		var m = @:privateAccess v.buffer;
+		var vbuf = @:privateAccess v.buffer.vbuf;
+		var b = @:privateAccess vbuf.b;
+		// if( m.stride < _curShader.stride )
+		//	throw "Buffer stride (" + m.stride + ") and shader stride (" + _curShader.stride + ") mismatch";
 
-	// DebugTrace.trace('STRIDE SELECT BUFFER m.stride ${m.stride} vbuf ${vbuf.stride} cur shader stride ${_curShader.stride}');
-	#if multidriver
-	if (m.driver != this)
-		throw "Invalid buffer context";
-	#end
-	//		gl.bindBuffer(GL.ARRAY_BUFFER, m.b);
+		// DebugTrace.trace('STRIDE SELECT BUFFER m.stride ${m.stride} vbuf ${vbuf.stride} cur shader stride ${_curShader.stride}');
+		#if multidriver
+		if (m.driver != this)
+			throw "Invalid buffer context";
+		#end
+		//		gl.bindBuffer(GL.ARRAY_BUFFER, m.b);
 
-	if (v.flags.has(RawFormat)) {
-		DebugTrace.trace('SELECT RAW FORMAT');
+		if (v.flags.has(RawFormat)) {
+			DebugTrace.trace('SELECT RAW FORMAT');
 
-		// Use the shader binding
-		for (a in _curShader.attribs) {
-			DebugTrace.trace('STRIDE selectBuffer binding ${a.index} strid ${m.stride} stridebytes ${m.strideBytes} offset ${a.offsetBytes}');
+			// Use the shader binding
+			for (a in _curShader.attribs) {
+				DebugTrace.trace('STRIDE selectBuffer binding ${a.index} strid ${m.stride} stridebytes ${m.strideBytes} offset ${a.offsetBytes}');
 
-			_bufferBinder.add(b, m.strideBytes, a.offsetBytes);
-			// gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
+				_bufferBinder.add(b, m.strideBytes, a.offsetBytes);
+				// gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
 
-			// m.stride * 4
-			// pos * 4
-			// _bufferBinder.add( m.b, 0, 0 );
+				// m.stride * 4
+				// pos * 4
+				// _bufferBinder.add( m.b, 0, 0 );
 
-			// updateDivisor(a);
-		}
-		_currentCmd.bindVertexBuffer(_bufferBinder);
-	} else {
-		DebugTrace.trace('SELECT NON RAW FORMAT');
-
-		var offsetBytes = 8 * 4; // 8 floats * 4 bytes a piece
-		var strideCheck = 0;
-		for (i in 0..._curShader.attribs.length) {
-			var a = _curShader.attribs[i];
-			var posBytes;
-			switch (_curShader.inputs.names[i]) {
-				case "position":
-					posBytes = 0;
-				case "normal":
-					if (m.stride < 6)
-						throw "Buffer is missing NORMAL data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
-					posBytes = 3 * 4;
-				case "uv":
-					if (m.stride < 8)
-						throw "Buffer is missing UV data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
-					posBytes = 6 * 4;
-				case s:
-					DebugTrace.trace('RENDER STRIDE WARNING unrecognized buffer ${s}');
-					posBytes = offsetBytes;
-					offsetBytes += a.sizeBytes;
-					if (offsetBytes > m.strideBytes)
-						throw "Buffer is missing '" + s + "' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+				// updateDivisor(a);
 			}
-			// m.stride * 4
-			// _bufferBinder.add( m.b, 0, pos * 4 );
+			_currentCmd.bindVertexBuffer(_bufferBinder);
+		} else {
+			DebugTrace.trace('SELECT NON RAW FORMAT');
 
-			// gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
-			// updateDivisor(a);
-			DebugTrace.trace('STRIDE BUFFER ${_curShader.inputs.names[i]} type is ${a.type} size is ${a.sizeBytes} bytes vs stride ${m.stride} elements (${m.strideBytes})');
-			_bufferBinder.add(b, m.strideBytes, posBytes);
+			var offsetBytes = 8 * 4; // 8 floats * 4 bytes a piece
+			var strideCheck = 0;
+			for (i in 0..._curShader.attribs.length) {
+				var a = _curShader.attribs[i];
+				var posBytes;
+				switch (_curShader.inputs.names[i]) {
+					case "position":
+						posBytes = 0;
+					case "normal":
+						if (m.stride < 6)
+							throw "Buffer is missing NORMAL data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+						posBytes = 3 * 4;
+					case "uv":
+						if (m.stride < 8)
+							throw "Buffer is missing UV data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+						posBytes = 6 * 4;
+					case s:
+						DebugTrace.trace('RENDER STRIDE WARNING unrecognized buffer ${s}');
+						posBytes = offsetBytes;
+						offsetBytes += a.sizeBytes;
+						if (offsetBytes > m.strideBytes)
+							throw "Buffer is missing '" + s + "' data, set it to RAW format ?" #if track_alloc + @:privateAccess v.allocPos #end;
+				}
+				// m.stride * 4
+				// _bufferBinder.add( m.b, 0, pos * 4 );
+
+				// gl.vertexAttribPointer(a.index, a.size, a.type, false, m.stride * 4, pos * 4);
+				// updateDivisor(a);
+				DebugTrace.trace('STRIDE BUFFER ${_curShader.inputs.names[i]} type is ${a.type} size is ${a.sizeBytes} bytes vs stride ${m.stride} elements (${m.strideBytes})');
+				_bufferBinder.add(b, m.strideBytes, posBytes);
+			}
+			if (offsetBytes != m.strideBytes) {
+				DebugTrace.trace('RENDER WARNING stride byte mistmatch ${offsetBytes} bytes vs ${m.strideBytes} bytes attrib len ${_curShader.attribs.length}');
+			}
+			_currentCmd.bindVertexBuffer(_bufferBinder);
+			//			throw ("unsupported");
 		}
-		if (offsetBytes != m.strideBytes) {
-			DebugTrace.trace('RENDER WARNING stride byte mistmatch ${offsetBytes} bytes vs ${m.strideBytes} bytes attrib len ${_curShader.attribs.length}');
+	}
+
+	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
+		DebugTrace.trace('RENDER CALLSTACK TARGET CLEAR bind and clear ${_currentRT} and ${_currentDepth} ${color} ${depth} ${stencil}');
+		if (!renderReady())
+			return;
+
+		if (color != null) {
+			var x:h3d.Vector = color;
+			DebugTrace.trace('RENDER CLEAR ${x} : ${x.r}, ${x.g}, ${x.b}, ${x.a}');
+			_currentRT.rt.setClearColor(x.r, x.g, x.b, x.a);
 		}
-		_currentCmd.bindVertexBuffer(_bufferBinder);
-		//			throw ("unsupported");
-	}
-}
 
-public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
-	DebugTrace.trace('RENDER CALLSTACK TARGET CLEAR bind and clear ${_currentRT} and ${_currentDepth} ${color} ${depth} ${stencil}');
-	if (!renderReady())
-		return;
+		if (depth != null && _currentDepth != null) {
+			var sten = stencil != null ? stencil : 0;
+			var d:Float = depth;
+			var rt = @:privateAccess _currentDepth.b.r;
+			if (rt != null)
+				rt.setClearDepthNormalized(d, sten);
+		}
 
-	if (color != null) {
-		var x:h3d.Vector = color;
-		DebugTrace.trace('RENDER CLEAR ${x} : ${x.r}, ${x.g}, ${x.b}, ${x.a}');
-		_currentRT.rt.setClearColor(x.r, x.g, x.b, x.a);
-	}
-
-	if (depth != null && _currentDepth != null) {
-		var sten = stencil != null ? stencil : 0;
-		var d:Float = depth;
-		var rt = @:privateAccess _currentDepth.b.r;
-		if (rt != null)
-			rt.setClearDepthNormalized(d, sten);
+		DebugTrace.trace('RENDER CLEAR BINDING');
+		//
+		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
+		DebugTrace.trace('RENDER CLEAR BINDING DONE');
 	}
 
-	DebugTrace.trace('RENDER CLEAR BINDING');
-	//
-	_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
-	DebugTrace.trace('RENDER CLEAR BINDING DONE');
-}
+	public override function end() {
+		DebugTrace.trace('RENDER CALLSTACK TARGET end');
+		_currentCmd.unbindRenderTarget();
+		DebugTrace.trace('Inserting current RT present');
 
-public override function end() {
-	DebugTrace.trace('RENDER CALLSTACK TARGET end');
-	_currentCmd.unbindRenderTarget();
-	DebugTrace.trace('Inserting current RT present');
+		_currentCmd.insertBarrier(_currentRT.present);
+		_currentRT = null;
+		_currentDepth = null;
+		_currentCmd.end();
 
-	_currentCmd.insertBarrier(_currentRT.present);
-	_currentRT = null;
-	_currentDepth = null;
-	_currentCmd.end();
+		forge.Native.Globals.waitForAllResourceLoads();
 
-	forge.Native.Globals.waitForAllResourceLoads();
+		_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
+		_currentCmd = null;
+	}
 
-	_queue.submit(_currentCmd, _currentSem, _ImageAcquiredSemaphore, _currentFence);
-	_currentCmd = null;
-}
+	public override function uploadTextureBitmap(t:h3d.mat.Texture, bmp:hxd.BitmapData, mipLevel:Int, side:Int) {
+		DebugTrace.trace('RENDER CALLSTACK uploadTextureBitmap');
+		var pixels = bmp.getPixels();
+		uploadTexturePixels(t, pixels, mipLevel, side);
+		pixels.dispose();
+	}
 
-public override function uploadTextureBitmap(t:h3d.mat.Texture, bmp:hxd.BitmapData, mipLevel:Int, side:Int) {
-	DebugTrace.trace('RENDER CALLSTACK uploadTextureBitmap');
-	var pixels = bmp.getPixels();
-	uploadTexturePixels(t, pixels, mipLevel, side);
-	pixels.dispose();
-}
+	public override function disposeVertexes(v:VertexBuffer) {
+		DebugTrace.trace('RENDER CALLSTACK DEALLOC disposeVertexes');
+		v.b.dispose();
+		v.b = null;
+	}
 
-public override function disposeVertexes(v:VertexBuffer) {
-	DebugTrace.trace('RENDER CALLSTACK DEALLOC disposeVertexes');
-	v.b.dispose();
-	v.b = null;
-}
+	public override function disposeIndexes(i:IndexBuffer) {
+		DebugTrace.trace('RENDER CALLSTACK DEALLOC disposeIndexes');
+		i.b.dispose();
+		i.b = null;
+	}
 
-public override function disposeIndexes(i:IndexBuffer) {
-	DebugTrace.trace('RENDER CALLSTACK DEALLOC disposeIndexes');
-	i.b.dispose();
-	i.b = null;
-}
+	public override function disposeTexture(t:h3d.mat.Texture) {
+		DebugTrace.trace('RENDER CALLSTACK DEALLOC disposeTexture');
 
-public override function disposeTexture(t:h3d.mat.Texture) {
-	DebugTrace.trace('RENDER CALLSTACK DEALLOC disposeTexture');
+		var tt = t.t;
+		if (tt == null)
+			return;
+		if (tt.t == null)
+			return;
+		tt.t.dispose();
+		t.t = null;
+	}
 
-	var tt = t.t;
-	if (tt == null)
-		return;
-	if (tt.t == null)
-		return;
-	tt.t.dispose();
-	t.t = null;
-}
-
-/*
+	/*
 		var tmpTextures = new Array<h3d.mat.Texture>();
 		override function setRenderTarget(tex:Null<h3d.mat.Texture>, layer = 0, mipLevel = 0) {
 			if( tex == null ) {
@@ -2944,100 +2848,100 @@ public override function disposeTexture(t:h3d.mat.Texture) {
 			_setRenderTargets(tmpTextures, layer, mipLevel);
 		}
 	 */
-// var _currentDepth : DepthBuffer;
-var _currentDepth:h3d.mat.DepthBuffer;
+	// var _currentDepth : DepthBuffer;
+	var _currentDepth:h3d.mat.DepthBuffer;
 
-function setRenderTargetsInternal(textures:Array<h3d.mat.Texture>, layer:Int, mipLevel:Int) {
-	if (!renderReady())
-		return;
-	DebugTrace.trace('RENDER TARGET CALLSTACK setRenderTargetsInternal');
+	function setRenderTargetsInternal(textures:Array<h3d.mat.Texture>, layer:Int, mipLevel:Int) {
+		if (!renderReady())
+			return;
+		DebugTrace.trace('RENDER TARGET CALLSTACK setRenderTargetsInternal');
 
-	if (_currentCmd == null) {
-		_currentCmd = _tmpCmd;
-		_currentCmd.begin();
-	} else {
-		_currentCmd.unbindRenderTarget();
-		DebugTrace.trace('Inserting current RT out');
+		if (_currentCmd == null) {
+			_currentCmd = _tmpCmd;
+			_currentCmd.begin();
+		} else {
+			_currentCmd.unbindRenderTarget();
+			DebugTrace.trace('Inserting current RT out');
 
-		_currentCmd.insertBarrier(_currentRT.outBarrier);
-	}
+			_currentCmd.insertBarrier(_currentRT.outBarrier);
+		}
 
-	if (textures.length > 1)
-		throw "Multiple render targets are unsupported";
+		if (textures.length > 1)
+			throw "Multiple render targets are unsupported";
 
-	var tex = textures[0];
+		var tex = textures[0];
 
-	if (tex.t == null) {
-		tex.alloc();
-	}
+		if (tex.t == null) {
+			tex.alloc();
+		}
 
-	var itex = tex.t;
-	if (itex.rt == null) {
-		DebugTrace.trace('RENDER TARGET  creating new render target on ${tex} w ${tex.width} h ${tex.height}');
-		var renderTargetDesc = new forge.Native.RenderTargetDesc();
-		renderTargetDesc.arraySize = 1;
-		//		renderTargetDesc.clearValue.depth = 1.0f;
-		//		renderTargetDesc.clearValue.stencil = 0;
-		renderTargetDesc.depth = 1;
-		renderTargetDesc.descriptors = DESCRIPTOR_TYPE_TEXTURE;
-		renderTargetDesc.format = getTinyTextureFormat(tex.format);
-		renderTargetDesc.startState = RESOURCE_STATE_SHADER_RESOURCE;
-		renderTargetDesc.height = tex.width;
-		renderTargetDesc.width = tex.height;
-		renderTargetDesc.sampleCount = SAMPLE_COUNT_1;
-		renderTargetDesc.sampleQuality = 0;
-		//			renderTargetDesc.nativeHandle = itex.t.
-		renderTargetDesc.flags = forge.Native.TextureCreationFlags.TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT.toValue();
-		//		renderTargetDesc.name = "Shadow Map Render Target";
+		var itex = tex.t;
+		if (itex.rt == null) {
+			DebugTrace.trace('RENDER TARGET  creating new render target on ${tex} w ${tex.width} h ${tex.height}');
+			var renderTargetDesc = new forge.Native.RenderTargetDesc();
+			renderTargetDesc.arraySize = 1;
+			//		renderTargetDesc.clearValue.depth = 1.0f;
+			//		renderTargetDesc.clearValue.stencil = 0;
+			renderTargetDesc.depth = 1;
+			renderTargetDesc.descriptors = DESCRIPTOR_TYPE_TEXTURE;
+			renderTargetDesc.format = getTinyTextureFormat(tex.format);
+			renderTargetDesc.startState = RESOURCE_STATE_SHADER_RESOURCE;
+			renderTargetDesc.height = tex.width;
+			renderTargetDesc.width = tex.height;
+			renderTargetDesc.sampleCount = SAMPLE_COUNT_1;
+			renderTargetDesc.sampleQuality = 0;
+			//			renderTargetDesc.nativeHandle = itex.t.
+			renderTargetDesc.flags = forge.Native.TextureCreationFlags.TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT.toValue();
+			//		renderTargetDesc.name = "Shadow Map Render Target";
 
-		var rt = _renderer.createRenderTarget(renderTargetDesc);
-		var inBarrier = new forge.Native.ResourceBarrierBuilder();
-		inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_RENDER_TARGET);
-		var outBarrier = new forge.Native.ResourceBarrierBuilder();
-		outBarrier.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_SHADER_RESOURCE);
+			var rt = _renderer.createRenderTarget(renderTargetDesc);
+			var inBarrier = new forge.Native.ResourceBarrierBuilder();
+			inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_RENDER_TARGET);
+			var outBarrier = new forge.Native.ResourceBarrierBuilder();
+			outBarrier.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_SHADER_RESOURCE);
 
-		itex.rt = {
-			rt: rt,
-			inBarrier: inBarrier,
-			outBarrier: outBarrier,
-			begin: null,
-			present: null,
-			captureBuffer: null
-		};
-	} else {
-		DebugTrace.trace('RENDER TARGET  setting render target to existing ${tex} w ${tex.width} h ${tex.height}');
-	}
+			itex.rt = {
+				rt: rt,
+				inBarrier: inBarrier,
+				outBarrier: outBarrier,
+				begin: null,
+				present: null,
+				captureBuffer: null
+			};
+		} else {
+			DebugTrace.trace('RENDER TARGET  setting render target to existing ${tex} w ${tex.width} h ${tex.height}');
+		}
 
-	_currentRT = itex.rt;
+		_currentRT = itex.rt;
 
-	//		curTexture = textures[0];
+		//		curTexture = textures[0];
 
-	if (tex.depthBuffer != null && (tex.depthBuffer.width != tex.width || tex.depthBuffer.height != tex.height))
-		throw "Invalid depth buffer size : does not match render target size";
+		if (tex.depthBuffer != null && (tex.depthBuffer.width != tex.width || tex.depthBuffer.height != tex.height))
+			throw "Invalid depth buffer size : does not match render target size";
 
-	_currentDepth = @:privateAccess (tex.depthBuffer == null ? null : tex.depthBuffer);
-	DebugTrace.trace('RENDER TARGET  setting depth buffer target to existing ${_currentDepth} ${_currentDepth != null ? _currentDepth.width : null} ${_currentDepth != null ? _currentDepth.height : null}');
-	DebugTrace.trace('Inserting current RT in barrier');
-	_currentCmd.insertBarrier(_currentRT.inBarrier);
+		_currentDepth = @:privateAccess (tex.depthBuffer == null ? null : tex.depthBuffer);
+		DebugTrace.trace('RENDER TARGET  setting depth buffer target to existing ${_currentDepth} ${_currentDepth != null ? _currentDepth.width : null} ${_currentDepth != null ? _currentDepth.height : null}');
+		DebugTrace.trace('Inserting current RT in barrier');
+		_currentCmd.insertBarrier(_currentRT.inBarrier);
 
-	if (!tex.flags.has(WasCleared)) {
-		tex.flags.set(WasCleared); // once we draw to, do not clear again
+		if (!tex.flags.has(WasCleared)) {
+			tex.flags.set(WasCleared); // once we draw to, do not clear again
 
-		DebugTrace.trace('RENDER TARGET CLEAR set render target internal cleared');
-		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
-	} else {
-		DebugTrace.trace('RENDER TARGET CLEAR set render target internal no clear');
-		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);
-	}
+			DebugTrace.trace('RENDER TARGET CLEAR set render target internal cleared');
+			_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
+		} else {
+			DebugTrace.trace('RENDER TARGET CLEAR set render target internal no clear');
+			_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);
+		}
 
-	if (_currentPass != null) {
-		DebugTrace.trace('RENDER SELECTING DEFAULT MATERIAL');
+		if (_currentPass != null) {
+			DebugTrace.trace('RENDER SELECTING DEFAULT MATERIAL');
 
-		selectMaterial(_currentPass);
-	}
-	//		_currentRT =
+			selectMaterial(_currentPass);
+		}
+		//		_currentRT =
 
-	/*
+		/*
 			for( i in 0...textures.length ) {
 				var tex = textures[i];
 
@@ -3056,7 +2960,7 @@ function setRenderTargetsInternal(textures:Array<h3d.mat.Texture>, layer:Int, mi
 
 			}
 		 */
-	/*
+		/*
 			Driver.omSetRenderTargets(textures.length, currentTargets, currentDepth == null ? null : currentDepth.view);
 			targetsCount = textures.length;
 
@@ -3067,7 +2971,7 @@ function setRenderTargetsInternal(textures:Array<h3d.mat.Texture>, layer:Int, mi
 			viewport[5] = 1.;
 			Driver.rsSetViewports(1, viewport);
 		 */
-	/*
+		/*
 			if( hasDeviceError )
 				return;
 			var tex = textures[0];
@@ -3114,38 +3018,38 @@ function setRenderTargetsInternal(textures:Array<h3d.mat.Texture>, layer:Int, mi
 			viewport[5] = 1.;
 			Driver.rsSetViewports(1, viewport);
 		 */
-}
-
-var _tmpTextures = new Array<h3d.mat.Texture>();
-var _targetsCount = 1;
-var _curTexture:h3d.mat.Texture;
-var _currentTargets = new Array<forge.Native.RenderTarget>();
-
-function setDefaultRenderTarget() {
-	DebugTrace.trace('RENDER CALLSTACK TARGET CLEAR setDefaultRenderTarget ');
-	if (!renderReady())
-		return;
-
-	_currentCmd.unbindRenderTarget();
-	DebugTrace.trace('Inserting current RT out');
-	_currentCmd.insertBarrier(_currentRT.outBarrier);
-	_currentDepth = _defaultDepth;
-	_targetsCount = 1;
-	_curTexture = null;
-	//		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
-	_currentRT = _swapRenderTargets[_currentSwapIndex];
-	_currentTargets[0] = _currentRT.rt;
-
-	_currentCmd.insertBarrier(_currentRT.inBarrier);
-	_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);
-
-	if (_currentPass != null) {
-		selectMaterial(_currentPass);
 	}
 
-	// currentTargetResources[0] = null;
+	var _tmpTextures = new Array<h3d.mat.Texture>();
+	var _targetsCount = 1;
+	var _curTexture:h3d.mat.Texture;
+	var _currentTargets = new Array<forge.Native.RenderTarget>();
 
-	/*
+	function setDefaultRenderTarget() {
+		DebugTrace.trace('RENDER CALLSTACK TARGET CLEAR setDefaultRenderTarget ');
+		if (!renderReady())
+			return;
+
+		_currentCmd.unbindRenderTarget();
+		DebugTrace.trace('Inserting current RT out');
+		_currentCmd.insertBarrier(_currentRT.outBarrier);
+		_currentDepth = _defaultDepth;
+		_targetsCount = 1;
+		_curTexture = null;
+		//		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
+		_currentRT = _swapRenderTargets[_currentSwapIndex];
+		_currentTargets[0] = _currentRT.rt;
+
+		_currentCmd.insertBarrier(_currentRT.inBarrier);
+		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);
+
+		if (_currentPass != null) {
+			selectMaterial(_currentPass);
+		}
+
+		// currentTargetResources[0] = null;
+
+		/*
 			currentTargetResources[0] = null;
 			Driver.omSetRenderTargets(1, currentTargets, currentDepth.view);
 			viewport[2] = outputWidth;
@@ -3154,123 +3058,123 @@ function setDefaultRenderTarget() {
 			Driver.rsSetViewports(1, viewport);
 		 */
 
-	//		DebugTrace.trace("RENDER REMINDER return to default RT [RC]");
-}
-
-public override function setRenderTarget(tex:Null<h3d.mat.Texture>, layer = 0, mipLevel = 0) {
-	DebugTrace.trace('RENDER CALLSTACK TARGET setRenderTarget  ${tex} layer ${layer} mip ${mipLevel} db ${tex != null ? tex.depthBuffer : null}');
-
-	if (tex == null) {
-		setDefaultRenderTarget();
-	} else {
-		_tmpTextures[0] = tex;
-		setRenderTargetsInternal(_tmpTextures, layer, mipLevel);
-	}
-	_currentPipeline = null;
-}
-
-public override function setRenderTargets(textures:Array<h3d.mat.Texture>) {
-	DebugTrace.trace('RENDER CALLSTACK TARGET setRenderTargets');
-
-	setRenderTargetsInternal(textures, 0, 0);
-}
-
-var _captureBuffer:haxe.io.Bytes;
-
-function captureSubRenderBuffer(rt:RenderTarget, pixels:hxd.Pixels, x:Int, y:Int, w:Int, h:Int) {
-	if (rt == null)
-		throw "Can't capture null buffer";
-
-	_renderer.resetCmdPool(_capturePool);
-
-	var size = rt.rt.captureSize();
-	DebugTrace.trace('CAPTURE Capturing buffer of size ${size} from w ${w} h ${h} at x ${x} y ${y} of format ${pixels.format}');
-	if (_captureBuffer == null || size > _captureBuffer.length) {
-		_captureBuffer = haxe.io.Bytes.alloc(size);
-	}
-	var outBuffer = @:privateAccess pixels.bytes.b;
-	var outLen = pixels.bytes.length;
-	var tmpBuffer = hl.Bytes.fromBytes(_captureBuffer);
-
-	DebugTrace.trace('CAPTURE TMP BUFFER IS ${tmpBuffer} : ${StringTools.hex(tmpBuffer.address().high)}${StringTools.hex(tmpBuffer.address().low)}');
-	if (!_renderer.captureAsBytes(_captureCmd, rt.rt, _queue, forge.Native.ResourceState.RESOURCE_STATE_PRESENT, hl.Bytes.fromBytes(_captureBuffer),
-		size)) {
-		throw "Capture Failed";
-	}
-	var rt_w = rt.rt.width;
-
-	DebugTrace.trace('CAPTURE blitting rows of length ${w}  into an image of ${rt_w} at x ${x} y ${y}');
-
-	if (outLen < w * h * 4)
-		throw 'output buffer isn\'t big enough ${outLen} vs ${w * h * 4}';
-
-	for (i in 0...h) {
-		outBuffer.blit(i * w * 4, tmpBuffer, ((i + y) * rt_w + x) * 4, w * 4);
+		//		DebugTrace.trace("RENDER REMINDER return to default RT [RC]");
 	}
 
-	/*
+	public override function setRenderTarget(tex:Null<h3d.mat.Texture>, layer = 0, mipLevel = 0) {
+		DebugTrace.trace('RENDER CALLSTACK TARGET setRenderTarget  ${tex} layer ${layer} mip ${mipLevel} db ${tex != null ? tex.depthBuffer : null}');
+
+		if (tex == null) {
+			setDefaultRenderTarget();
+		} else {
+			_tmpTextures[0] = tex;
+			setRenderTargetsInternal(_tmpTextures, layer, mipLevel);
+		}
+		_currentPipeline = null;
+	}
+
+	public override function setRenderTargets(textures:Array<h3d.mat.Texture>) {
+		DebugTrace.trace('RENDER CALLSTACK TARGET setRenderTargets');
+
+		setRenderTargetsInternal(textures, 0, 0);
+	}
+
+	var _captureBuffer:haxe.io.Bytes;
+
+	function captureSubRenderBuffer(rt:RenderTarget, pixels:hxd.Pixels, x:Int, y:Int, w:Int, h:Int) {
+		if (rt == null)
+			throw "Can't capture null buffer";
+
+		_renderer.resetCmdPool(_capturePool);
+
+		var size = rt.rt.captureSize();
+		DebugTrace.trace('CAPTURE Capturing buffer of size ${size} from w ${w} h ${h} at x ${x} y ${y} of format ${pixels.format}');
+		if (_captureBuffer == null || size > _captureBuffer.length) {
+			_captureBuffer = haxe.io.Bytes.alloc(size);
+		}
+		var outBuffer = @:privateAccess pixels.bytes.b;
+		var outLen = pixels.bytes.length;
+		var tmpBuffer = hl.Bytes.fromBytes(_captureBuffer);
+
+		DebugTrace.trace('CAPTURE TMP BUFFER IS ${tmpBuffer} : ${StringTools.hex(tmpBuffer.address().high)}${StringTools.hex(tmpBuffer.address().low)}');
+		if (!_renderer.captureAsBytes(_captureCmd, rt.rt, _queue, forge.Native.ResourceState.RESOURCE_STATE_PRESENT, hl.Bytes.fromBytes(_captureBuffer),
+			size)) {
+			throw "Capture Failed";
+		}
+		var rt_w = rt.rt.width;
+
+		DebugTrace.trace('CAPTURE blitting rows of length ${w}  into an image of ${rt_w} at x ${x} y ${y}');
+
+		if (outLen < w * h * 4)
+			throw 'output buffer isn\'t big enough ${outLen} vs ${w * h * 4}';
+
+		for (i in 0...h) {
+			outBuffer.blit(i * w * 4, tmpBuffer, ((i + y) * rt_w + x) * 4, w * 4);
+		}
+
+		/*
 			gl.readPixels(x, y, pixels.width, pixels.height, getChannels(curTarget.t), curTarget.t.pixelFmt, buffer);
 			var error = gl.getError();
 			if( error != 0 ) throw "Failed to capture pixels (error "+error+")";
 			@:privateAccess pixels.innerFormat = rt.rt.format;
 		 */
-}
-
-public override function capturePixels(tex:h3d.mat.Texture, layer:Int, mipLevel:Int, ?region:h2d.col.IBounds):hxd.Pixels {
-	if (mipLevel != 0)
-		throw "Capturing mip levels is unsupported";
-	if (layer != 0)
-		throw "Capturing layers is unsupported";
-
-	DebugTrace.trace('RENDER TEXTURE CAPTURE TARGET t ${tex} l ${layer} m ${mipLevel} r ${region}');
-	var pixels:hxd.Pixels;
-	var x:Int, y:Int, w:Int, h:Int;
-	if (region != null) {
-		if (region.xMax > tex.width)
-			region.xMax = tex.width;
-		if (region.yMax > tex.height)
-			region.yMax = tex.height;
-		if (region.xMin < 0)
-			region.xMin = 0;
-		if (region.yMin < 0)
-			region.yMin = 0;
-		w = region.width;
-		h = region.height;
-		x = region.xMin;
-		y = region.yMin;
-	} else {
-		w = tex.width;
-		h = tex.height;
-		x = 0;
-		y = 0;
 	}
 
-	w >>= mipLevel;
-	h >>= mipLevel;
-	if (w == 0)
-		w = 1;
-	if (h == 0)
-		h = 1;
-	pixels = hxd.Pixels.alloc(w, h, tex.format);
+	public override function capturePixels(tex:h3d.mat.Texture, layer:Int, mipLevel:Int, ?region:h2d.col.IBounds):hxd.Pixels {
+		if (mipLevel != 0)
+			throw "Capturing mip levels is unsupported";
+		if (layer != 0)
+			throw "Capturing layers is unsupported";
 
-	if (tex.t.rt == null) {
-		throw "Capturing pixels from non-render target is not supported";
-	} else {
-		var rt = tex.t.rt;
-		@:privateAccess var b = pixels.bytes.b;
-		for (i in 0...pixels.bytes.length) {
-			b[i] = 255;
+		DebugTrace.trace('RENDER TEXTURE CAPTURE TARGET t ${tex} l ${layer} m ${mipLevel} r ${region}');
+		var pixels:hxd.Pixels;
+		var x:Int, y:Int, w:Int, h:Int;
+		if (region != null) {
+			if (region.xMax > tex.width)
+				region.xMax = tex.width;
+			if (region.yMax > tex.height)
+				region.yMax = tex.height;
+			if (region.xMin < 0)
+				region.xMin = 0;
+			if (region.yMin < 0)
+				region.yMin = 0;
+			w = region.width;
+			h = region.height;
+			x = region.xMin;
+			y = region.yMin;
+		} else {
+			w = tex.width;
+			h = tex.height;
+			x = 0;
+			y = 0;
 		}
 
-		captureSubRenderBuffer(rt, pixels, x, y, w, h);
+		w >>= mipLevel;
+		h >>= mipLevel;
+		if (w == 0)
+			w = 1;
+		if (h == 0)
+			h = 1;
+		pixels = hxd.Pixels.alloc(w, h, tex.format);
 
-		// rt.rt.capture( null, )
-		//			rt.
-		// Capture render target
-	}
+		if (tex.t.rt == null) {
+			throw "Capturing pixels from non-render target is not supported";
+		} else {
+			var rt = tex.t.rt;
+			@:privateAccess var b = pixels.bytes.b;
+			for (i in 0...pixels.bytes.length) {
+				b[i] = 255;
+			}
 
-	//		tex.t.rt.rt.capture()
-	/*
+			captureSubRenderBuffer(rt, pixels, x, y, w, h);
+
+			// rt.rt.capture( null, )
+			//			rt.
+			// Capture render target
+		}
+
+		//		tex.t.rt.rt.capture()
+		/*
 			var old = curTarget;
 			var oldCount = numTargets;
 			var oldLayer = curTargetLayer;
@@ -3294,94 +3198,94 @@ public override function capturePixels(tex:h3d.mat.Texture, layer:Int, mipLevel:
 			}
 		 */
 
-	return pixels;
-}
-
-public override function uploadVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-	//		DebugTrace.trace('RENDER STRIDE UPLOAD  uploadVertexBytes start ${startVertex} vstride ${v.stride} vstridebytes ${v.strideBytes} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} elements');
-	v.b.updateRegion(buf, startVertex * v.strideBytes, vertexCount * v.strideBytes, 0);
-	//		DebugTrace.trace('Done');
-}
-
-public override function uploadIndexBytes(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-	var bits = i.is32 ? 2 : 1;
-	i.b.updateRegion(buf, startIndice << bits, indiceCount << bits, bufPos << bits);
-}
-
-public override function generateMipMaps(source:h3d.mat.Texture) {
-	var mipLevels = 0;
-	var mipSizeX = 1 << Std.int(Math.ceil(Math.log(source.width) / Math.log(2)));
-	var mipSizeY = 1 << Std.int(Math.ceil(Math.log(source.height) / Math.log(2)));
-
-	for (i in 0...MAX_MIP_LEVELS) {
-		if (mipSizeX >> i < 1) {
-			mipLevels = i;
-			break;
-		}
-		if (mipSizeY >> i < 1) {
-			mipLevels = i;
-			break;
-		}
-	}
-	if (mipLevels <= 1)
-		return;
-
-	_renderer.resetCmdPool(_computePool);
-
-	var cmd = _computeCmd;
-
-	cmd.begin();
-
-	_mipGenParams.resize(2);
-
-	for (i in 1...mipLevels) {
-		_mipGenDB.clearSlotData(0);
-		_mipGenDB.clearSlotData(1);
-
-		_mipGenDB.addSlotTexture(0, source.t.t);
-		_mipGenDB.setSlotUAVMipSlice(0, i - 1);
-		_mipGenDB.addSlotTexture(1, source.t.t);
-		_mipGenDB.setSlotUAVMipSlice(1, i);
-
-		_mipGenDB.update(_renderer, i - 1, _mipGenArrayDescriptor); // this is computation index not mip index
+		return pixels;
 	}
 
-	forge.Native.Globals.waitForAllResourceLoads();
+	public override function uploadVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
+		//		DebugTrace.trace('RENDER STRIDE UPLOAD  uploadVertexBytes start ${startVertex} vstride ${v.stride} vstridebytes ${v.strideBytes} sv ${startVertex} vc ${vertexCount} bufPos ${bufPos} buf len ${buf.length} elements');
+		v.b.updateRegion(buf, startVertex * v.strideBytes, vertexCount * v.strideBytes, 0);
+		//		DebugTrace.trace('Done');
+	}
 
-	cmd.bindPipeline(_mipGenArray.pipeline);
+	public override function uploadIndexBytes(i:IndexBuffer, startIndice:Int, indiceCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
+		var bits = i.is32 ? 2 : 1;
+		i.b.updateRegion(buf, startIndice << bits, indiceCount << bits, bufPos << bits);
+	}
 
-	for (i in 1...mipLevels) {
-		cmd.bindDescriptorSet(i - 1, _mipGenArrayDescriptor); // this is computation index not mip index
+	public override function generateMipMaps(source:h3d.mat.Texture) {
+		var mipLevels = 0;
+		var mipSizeX = 1 << Std.int(Math.ceil(Math.log(source.width) / Math.log(2)));
+		var mipSizeY = 1 << Std.int(Math.ceil(Math.log(source.height) / Math.log(2)));
 
-		mipSizeX >>= 1;
-		mipSizeY >>= 1;
-		_mipGenParams[0] = mipSizeX;
-		_mipGenParams[1] = mipSizeY;
+		for (i in 0...MAX_MIP_LEVELS) {
+			if (mipSizeX >> i < 1) {
+				mipLevels = i;
+				break;
+			}
+			if (mipSizeY >> i < 1) {
+				mipLevels = i;
+				break;
+			}
+		}
+		if (mipLevels <= 1)
+			return;
 
-		// var mipSize = { mipSizeX, mipSizeY };
+		_renderer.resetCmdPool(_computePool);
 
-		cmd.pushConstants(_mipGen.rootsig, _mipGen.rootconstant, hl.Bytes.getArray(_mipGenParams));
-		/*
+		var cmd = _computeCmd;
+
+		cmd.begin();
+
+		_mipGenParams.resize(2);
+
+		for (i in 1...mipLevels) {
+			_mipGenDB.clearSlotData(0);
+			_mipGenDB.clearSlotData(1);
+
+			_mipGenDB.addSlotTexture(0, source.t.t);
+			_mipGenDB.setSlotUAVMipSlice(0, i - 1);
+			_mipGenDB.addSlotTexture(1, source.t.t);
+			_mipGenDB.setSlotUAVMipSlice(1, i);
+
+			_mipGenDB.update(_renderer, i - 1, _mipGenArrayDescriptor); // this is computation index not mip index
+		}
+
+		forge.Native.Globals.waitForAllResourceLoads();
+
+		cmd.bindPipeline(_mipGenArray.pipeline);
+
+		for (i in 1...mipLevels) {
+			cmd.bindDescriptorSet(i - 1, _mipGenArrayDescriptor); // this is computation index not mip index
+
+			mipSizeX >>= 1;
+			mipSizeY >>= 1;
+			_mipGenParams[0] = mipSizeX;
+			_mipGenParams[1] = mipSizeY;
+
+			// var mipSize = { mipSizeX, mipSizeY };
+
+			cmd.pushConstants(_mipGen.rootsig, _mipGen.rootconstant, hl.Bytes.getArray(_mipGenParams));
+			/*
 				textureBarriers[0] = { pSSSR_DepthHierarchy, RESOURCE_STATE_UNORDERED_ACCESS, RESOURCE_STATE_UNORDERED_ACCESS };
 				cmd.resourceBarrier(cmd, 0, NULL, 1, textureBarriers, 0, NULL);
 			 */
-		var groupCountX = Std.int(mipSizeX / 16);
-		var groupCountY = Std.int(mipSizeY / 16);
-		if (groupCountX == 0)
-			groupCountX = 1;
-		if (groupCountY == 0)
-			groupCountY = 1;
-		cmd.dispatch(groupCountX, groupCountY, source.layerCount); // 2D texture, not a texture array?
+			var groupCountX = Std.int(mipSizeX / 16);
+			var groupCountY = Std.int(mipSizeY / 16);
+			if (groupCountX == 0)
+				groupCountX = 1;
+			if (groupCountY == 0)
+				groupCountY = 1;
+			cmd.dispatch(groupCountX, groupCountY, source.layerCount); // 2D texture, not a texture array?
+		}
+
+		cmd.end();
+
+		// slowest possible route, but oh well
+		_queue.submit(cmd, null, null, _computeFence);
+		_renderer.waitFence(_computeFence);
 	}
 
-	cmd.end();
-
-	// slowest possible route, but oh well
-	_queue.submit(cmd, null, null, _computeFence);
-	_renderer.waitFence(_computeFence);
-}
-
-/*
+	/*
 		function uploadBuffer( buffer : h3d.shader.Buffers, s : CompiledShader, buf : h3d.shader.Buffers.ShaderBuffers, which : h3d.shader.Buffers.BufferKind ) {
 			switch( which ) {
 			case Globals:
@@ -3398,7 +3302,7 @@ public override function generateMipMaps(source:h3d.mat.Texture) {
 		}
 
 	 */
-/*
+	/*
 		function compileShader(shader : hxsl.RuntimeShader.RuntimeShaderData ) {
 
 			var type = shader.vertex ? GL.VERTEX_SHADER : GL.FRAGMENT_SHADER;
@@ -3420,7 +3324,7 @@ public override function generateMipMaps(source:h3d.mat.Texture) {
 			  
 		}
 	 */
-/*
+	/*
 
 
 			
@@ -3510,7 +3414,7 @@ public override function generateMipMaps(source:h3d.mat.Texture) {
 		setProgram(p);
 		return true;
 	 */
-/*
+	/*
 		var cubic = t.flags.has(Cube);
 		var face = cubic ? CUBE_FACES[side] : t.flags.has(IsArray) ? GL.TEXTURE_2D_ARRAY : GL.TEXTURE_2D;
 		var bind = getBindType(t);
@@ -3567,111 +3471,110 @@ public override function generateMipMaps(source:h3d.mat.Texture) {
 		t.flags.set(WasCleared);
 		restoreBind();
 	 */
-public override function setRenderFlag(r:RenderFlag, value:Int) {
-	switch (r) {
-		case CameraHandness:
-			_rightHanded = value != 0;
-		default:
-			throw "Not implemented";
+	public override function setRenderFlag(r:RenderFlag, value:Int) {
+		switch (r) {
+			case CameraHandness:
+				_rightHanded = value != 0;
+			default:
+				throw "Not implemented";
+		}
 	}
-}
 
-public override function isDisposed() {
-	return _renderer == null;
-}
+	public override function isDisposed() {
+		return _renderer == null;
+	}
 
-public override function dispose() {
-	throw "Not implemented";
-}
+	public override function dispose() {
+		throw "Not implemented";
+	}
 
-public override function getNativeShaderCode(shader:hxsl.RuntimeShader):String {
-	throw "Not implemented";
-	return null;
-}
+	public override function getNativeShaderCode(shader:hxsl.RuntimeShader):String {
+		throw "Not implemented";
+		return null;
+	}
 
-override function logImpl(str:String) {
-	throw "Not implemented";
-}
+	override function logImpl(str:String) {
+		throw "Not implemented";
+	}
 
-public override function captureRenderBuffer(pixels:hxd.Pixels) {
-	throw "Not implemented";
-}
+	public override function captureRenderBuffer(pixels:hxd.Pixels) {
+		throw "Not implemented";
+	}
 
-public override function getDriverName(details:Bool) {
-	throw "Not implemented";
-	return "Not available";
-}
+	public override function getDriverName(details:Bool) {
+		throw "Not implemented";
+		return "Not available";
+	}
 
-public override function drawInstanced(ibuf:IndexBuffer, commands:h3d.impl.InstanceBuffer) {
-	throw "Not implemented";
-}
+	public override function drawInstanced(ibuf:IndexBuffer, commands:h3d.impl.InstanceBuffer) {
+		throw "Not implemented";
+	}
 
-public override function setRenderZone(x:Int, y:Int, width:Int, height:Int) {
-	throw "Not implemented";
-}
+	public override function setRenderZone(x:Int, y:Int, width:Int, height:Int) {
+		throw "Not implemented";
+	}
 
-public override function disposeDepthBuffer(b:h3d.mat.DepthBuffer) {
-	throw "Not implemented";
-}
+	public override function disposeDepthBuffer(b:h3d.mat.DepthBuffer) {
+		throw "Not implemented";
+	}
 
-var _debug = false;
+	var _debug = false;
 
-public override function setDebug(d:Bool) {
-	if (d)
-		DebugTrace.trace('Forge Driver Debug ${d}');
-	_debug = d;
-}
+	public override function setDebug(d:Bool) {
+		if (d)
+			DebugTrace.trace('Forge Driver Debug ${d}');
+		_debug = d;
+	}
 
-public override function allocInstanceBuffer(b:h3d.impl.InstanceBuffer, bytes:haxe.io.Bytes) {
-	throw "Not implemented";
-}
+	public override function allocInstanceBuffer(b:h3d.impl.InstanceBuffer, bytes:haxe.io.Bytes) {
+		throw "Not implemented";
+	}
 
-public override function disposeInstanceBuffer(b:h3d.impl.InstanceBuffer) {
-	throw "Not implemented";
-}
+	public override function disposeInstanceBuffer(b:h3d.impl.InstanceBuffer) {
+		throw "Not implemented";
+	}
 
-public override function readVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-	throw "Driver does not allow to read vertex bytes";
-}
+	public override function readVertexBytes(v:VertexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
+		throw "Driver does not allow to read vertex bytes";
+	}
 
-public override function readIndexBytes(v:IndexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
-	throw "Driver does not allow to read index bytes";
-}
+	public override function readIndexBytes(v:IndexBuffer, startVertex:Int, vertexCount:Int, buf:haxe.io.Bytes, bufPos:Int) {
+		throw "Driver does not allow to read index bytes";
+	}
 
-/**
+	/**
 		Returns true if we could copy the texture, false otherwise (not supported by driver or mismatch in size/format)
 	**/
-public override function copyTexture(from:h3d.mat.Texture, to:h3d.mat.Texture) {
-	// [RC] Copy texture
-	return false;
-}
+	public override function copyTexture(from:h3d.mat.Texture, to:h3d.mat.Texture) {
+		// [RC] Copy texture
+		return false;
+	}
 
-// --- QUERY API
+	// --- QUERY API
+	public override function allocQuery(queryKind:QueryKind):Query {
+		throw "Not implemented";
+		return null;
+	}
 
-public override function allocQuery(queryKind:QueryKind):Query {
-	throw "Not implemented";
-	return null;
-}
+	public override function deleteQuery(q:Query) {
+		throw "Not implemented";
+	}
 
-public override function deleteQuery(q:Query) {
-	throw "Not implemented";
-}
+	public override function beginQuery(q:Query) {
+		throw "Not implemented";
+	}
 
-public override function beginQuery(q:Query) {
-	throw "Not implemented";
-}
+	public override function endQuery(q:Query) {
+		throw "Not implemented";
+	}
 
-public override function endQuery(q:Query) {
-	throw "Not implemented";
-}
+	public override function queryResultAvailable(q:Query) {
+		throw "Not implemented";
+		return true;
+	}
 
-public override function queryResultAvailable(q:Query) {
-	throw "Not implemented";
-	return true;
-}
-
-public override function queryResult(q:Query) {
-	throw "Not implemented";
-	return 0.;
-}
+	public override function queryResult(q:Query) {
+		throw "Not implemented";
+		return 0.;
+	}
 }

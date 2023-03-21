@@ -2162,20 +2162,35 @@ HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotBindIndex2)(pref<DescriptorDat
 }
 DEFINE_PRIM(_VOID, DescriptorDataBuilder_setSlotBindIndex2, _IDL _I32 _I32);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotTexture2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Texture>* tex) {
-	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(tex)));
+HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlotTexture2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Texture>* tex) {
+	return (_unref(_this)->addSlotData(slot, _unref_ptr_safe(tex)));
 }
-DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotTexture2, _IDL _I32 _IDL);
+DEFINE_PRIM(_I32, DescriptorDataBuilder_addSlotTexture2, _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotSampler2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Sampler>* sampler) {
-	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(sampler)));
+HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlotSampler2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Sampler>* sampler) {
+	return (_unref(_this)->addSlotData(slot, _unref_ptr_safe(sampler)));
 }
-DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotSampler2, _IDL _I32 _IDL);
+DEFINE_PRIM(_I32, DescriptorDataBuilder_addSlotSampler2, _IDL _I32 _IDL);
 
-HL_PRIM void HL_NAME(DescriptorDataBuilder_addSlotUniformBuffer2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Buffer>* uniformBuffer) {
-	(_unref(_this)->addSlotData(slot, _unref_ptr_safe(uniformBuffer)));
+HL_PRIM int HL_NAME(DescriptorDataBuilder_addSlotUniformBuffer2)(pref<DescriptorDataBuilder>* _this, int slot, pref<Buffer>* uniformBuffer) {
+	return (_unref(_this)->addSlotData(slot, _unref_ptr_safe(uniformBuffer)));
 }
-DEFINE_PRIM(_VOID, DescriptorDataBuilder_addSlotUniformBuffer2, _IDL _I32 _IDL);
+DEFINE_PRIM(_I32, DescriptorDataBuilder_addSlotUniformBuffer2, _IDL _I32 _IDL);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotTexture3)(pref<DescriptorDataBuilder>* _this, int slot, int idx, pref<Texture>* tex) {
+	(_unref(_this)->setSlotData(slot, idx, _unref_ptr_safe(tex)));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_setSlotTexture3, _IDL _I32 _I32 _IDL);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotSampler3)(pref<DescriptorDataBuilder>* _this, int slot, int idx, pref<Sampler>* sampler) {
+	(_unref(_this)->setSlotData(slot, idx, _unref_ptr_safe(sampler)));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_setSlotSampler3, _IDL _I32 _I32 _IDL);
+
+HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotUniformBuffer3)(pref<DescriptorDataBuilder>* _this, int slot, int idx, pref<Buffer>* uniformBuffer) {
+	(_unref(_this)->setSlotData(slot, idx, _unref_ptr_safe(uniformBuffer)));
+}
+DEFINE_PRIM(_VOID, DescriptorDataBuilder_setSlotUniformBuffer3, _IDL _I32 _I32 _IDL);
 
 HL_PRIM void HL_NAME(DescriptorDataBuilder_setSlotUAVMipSlice2)(pref<DescriptorDataBuilder>* _this, int slot, int idx) {
 	(_unref(_this)->setSlotUAVMipSlice(slot, idx));

@@ -7,9 +7,7 @@
 void heuristicTest(void (*fn)());
 void heuristicTest2(float (*fn)(int));
 
-
-#endif // APPLE
-
+#endif  // APPLE
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
@@ -18,26 +16,27 @@ void heuristicTest2(float (*fn)(int));
 #error "SDL2 SDK not found"
 #endif
 
+#include <IGraphics.h>
+#include <IResourceLoader.h>
+#include <fp16.h>
+#include <meshoptimizer/src/meshoptimizer.h>
+
+#include <algorithm>
 #include <map>
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <fp16.h>
-#include <algorithm>
-#include <IGraphics.h>
-#include <IResourceLoader.h>
-#include <meshoptimizer/src/meshoptimizer.h>
 
-//#include <Renderer/IRenderer.h>
-//#include <Renderer/IResourceLoader.h>
+// #include <Renderer/IRenderer.h>
+// #include <Renderer/IResourceLoader.h>
 
-//#define XXHASH_EXPOSE_STATE
+// #define XXHASH_EXPOSE_STATE
 #define XXH_STATIC_LINKING_ONLY
 #include <xxhash.h>
 
 #define TWIN _ABSTRACT(sdl_window)
 
-//#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+// #define DEBUG_PRINT(...) printf(__VA_ARGS__)
 #define DEBUG_PRINT(...)
 
 class HashBuilder {
@@ -87,13 +86,12 @@ class ForgeSDLWindow {
     SDL_SysWMinfo wmInfo;
     Renderer *renderer() { return _renderer; }
     Renderer *_renderer;
-    #if __APPLE__
+#if __APPLE__
     SDL_MetalView _view;
     CAMetalLayer *_layer;
-    #endif
+#endif
     void present(Queue *pGraphicsQueue, SwapChain *pSwapChain, int swapchainImageIndex, Semaphore *pRenderCompleteSemaphore);
 };
-
 
 class RootSignatureFactory {
    public:
@@ -141,9 +139,9 @@ class BufferExt {
     inline void update(void *data) {
         BufferUpdateDesc desc = {};
         desc.pBuffer = current();
-        #ifdef _WINDOWS
-        DEBUG_PRINT("RENDER BufferExt Updating buffer %d : [Offset %Id] [size %I64d]\n", _idx, desc.pBuffer->mVulkan.mOffset, desc.pBuffer->mSize );
-        #endif
+#ifdef _WINDOWS
+        DEBUG_PRINT("RENDER BufferExt Updating buffer %d : [Offset %Id] [size %I64d]\n", _idx, desc.pBuffer->mVulkan.mOffset, desc.pBuffer->mSize);
+#endif
         beginUpdateResource(&desc);
         memcpy(desc.pMappedData, data, desc.pBuffer->mSize);
         endUpdateResource(&desc, NULL);
@@ -155,10 +153,9 @@ class BufferExt {
         return (unsigned char *)(current()->pCpuMappedAddress);
     }
 
-    inline 	int getSize() {
+    inline int getSize() {
         return current()->mSize;
     }
-
 
     inline int currentIdx() {
         return _idx;
@@ -218,9 +215,9 @@ class BufferLoadDescExt : public BufferLoadDesc {
             Buffer *tmp = nullptr;
             ppBuffer = &tmp;
 
-            DEBUG_PRINT("Attempting to add resource buffer %d/%d size %d\n", i, _depth, mDesc.mSize );
+            DEBUG_PRINT("Attempting to add resource buffer %d/%d size %d\n", i, _depth, mDesc.mSize);
             if (i == _depth - 1)
-                addResource(this, token); // this may not work, but I don't want to make multiple sync tokens
+                addResource(this, token);  // this may not work, but I don't want to make multiple sync tokens
             else
                 addResource(this, nullptr);
 
@@ -256,7 +253,6 @@ class StateBuilder {
 
         _raster = {};
         _raster.mCullMode = CULL_MODE_BACK;
-
     }
 
     void addToHash(HashBuilder *hb) {
@@ -341,8 +337,6 @@ class HlForgePipelineDesc : public PipelineDesc {
    public:
     HlForgePipelineDesc() {
         *static_cast<PipelineDesc *>(this) = {};
-
-
     }
     inline GraphicsPipelineDesc *graphicsPipeline() {
         this->mType = PIPELINE_TYPE_GRAPHICS;
@@ -379,8 +373,6 @@ class HlForgePipelineDesc : public PipelineDesc {
     std::vector<TinyImageFormat> _formats;
     std::string _name;
 };
-
-
 
 class DescriptorDataBuilder {
     //    DescriptorSet *_set;
@@ -432,28 +424,56 @@ class DescriptorDataBuilder {
         _data[slot].mBindByIndex = true;
     }
 
-
-    void addSlotData(int slot, Texture *data) {
+    int addSlotData(int slot, Texture *data) {
         _dataPointers[slot]->push_back(data);
+        return (int)_dataPointers[slot]->size() - 1;
     }
-    void addSlotData(int slot, Sampler *data) {
+    int addSlotData(int slot, Sampler *data) {
         _dataPointers[slot]->push_back(data);
+        return (int)_dataPointers[slot]->size() - 1;
     }
     /*
     void addSlotData(int slot, BufferExt *bp) {
         _dataPointers[slot]->push_back(bp->current());
     }
     */
-    void addSlotData(int slot, Buffer *bp) {
+    int addSlotData(int slot, Buffer *bp) {
         _dataPointers[slot]->push_back(bp);
+        return (int)_dataPointers[slot]->size() - 1;
     }
+
+    void setSlotData(int slot, int idx, Texture *data) {
+        printf("Setting slot %d idx %d to %p\n");
+        printf("pointers have length %d\n", _dataPointers[slot]->size());
+        if (slot < _dataPointers.size()) {
+            auto &a =  (*(_dataPointers[slot]));
+            printf("\tData has room for %d\n", a.size());
+            if (idx < a.size()) {
+                printf("\t\tSetting slot %d idx %d to %p\n", slot, idx, data);
+                a[idx] = data;
+            } else {
+                printf("ERROR: trying to set slot %d idx %d but only have %d slots\n", slot, idx, a.size());
+            }
+        } else {
+            printf("ERROR: trying to set slot %d idx %d but only have %d slots\n", slot, idx, _dataPointers.size());
+        }
+  }
+    void setSlotData(int slot, int idx, Sampler *data) {
+        (*(_dataPointers[slot]))[idx] = data;
+    }
+    void setSlotData(int slot, int idx, Buffer *data) {
+        (*(_dataPointers[slot]))[idx] = data;
+    }
+
     void setSlotUAVMipSlice(int slot, int idx) {
         _data[slot].mUAVMipSlice = idx;
     }
 
     void update(Renderer *pRenderer, int index, DescriptorSet *set) {
+        printf("Updating descriptor set %p at index %d with %d slots\n", set, index, _names.size());
         for (auto i = 0; i < _names.size(); i++) {
             _data[i].pName = _names[i].c_str();
+            printf("\tSlot %d has name %s and mode %d\n", i, _names[i].c_str(), _modes[i]);
             switch (_modes[i]) {
                 case DBM_TEXTURES:
                     _data[i].ppTextures = (Texture **)(&(*_dataPointers[i])[0]);
@@ -488,7 +508,7 @@ class ResourceBarrierBuilder {
     int addRTBarrier(RenderTarget *rt, ResourceState src, ResourceState dst) {
         if (rt != nullptr) {
             DEBUG_PRINT("render target %p - texture %p\n", rt, rt->pTexture);
-            if (rt->pTexture ==(void *)(0xdeadbeefdeadbeef)) {
+            if (rt->pTexture == (void *)(0xdeadbeefdeadbeef)) {
                 printf("Texture is invalid on reder target");
                 exit(-1);
             }
@@ -507,8 +527,8 @@ class ResourceBarrierBuilder {
 
         if (_rtBarriers.size()) {
             RenderTarget *rt = rtbp[0].pRenderTarget;
-            if (rt->pTexture ==(void *)(0xdeadbeefdeadbeef)) {
-                 printf("render target %p - texture %p\n", rt, rt->pTexture);
+            if (rt->pTexture == (void *)(0xdeadbeefdeadbeef)) {
+                printf("render target %p - texture %p\n", rt, rt->pTexture);
                 printf("Texture is invalid on reder target");
                 exit(-1);
             }
@@ -1007,7 +1027,6 @@ bool forge_render_target_capture_2(Renderer *pRenderer, Cmd *pCmd, RenderTarget 
 void forge_renderer_destroySwapChain(Renderer *pRenderer, SwapChain *swapChain);
 void forge_renderer_destroyRenderTarget(Renderer *pRenderer, RenderTarget *rt);
 void forge_renderer_fill_descriptor_set(Renderer *pRenderer, BufferExt *buf, DescriptorSet *pDS, DescriptorSlotMode mode, int slotIndex);
-
 
 // Tools
 std::string forge_translate_glsl_native(const char *source, const char *filepath, bool fragment);

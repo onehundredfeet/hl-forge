@@ -909,9 +909,15 @@ interface DescriptorDataBuilder {
 	int addSlot(DescriptorSlotMode descriptorType);
 	void setSlotBindName(int slot, String name);
 	void setSlotBindIndex(int slot, int index);
-	[Internal="addSlotData"] void addSlotTexture( int slot, Texture tex );
-	[Internal="addSlotData"] void addSlotSampler( int slot, Sampler sampler );
-	[Internal="addSlotData"] void addSlotUniformBuffer( int slot, InternalBuffer uniformBuffer );
+	[Internal="addSlotData"] int addSlotTexture( int slot, Texture tex );
+	[Internal="addSlotData"] int addSlotSampler( int slot, Sampler sampler );
+	[Internal="addSlotData"] int addSlotUniformBuffer( int slot, InternalBuffer uniformBuffer );
+
+	[Internal="setSlotData"] void setSlotTexture( int slot, int idx, Texture tex );
+	[Internal="setSlotData"] void setSlotSampler( int slot, int idx, Sampler sampler );
+	[Internal="setSlotData"] void setSlotUniformBuffer( int slot, int idx, InternalBuffer uniformBuffer );
+
+	
 	void setSlotUAVMipSlice( int slot, int idx );
 	void update(Renderer renderer, int index, DescriptorSet set);
 	void bind(Cmd cmd, int index, DescriptorSet set);	

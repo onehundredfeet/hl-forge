@@ -27,6 +27,14 @@ enum abstract EGLSLFlavour(Int) {
 	var NONE;
 }
 
+@:enum abstract ETextureType(Int) to Int from Int{
+	var TEX_TYPE_2D = 0;
+	var TEX_TYPE_CUBE;
+	var TEX_TYPE_RT;
+	var TEX_TYPE_COUNT;
+}
+
+
 class GLSLTranscoder {
 	static final KWD_LIST = [
 		"input", "output", "discard", #if js "sample", #end "dvec2", "dvec3", "dvec4", "hvec2", "hvec3", "hvec4", "fvec2", "fvec3", "fvec4", "int", "float",
@@ -37,7 +45,8 @@ class GLSLTranscoder {
 	static final STAGE_SHORT_NAME = ["Vert", "Frag", "Comp"];
 	static final SET_SHORT_NAME = ["Globals", "Params", "Textures", "Buffers", ""];
 	static final LAYOUT_PUSH_CONSTANT = "push_constant";
-
+	static final TEX_TYPE_NAME = ["2D", "Cube", "RT"];
+	
 	static var KWDS = [for (k in KWD_LIST) k => true];
 	static var GLOBALS = {
 		var gl = [];
@@ -174,6 +183,19 @@ class GLSLTranscoder {
 		return '${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[set]}';
 	}
 	
+
+	static final SAMPLER_POST_FIX = "Smplr";
+
+	public static function getTextureArrayName(stage:EShaderStage, textureType:ETextureType, isSampler : Bool, flavour = EGLSLFlavour.Auto):String {
+		if (flavour == EGLSLFlavour.Auto)
+			flavour = _defaultFlavour;
+
+		// (flavour == EGLSLFlavour.Metal || stage == VERTEX) &&
+		return '${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[EDescriptorSetSlot.TEXTURES]}${TEX_TYPE_NAME[textureType]}${isSampler ? SAMPLER_POST_FIX : ""}';
+	}
+
+	
+
 	var texPostFix = "";
 	function getLookupName(set:EDescriptorSetSlot, name:String):String {
 		if (set == TEXTURES)
@@ -1018,7 +1040,7 @@ class GLSLTranscoder {
 		});
 
 		if (channel_params.length > 0) {
-			add("//Samplers & textures\n");
+			add("//Render target references\n");
 
 			// ${getVariableBufferName( stage, EDescriptorSetSlot.TEXTURES, _flavour)}_${v.name}
 
