@@ -473,7 +473,7 @@ class DescriptorDataBuilder {
         printf("Updating descriptor set %p at index %d with %d slots\n", set, index, _names.size());
         for (auto i = 0; i < _names.size(); i++) {
             _data[i].pName = _names[i].c_str();
-            printf("\tSlot %d has name %s and mode %d\n", i, _names[i].c_str(), _modes[i]);
+            printf("\tSlot %d has name %s and mode %d with %lld size\n", i, _names[i].c_str(), _modes[i], _dataPointers[i]->size());
             switch (_modes[i]) {
                 case DBM_TEXTURES:
                     _data[i].ppTextures = (Texture **)(&(*_dataPointers[i])[0]);

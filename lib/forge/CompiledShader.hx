@@ -32,6 +32,7 @@ class CompiledTextureRef {
 	public function new() {}
 
 	public var index:Int;
+    public var kind:hxsl.Ast.Type;
 }
 
 class CompiledTextureArray {
@@ -96,9 +97,9 @@ class CompiledShader {
 	public var buffers:Array<DescriptorIndex>;
 	public var shader:hxsl.RuntimeShader.RuntimeShaderData;
 
-	public var textureArrays:Array<CompiledTextureArray>;
+//	public var textureArrays:Array<CompiledTextureArray>;
 	public var argBuffers:Array<CompiledArgBuffer>;
-
+    public var shaderVarNames : Map<Int, String>;
 	/*
 		public var textures:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
 		public var texturesCubes:Array<{u:DescriptorIndex, t:hxsl.Ast.Type, mode:Int}>;
@@ -112,7 +113,7 @@ class CompiledShader {
 	public var md5:String;
 	public var globalsBuffer:DynamicUniformBuffer;
 	public var globalsLastUpdated:Int = -1;
-
+/*
 	public function textureCount(array:ETextureType):Int {
 		if (textureArrays == null)
 			return 0;
@@ -133,12 +134,19 @@ class CompiledShader {
 			}
 		}
 		return total;
-	}
+	}*/
+
+    public inline function textureTotalCount():Int {
+		return shader.texturesCount;
+    }
+	
 
 	public function hasTextures():Bool {
-		return textureArrays != null;
+        return shader.texturesCount > 0;
+//		return textureArrays != null;
 	}
 
+    /*
 	public function getTextureArray(array:ETextureType):CompiledTextureArray {
 		if (textureArrays == null)
 			return null;
@@ -156,7 +164,7 @@ class CompiledShader {
 			textureArrays[arrayIdx] = new CompiledTextureArray();
 		return textureArrays[arrayIdx];
 	}
-
+*/
 	//	public var textureDataBuilder:forge.Native.DescriptorDataBuilder;
 	//	public var samplerDataBuilder:forge.Native.DescriptorDataBuilder;
 

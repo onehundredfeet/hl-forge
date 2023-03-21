@@ -180,9 +180,24 @@ class GLSLTranscoder {
 		}
 		#end
 		// (flavour == EGLSLFlavour.Metal || stage == VERTEX) &&
-		return '${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[set]}';
+		return '_${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[set]}';
 	}
 	
+
+	public static function getVariableBufferTypeName(stage:EShaderStage, set:EDescriptorSetSlot, flavour = EGLSLFlavour.Auto):String {
+		if (flavour == EGLSLFlavour.Auto)
+			flavour = _defaultFlavour;
+
+		#if PUSH_CONSTANTS
+		if (set == EDescriptorSetSlot.PARAMS && false) {
+			return '${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[set]}${PUSH_CONSTANT_TAG}';
+		}
+		#end
+		// (flavour == EGLSLFlavour.Metal || stage == VERTEX) &&
+		return '${STAGE_SHORT_NAME[stage]}${SET_SHORT_NAME[set]}';
+	}
+
+
 
 	static final SAMPLER_POST_FIX = "Smplr";
 
@@ -200,7 +215,7 @@ class GLSLTranscoder {
 	function getLookupName(set:EDescriptorSetSlot, name:String):String {
 		if (set == TEXTURES)
 			return name + texPostFix;
-		return "_" + getVariableBufferName(_currentStage, set, _flavour) + "." + name;
+		return getVariableBufferName(_currentStage, set, _flavour) + "." + name;
 	}
 
 
@@ -728,6 +743,12 @@ class GLSLTranscoder {
 		}
 	}
 
+	public static function getCleanName( n : String ) : String {
+		if (KWDS.exists(n)) {
+			return "_" + n;
+		}
+		return n;
+	}
 	function varName(v:TVar) {
 		if (v == null)
 			throw "Variable name is null";
@@ -744,10 +765,10 @@ class GLSLTranscoder {
 		var n = _stageVarNames[_currentStage].get(v.id);
 		if (n != null)
 			return n;
-		n = v.name;
-		if (KWDS.exists(n))
-			n = "_" + n;
+//		trace('varName: ' + v.name + ' ' + v.id);
+		n = getCleanName(v.name);
 		if (allNames.exists(n)) {
+			trace ('Duplicate variable name ${n}');
 			var k = 2;
 			n += "_";
 			while (allNames.exists(n + k))
@@ -950,18 +971,18 @@ class GLSLTranscoder {
 
 		if (globals.length > 0) {
 			add('// Globals - ${EDescriptorSetSlot.GLOBALS} -> ${getLayoutSpec(stage, EDescriptorSetSlot.GLOBALS)}\n');
-			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.GLOBALS)}) uniform ${getVariableBufferName(stage, EDescriptorSetSlot.GLOBALS)} {\n');
+			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.GLOBALS)}) uniform ${getVariableBufferTypeName(stage, EDescriptorSetSlot.GLOBALS)} {\n');
 			for (v in globals) {
 				add("\t");
 				initVar(v);
 			}
 
-			add('} _${getVariableBufferName( stage, EDescriptorSetSlot.GLOBALS), _flavour};\n');
+			add('} ${getVariableBufferName( stage, EDescriptorSetSlot.GLOBALS), _flavour};\n');
 		}
 		if (buffer_params.length > 0) {
 			add('// Params - ${EDescriptorSetSlot.PARAMS} -> ${getLayoutSpec(stage, EDescriptorSetSlot.PARAMS)}\n');
 
-			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.PARAMS)} ) uniform ${getVariableBufferName(stage, EDescriptorSetSlot.PARAMS, _flavour)} {\n');
+			add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.PARAMS)} ) uniform ${getVariableBufferTypeName(stage, EDescriptorSetSlot.PARAMS, _flavour)} {\n');
 
 
 			var totalSize = 0;
@@ -977,13 +998,13 @@ class GLSLTranscoder {
 			trace('RENDER PARAMS OFFSET ${_buildPushConstantSize} TOTAL SIZE ${totalSize} for stage ${stage}');
 			_buildPushConstantSize += totalSize;
 
-			add('} _${getVariableBufferName(stage, EDescriptorSetSlot.PARAMS, _flavour)};\n');
+			add('} ${getVariableBufferName(stage, EDescriptorSetSlot.PARAMS, _flavour)};\n');
 		}
 		for (b in bufferVars) {
 			initVar(b);
 		}
 
-		var sampler_params = params.filter((x) -> switch (x.type) {
+		var sampler_params = s.vars.filter((x) -> switch (x.type) {
 			case TSampler2D: true;
 			case TSamplerCube: true;
 			case TArray(t, size): t == TSampler2D || t == TSamplerCube;
@@ -1012,7 +1033,9 @@ class GLSLTranscoder {
 						false;
 				}
 
-				var vt = {id: v.id + NEW_VAR_OFFSET, name : v.name + "Smplr", type : v.type, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
+				var tn = KWDS.exists(v.name) ? '_' + v.name : v.name;
+
+				var vt = {id: v.id + NEW_VAR_OFFSET, name : tn + "Smplr", type : v.type, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
 				initVar(vt);
 
 				var vsType = switch(v.type) {
@@ -1021,7 +1044,7 @@ class GLSLTranscoder {
 					default:  v.type;
 				};
 
-				var vs = {id: v.id, name : v.name, type : vsType, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
+				var vs = {id: v.id, name : tn, type : vsType, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
 				trace('WTF : vt ${vt.name} vs ${vs.name}');
 				add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, tex_binding_idx++)} ) uniform ');
 				initVar(vs);
@@ -1147,6 +1170,8 @@ class GLSLTranscoder {
 		decls = [];
 		buf = new StringBuf();
 		exprValues = [];
+		allNames = new Map();
+
 		if (s.funs.length != 1)
 			throw "assert";
 		var f = s.funs[0];

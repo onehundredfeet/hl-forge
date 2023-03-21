@@ -25,6 +25,7 @@ import forge.EnumTools;
 import forge.CompiledShader;
 import forge.CompiledProgram;
 import forge.GLSLTranscoder;
+import haxe.ds.Vector;
 
 typedef ComputePipeline = {pipeline:forge.Native.Pipeline, rootconstant:Int, shader:forge.Native.Shader, rootsig:forge.Native.RootSignature};
 
@@ -79,8 +80,11 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _fragConstantBuffer = new Array<Float>();
 	var _currentSwapIndex = 0;
 
-	var _vertexTextures = [for (i in 0...TEX_TYPE_COUNT) new Array<h3d.mat.Texture>()];
-	var _fragmentTextures = [for (i in 0...TEX_TYPE_COUNT) new Array<h3d.mat.Texture>()];
+//	var _vertexTextures = [for (i in 0...TEX_TYPE_COUNT) new Array<h3d.mat.Texture>()];
+//	var _fragmentTextures = [for (i in 0...TEX_TYPE_COUNT) new Array<h3d.mat.Texture>()];
+
+	var _vertexTextures : Vector<h3d.mat.Texture>;
+	var _fragmentTextures : Vector<h3d.mat.Texture>;
 
 	var _swapRenderTargets = new Array<RenderTarget>();
 	var _fragmentUniformBuffers = new Array<VertexBufferExt>();
@@ -1161,6 +1165,9 @@ class ForgeDriver extends h3d.impl.Driver {
 		p.fragment = new CompiledShader(fgShader, false, shader.fragment);
 		p.vertex.md5 = vert_md5;
 		p.fragment.md5 = frag_md5;
+		DebugTrace.trace('RENDER SHADER caching remapped variable names');
+		p.vertex.shaderVarNames = transcoder.getStageVarNames(VERTEX);
+		p.fragment.shaderVarNames = transcoder.getStageVarNames(FRAGMENT);
 
 		DebugTrace.trace('RENDER Shader texture count vert ${shader.vertex.texturesCount}');
 		DebugTrace.trace('RENDER TEXTURE Shader texture count frag ${shader.fragment.texturesCount}');
@@ -1204,10 +1211,16 @@ class ForgeDriver extends h3d.impl.Driver {
 				tt = tt.next;
 			}
 		 */
+
+		 DebugTrace.trace('RENDER Creating root signature');
+
 		var rootSig = _renderer.createRootSig(rootDesc);
 		p.rootSig = rootSig;
 
 		forge.Native.Globals.waitForAllResourceLoads();
+
+		#if OLD_OLD
+		DebugTrace.trace('RENDER Scanning vertex textures');
 
 		if (shader.vertex.texturesCount > 0) {
 			var tt = shader.vertex.textures;
@@ -1225,11 +1238,13 @@ class ForgeDriver extends h3d.impl.Driver {
 				tt = tt.next;
 			}
 		}
+		DebugTrace.trace('RENDER Scanning fragment textures ${shader.fragment}');
 
 		if (shader.fragment.texturesCount > 0) {
 			var tt = shader.fragment.textures;
 
 			for (i in 0...shader.fragment.texturesCount) {
+				if (tt == null) throw 'Null texture ${i}';
 				var arrayType = switch (tt.type) {
 					case TChannel(_): TEX_TYPE_RT;
 					case TSampler2D: TEX_TYPE_2D;
@@ -1242,7 +1257,7 @@ class ForgeDriver extends h3d.impl.Driver {
 				tt = tt.next;
 			}
 		}
-
+		#end
 		// DebugTrace.trace('RENDER TEXTURE name ${tt.name} index ${tt.index} instance ${tt.instance} pos ${tt.pos} type ${tt.type} next ${tt.next}');
 
 		// var ds = _renderer.createDescriptorSet(rootSig, DESCRIPTOR_UPDATE_FREQ_PER_DRAW, 1, 0);
@@ -1328,13 +1343,16 @@ class ForgeDriver extends h3d.impl.Driver {
 		 */
 		// }
 
-		trace('GOT HERE: A');
-		// get inputs
-		var GLOBAL_DESCRIPTOR_SET = forge.Native.DescriptorUpdateFrequency.fromValue(EDescriptorSetSlot.GLOBALS);
+		DebugTrace.trace('RENDER Building packed descriptors');
 
-		p.vertex.params = rootSig.getDescriptorIndexFromName("_" + GLSLTranscoder.getVariableBufferName(VERTEX, PARAMS));
-		p.vertex.constantsIndex = rootSig.getDescriptorIndexFromName("_" + GLSLTranscoder.getVariableBufferName(VERTEX, PARAMS));
-		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName("_" + GLSLTranscoder.getVariableBufferName(VERTEX, GLOBALS));
+		// get inputs
+
+		p.vertex.params = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(VERTEX, PARAMS));
+		p.vertex.constantsIndex = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(VERTEX, PARAMS));
+		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(VERTEX, GLOBALS));
+
+		trace('VERTEX DESCRIPTORS globals ${p.vertex.globalsIndex} ${p.vertex.params}');
+		
 		//		p.vertex.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0"); // doesn't seem to resolve
 		p.vertex.globalsLength = shader.vertex.globalsSize * FLOATS_PER_VECT; // vectors to floats
 		p.vertex.paramsLengthFloats = shader.vertex.paramsSize * FLOATS_PER_VECT; // vectors to floats
@@ -1342,13 +1360,19 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (p.vertex.globalsLength > 0) {
 			p.vertex.globalsBuffer = DynamicUniformBuffer.allocate(p.vertex.globalsLength * SIZEOF_FLOAT, _swap_count);
 			DebugTrace.trace('RENDER SHADER Creating vertex globals descriptor');
-			//			p.vertex.globalDescriptorSet = p.vertex.globalsBuffer.createDescriptors( _renderer, rootSig, p.vertex.globalsIndex, GLOBAL_DESCRIPTOR_SET);
+		} else {
+			trace('RENDER No vertex globals');
 		}
-		p.fragment.params = rootSig.getDescriptorIndexFromName("_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
-		p.fragment.constantsIndex = rootSig.getDescriptorIndexFromName("_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
+		if (p.vertex.paramsLengthBytes == 0) {
+			trace('RENDER EMPTY No vertex params');
+		}
+
+		p.fragment.params = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
+		p.fragment.constantsIndex = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
 		p.fragment.globalsLength = shader.fragment.globalsSize * 4; // vectors to floats
-		p.fragment.globalsIndex = rootSig.getDescriptorIndexFromName("_" + GLSLTranscoder.getVariableBufferName(FRAGMENT, GLOBALS));
+		p.fragment.globalsIndex = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(FRAGMENT, GLOBALS));
 		//		p.fragment.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0");
+		trace('FRAGMENT DESCRIPTORS globals ${p.fragment.globalsIndex} ${p.fragment.params}');
 
 		DebugTrace.trace('RENDER SHADER DESCRIPTOR p.vertex.globalsIndex ${p.vertex.globalsIndex} p.vertex.globalsDescriptorSetIndex ${p.vertex.globalsDescriptorSetIndex}');
 		DebugTrace.trace('RENDER SHADER DESCRIPTOR p.fragment.globalsIndex ${p.fragment.globalsIndex} p.fragment.globalsDescriptorSetIndex ${p.fragment.globalsDescriptorSetIndex}');
@@ -1356,11 +1380,16 @@ class ForgeDriver extends h3d.impl.Driver {
 		p.fragment.paramsLengthFloats = shader.fragment.paramsSize * FLOATS_PER_VECT; // vectors to floats
 		p.fragment.paramsLengthBytes = shader.fragment.paramsSize * 16; // vectors to bytes
 
+		if (p.fragment.paramsLengthBytes == 0) {
+			trace('RENDER EMPTY No fragment params');
+		}
 		if (p.fragment.globalsLength > 0) {
 			p.fragment.globalsBuffer = DynamicUniformBuffer.allocate(p.fragment.globalsLength * SIZEOF_FLOAT,
 				_swap_count); // need to use the swap chain depth, but 3 is enough for now
 			DebugTrace.trace('RENDER SHADER Creating fragment globals descriptor');
 			//			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, GLOBAL_DESCRIPTOR_SET);
+		}else {
+			trace('RENDER No fragment globals');
 		}
 
 		p.globalDescriptorSet = createGlobalDescriptors(rootSig, EDescriptorSetSlot.GLOBALS, p.vertex.globalsBuffer, p.vertex.globalsIndex,
@@ -1606,10 +1635,34 @@ class ForgeDriver extends h3d.impl.Driver {
 			case Textures:
 				DebugTrace.trace('RENDER TEXTURES PIPELINE PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length} ');
 
+
+				_vertexTextures = buf.vertex.tex;
+				_fragmentTextures = buf.fragment.tex;
+
+				#if OLD_NEW
 				// Make sure that we have the minimum number of textures for the shader
 				for (i in 0...TEX_TYPE_COUNT) {
 					_vertexTextures[i].resize(0);
 					_fragmentTextures[i].resize(0);
+				}
+
+				var vertRuntimeData = _curShader.vertex.shader;
+				var fragRuntimeData = _curShader.fragment.shader;
+
+				DebugTrace.trace('RENDER TEXTURES PIPELINE shader texture count vert ${vertRuntimeData.texturesCount} frag ${fragRuntimeData.texturesCount}');
+				{
+					var tt = vertRuntimeData.textures;
+					for (i in 0...vertRuntimeData.texturesCount) {
+						trace('RENDER TEXTURES vertex tex ${i} name ${tt.name} type ${tt.type}');
+						tt = tt.next;
+					}
+				}
+				{
+					var tt = fragRuntimeData.textures;
+					for (i in 0...fragRuntimeData.texturesCount) {
+						trace('RENDER TEXTURES frag tex ${i} name ${tt.name} type ${tt.type}');
+						tt = tt.next;
+					}
 				}
 				for (i in 0...2) {
 					var texturesList = i == 0 ? buf.vertex.tex : buf.fragment.tex;
@@ -1623,6 +1676,7 @@ class ForgeDriver extends h3d.impl.Driver {
 							if (t.t.t == null)
 								throw "Forge Cube texture is null";
 						} else if (t.flags.has(Target)) {
+							trace('RENDER TEXTURES target ${t.name}');
 							targetTextureArrays[TEX_TYPE_RT].push(t);
 							if (t.t.rt == null)
 								throw "Render target is null";
@@ -1641,7 +1695,7 @@ class ForgeDriver extends h3d.impl.Driver {
 						t.lastFrame = _currentFrame;
 					}
 				}
-
+				#end
 			case Buffers:
 				DebugTrace.trace('RENDER BUFFERS Upload Buffers v ${buf.vertex.buffers} f ${buf.fragment.buffers}');
 
@@ -2165,10 +2219,13 @@ class ForgeDriver extends h3d.impl.Driver {
 		var cmat = _materialInternalMap.get(cmatidx);
 		DebugTrace.trace('RENDER PIPELINE Signature  xx.h ${hv.high} | xx.l ${hv.low} pipeid ${cmatidx}');
 
+		/*
+		var shaderFragTextureCount = _fragmentTextures.length;
 		for (i in 0...TEX_TYPE_COUNT) {
 			var shaderFragTextureCount = _curShader.fragment.textureCount(i); // .textures == null ? 0 : _curShader.fragment.textures.length;
 			DebugTrace.trace('RENDER PIPELINE texture count ${shaderFragTextureCount} vs ${_fragmentTextures[i].length}');
 		}
+		*/
 
 		if (cmat == null) {
 			cmat = new CompiledMaterial();
@@ -2362,24 +2419,49 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (_curShader == null)
 			throw "Can't bind textures on null shader";
 		if (_curShader.fragment.hasTextures() || _curShader.vertex.hasTextures()) {
-			#if !old_binder
+			if (_vertexTextures.length < _curShader.vertex.textureTotalCount())
+				throw 'Not enough vertex textures ';
+			if (_fragmentTextures.length < _curShader.fragment.textureTotalCount())
+				throw 'Not enough fragment textures  have ${_fragmentTextures.length} should have ${_curShader.fragment.textureTotalCount()}';
+			if (_vertexTextures.length != _curShader.vertex.textureTotalCount())
+				DebugTrace.trace('RENDER WARNING shader vertex texture count ${_curShader.vertex.textureTotalCount()} doesn\'t match provided texture count ${_vertexTextures.length}');
+			if (_fragmentTextures.length != _curShader.fragment.textureTotalCount())
+				DebugTrace.trace('RENDER WARNING shader fragment texture count ${_curShader.fragment.textureTotalCount()} doesn\'t match provided texture count ${_vertexTextures.length}');
+
 			var block = getTextureBlock();
 			block.beginUpdate();
 			block.fill(_renderer, _vertexTextures, _fragmentTextures);
 			block.bind(_currentCmd);
-			block.next();
-			#else
+			block.next();	
+		}
+		
+		
+
+
+		#if OLD_NEW
+		for (i in 0...TEX_TYPE_COUNT) {
+			trace('RENDER CALLSTACK bindTextures ${i} verts ${_vertexTextures[i].length} frags ${_fragmentTextures[i].length}');
+		}
+
+		if (_curShader.fragment.hasTextures() || _curShader.vertex.hasTextures()) {
+			#if !old_binder
 			for (i in 0...TEX_TYPE_COUNT) {
 				if (_vertexTextures[i].length < _curShader.vertex.textureCount(i))
 					throw 'Not enough vertex textures for array ${i}';
 				if (_fragmentTextures[i].length < _curShader.fragment.textureCount(i))
-					throw 'Not enough fragment textures for array ${i}';
+					throw 'Not enough fragment textures for array ${i} have ${_fragmentTextures[i].length} should have ${_curShader.fragment.textureCount(i)}';
 				if (_vertexTextures[i].length != _curShader.vertex.textureCount(i))
 					DebugTrace.trace('RENDER WARNING shader vertex texture count ${_curShader.vertex.textureCount(i)} doesn\'t match provided texture count ${_vertexTextures[i].length}');
 				if (_fragmentTextures[i].length != _curShader.fragment.textureCount(i))
 					DebugTrace.trace('RENDER WARNING shader fragment texture count ${_curShader.fragment.textureCount(i)} doesn\'t match provided texture count ${_vertexTextures[i].length}');
 			}
 
+			var block = getTextureBlock();
+			block.beginUpdate();
+			block.fill(_renderer, _vertexTextures, _fragmentTextures);
+			block.bind(_currentCmd);
+			block.next();
+			#else
 			if (_curShader.fragment.hasTextures() || _curShader.vertex.hasTextures()) {
 				//		if (_curShader.vertex.textures.length == 0) return;
 				var fragmentSeed = 0x3917437;
@@ -2550,6 +2632,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		} else {
 			DebugTrace.trace('RENDER No textures specified in shader');
 		}
+		#end
 	}
 
 	public override function selectMaterial(pass:h3d.mat.Pass) {
