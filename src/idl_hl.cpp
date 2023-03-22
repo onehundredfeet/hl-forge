@@ -2282,17 +2282,10 @@ HL_PRIM HL_CONST pref<Shader>* HL_NAME(Renderer_loadComputeShader1)(pref<Rendere
 }
 DEFINE_PRIM(_IDL, Renderer_loadComputeShader1, _IDL _STRING);
 
-HL_PRIM pref<DescriptorSet>* HL_NAME(Renderer_addDescriptorSet2)(pref<Renderer>* _this, pref<DescriptorSetDesc>* desc) {
-	DescriptorSet* __tmpret;
-addDescriptorSet( _unref(_this) , _unref_ptr_safe(desc), &__tmpret);
-	return alloc_ref_const( __tmpret, DescriptorSet );
+HL_PRIM HL_CONST pref<DescriptorSet>* HL_NAME(Renderer_addDescriptorSet1)(pref<Renderer>* _this, pref<DescriptorSetDesc>* desc) {
+	return alloc_ref_const((forge_renderer_add_descriptor_set( _unref(_this) , _unref_ptr_safe(desc))),DescriptorSet);
 }
-DEFINE_PRIM(_IDL, Renderer_addDescriptorSet2, _IDL _IDL);
-
-HL_PRIM HL_CONST pref<DescriptorSet>* HL_NAME(Renderer_createDescriptorSet4)(pref<Renderer>* _this, pref<RootSignature>* sig, int setIndex, unsigned int maxSets, unsigned int nodeIndex) {
-	return alloc_ref_const((forge_renderer_create_descriptor_set( _unref(_this) , _unref_ptr_safe(sig), setIndex, maxSets, nodeIndex)),DescriptorSet);
-}
-DEFINE_PRIM(_IDL, Renderer_createDescriptorSet4, _IDL _IDL _I32 _I32 _I32);
+DEFINE_PRIM(_IDL, Renderer_addDescriptorSet1, _IDL _IDL);
 
 HL_PRIM pref<Sampler>* HL_NAME(Renderer_createSampler2)(pref<Renderer>* _this, pref<SamplerDesc>* desc) {
 	Sampler* __tmpret;

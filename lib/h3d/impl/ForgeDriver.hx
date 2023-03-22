@@ -1,5 +1,6 @@
 package h3d.impl;
 
+import haxe.macro.Type.DefType;
 import forge.PipelineTextureSetBlock;
 import forge.GLSLTranscoder;
 import forge.GLSLTranscoder.EGLSLFlavour;
@@ -2216,14 +2217,14 @@ class ForgeDriver extends h3d.impl.Driver {
 		_hashBulder.addInt32(_currentRT.colorTargets[0].nativeRT.format.toValue());
 		_hashBulder.addInt32(_currentRT.colorTargets[0].nativeRT.sampleCount.toValue());
 		_hashBulder.addInt32(_currentRT.colorTargets[0].nativeRT.sampleQuality);
-		var db = _currentRT.depthBuffer;
-		if (db != null) {
+		var dt = _currentRT.depthTarget;
+		if (dt != null) {
 			_hashBulder.addInt8(1);
-			_hashBulder.addInt32(cast(db.format,Int));
+			_hashBulder.addInt32(dt.nativeRT.format.toValue());
 		}
 		for (i in 0..._currentRT.colorTargets.length) {
 			_hashBulder.addInt8(i);
-			_hashBulder.addInt32(cast(_currentRT.colorTargets[i].nativeDesc.format,Int));
+			_hashBulder.addInt32(_currentRT.colorTargets[i].nativeDesc.format.toValue());
 		}
 		if (_curBuffer != null) {
 			if (_curBuffer.flags.has(RawFormat)) {

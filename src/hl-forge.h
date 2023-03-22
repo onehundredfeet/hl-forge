@@ -1074,6 +1074,7 @@ Renderer *createRenderer(const char *name);
 void destroyRenderer(Renderer *);
 Queue *createQueue(Renderer *renderer);
 DescriptorSet *forge_renderer_create_descriptor_set(Renderer *, RootSignature *, int setIndex, uint maxSets, uint nodeIndex);
+DescriptorSet *forge_renderer_add_descriptor_set(Renderer *pRenderer,DescriptorSetDesc *dsd);
 RenderTarget *forge_sdl_create_render_target(Renderer *, RenderTargetDesc *);
 void forge_render_target_desc_setDepthClear( RenderTargetDesc *, float depth, int stencil);
 CmdPool *forge_sdl_renderer_create_cmd_pool(Renderer *, Queue *);

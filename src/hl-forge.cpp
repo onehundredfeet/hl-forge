@@ -604,7 +604,7 @@ DescriptorSet *forge_renderer_add_descriptor_set(Renderer *pRenderer,DescriptorS
 
     addDescriptorSet(pRenderer, dsd, &tmp);
 
-    printf("RENDER CREATE DESCRIPTOR sets %p with %d sets\n", tmp, maxSets);
+    printf("RENDER CREATE DESCRIPTOR sets %p with %d sets\n", tmp, dsd->mMaxSets);
     return tmp;
 }
 
