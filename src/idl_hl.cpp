@@ -1667,10 +1667,10 @@ HL_PRIM void HL_NAME(PipelineDesc_setRenderTargetGlobals2)(pref<HlForgePipelineD
 }
 DEFINE_PRIM(_VOID, PipelineDesc_setRenderTargetGlobals2, _IDL _I32 _I32);
 
-HL_PRIM int HL_NAME(PipelineDesc_addGraphicsRenderTarget1)(pref<HlForgePipelineDesc>* _this, int format) {
-	return (_unref(_this)->addGraphicsRenderTarget(TinyImageFormat__values[format]));
+HL_PRIM int HL_NAME(PipelineDesc_addGraphicsColourTarget1)(pref<HlForgePipelineDesc>* _this, int format) {
+	return (_unref(_this)->addGraphicsColourTarget(TinyImageFormat__values[format]));
 }
-DEFINE_PRIM(_I32, PipelineDesc_addGraphicsRenderTarget1, _IDL _I32);
+DEFINE_PRIM(_I32, PipelineDesc_addGraphicsColourTarget1, _IDL _I32);
 
 HL_PRIM pref<BufferBinder>* HL_NAME(BufferBinder_new0)() {
 	return alloc_ref((new BufferBinder()),BufferBinder);
@@ -1903,6 +1903,11 @@ HL_PRIM int HL_NAME(RenderTargetDesc_set_format)( pref<RenderTargetDesc>* _this,
 	return value;
 }
 DEFINE_PRIM(_I32,RenderTargetDesc_set_format,_IDL _I32);
+
+HL_PRIM void HL_NAME(RenderTargetDesc_setDepthClear2)(pref<RenderTargetDesc>* _this, float depth, int stencil) {
+	(forge_render_target_desc_setDepthClear( _unref(_this) , depth, stencil));
+}
+DEFINE_PRIM(_VOID, RenderTargetDesc_setDepthClear2, _IDL _F32 _I32);
 
 HL_PRIM unsigned int HL_NAME(RenderTargetDesc_get_sampleQuality)( pref<RenderTargetDesc>* _this ) {
 	return _unref(_this)->mSampleQuality;

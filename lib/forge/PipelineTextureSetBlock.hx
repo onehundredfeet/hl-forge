@@ -222,10 +222,10 @@ class PipelineTextureSetBlock {
                         var t = @:privateAccess fragmentTex[i].t;
 						if (t == null)
 							throw "Texture is null";
-						var ft = (t.rt != null) ? t.rt.rt.getTexture() : t.t;
+						var ft = (t.rt != null) ? t.rt.nativeRT.getTexture() : t.t;
 
                         if (@:privateAccess ft == null) {
-                            throw 'FILL RENDER UNIQUE TEXTURE NOT FOUND ${tt.name} -> ${fragmentTex[i].name}';
+                            throw 'FILL RENDER UNIQUE TEXTURE NOT FOUND ${tt.name} -> ${fragmentTex[i].name} |  rt ${t.rt} | tt ${t.t}';
                         }
                         _builder.setSlotTexture(slotIdx, 0, ft);
 						found = true;

@@ -355,22 +355,23 @@ class HlForgePipelineDesc : public PipelineDesc {
 
     void reset() {
         mGraphicsDesc.mRenderTargetCount = 0;
-        _formats.clear();
+        _colorFormats.clear();
     }
     void setRenderTargetGlobals(SampleCount sampleCount, int sampleQuality) {
         mGraphicsDesc.mSampleCount = sampleCount;
         mGraphicsDesc.mSampleQuality = sampleQuality;
     }
 
-    int addGraphicsRenderTarget(TinyImageFormat format) {
+    int addGraphicsColourTarget(TinyImageFormat format) {
         auto idx = mGraphicsDesc.mRenderTargetCount;
-        _formats.push_back(format);
-        mGraphicsDesc.pColorFormats = &_formats[0];
-        mGraphicsDesc.mRenderTargetCount++;
+        _colorFormats.push_back(format);
+        mGraphicsDesc.pColorFormats = &_colorFormats[0];
+        mGraphicsDesc.mRenderTargetCount = (uint32_t)_colorFormats.size();
         return idx;
     }
 
-    std::vector<TinyImageFormat> _formats;
+
+    std::vector<TinyImageFormat> _colorFormats;
     std::string _name;
 };
 

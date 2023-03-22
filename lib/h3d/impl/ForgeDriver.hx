@@ -20,11 +20,8 @@ import forge.Forge;
 import forge.DynamicUniformBuffer;
 import h3d.impl.GraphicsDriver;
 import forge.Native.TextureCreationFlags;
-import forge.DebugTrace;
-import forge.EnumTools;
+import forge.*;
 import forge.CompiledShader;
-import forge.CompiledProgram;
-import forge.GLSLTranscoder;
 import haxe.ds.Vector;
 
 typedef ComputePipeline = {pipeline:forge.Native.Pipeline, rootconstant:Int, shader:forge.Native.Shader, rootsig:forge.Native.RootSignature};
@@ -72,21 +69,23 @@ class ForgeDriver extends h3d.impl.Driver {
 	var _defaultDepth:h3d.mat.DepthBuffer;
 	var _frameIndex = 0;
 	var _frameBegun = false;
-	var _currentRT:RenderTarget;
+	var _currentRT:RenderTargetBlock;
 	var _currentSem:forge.Native.Semaphore;
 	var _currentFence:forge.Native.Fence;
 	var _currentCmd:forge.Native.Cmd;
 	var _vertConstantBuffer = new Array<Float>();
 	var _fragConstantBuffer = new Array<Float>();
 	var _currentSwapIndex = 0;
+	var _renderTargets = [];
 
-//	var _vertexTextures = [for (i in 0...TEX_TYPE_COUNT) new Array<h3d.mat.Texture>()];
-//	var _fragmentTextures = [for (i in 0...TEX_TYPE_COUNT) new Array<h3d.mat.Texture>()];
+	//	var _vertexTextures = [for (i in 0...TEX_TYPE_COUNT) new Array<h3d.mat.Texture>()];
+	//	var _fragmentTextures = [for (i in 0...TEX_TYPE_COUNT) new Array<h3d.mat.Texture>()];
+	var _vertexTextures:Vector<h3d.mat.Texture>;
+	var _fragmentTextures:Vector<h3d.mat.Texture>;
 
-	var _vertexTextures : Vector<h3d.mat.Texture>;
-	var _fragmentTextures : Vector<h3d.mat.Texture>;
+	var _swapRenderTargets = new Array<RuntimeRenderTarget>();
+	var _swapRenderBlocks = new Array<RenderTargetBlock>();
 
-	var _swapRenderTargets = new Array<RenderTarget>();
 	var _fragmentUniformBuffers = new Array<VertexBufferExt>();
 
 	var _backend:ForgeBackend;
@@ -255,14 +254,21 @@ class ForgeDriver extends h3d.impl.Driver {
 				var present = new forge.Native.ResourceBarrierBuilder();
 				present.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_PRESENT);
 
-				_swapRenderTargets.push({
-					rt: rt,
-					inBarrier: inBarrier,
-					outBarrier: outBarrier,
-					begin: begin,
-					present: present,
-					captureBuffer: null
-				});
+				var rtrt = new RuntimeRenderTarget();
+
+				rtrt.nativeRT = rt;
+				rtrt.inBarrier = inBarrier;
+				rtrt.outBarrier = outBarrier;
+				rtrt.begin = begin;
+				rtrt.present = present;
+				rtrt.captureBuffer = null;
+				rtrt.swapChain = _sc;
+
+				_swapRenderTargets.push(rtrt);
+
+				var rtb = new RenderTargetBlock();
+				rtb.colorTargets.push(rtrt);
+				_swapRenderBlocks.push(rtb);
 			}
 		} else {
 			DebugTrace.trace('Duplicate attach');
@@ -286,12 +292,19 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (_defaultDepth != null) {
 			var b = @:privateAccess _defaultDepth.b;
 			var drb = b.r;
-			_renderer.destroyRenderTarget(drb);
+			_renderer.destroyRenderTarget(drb.nativeRT);
 			_defaultDepth = null;
 		}
 		_currentRT = null;
-		_currentDepth = null;
+//		currentDepth = null;
+		_attachedDepthBuffer = false;
+		if (_defaultDepth != null)  {
+			_renderer.destroyRenderTarget(@:privateAccess _defaultDepth.b.r.nativeRT);
+			//_defaultDepth.dispose();
+			_defaultDepth = null;	
+		}
 		_swapRenderTargets.resize(0);
+		_swapRenderBlocks.resize(0);
 	}
 
 	// second function called
@@ -463,8 +476,13 @@ class ForgeDriver extends h3d.impl.Driver {
 		 */
 		var rt = _renderer.createRenderTarget(depthRT);
 
+		var rtrt = new RuntimeRenderTarget();
+		rtrt.nativeRT = rt;
+		rtrt.nativeDesc = depthRT;
+		rtrt.heapsDepthBuffer = b;
+
 		forge.Native.Globals.waitForAllResourceLoads();
-		return {r: rt};
+		return {r: rtrt};
 	}
 
 	//
@@ -612,7 +630,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			case RGBA32F: TinyImageFormat_R32G32B32A32_SFLOAT;
 			case R32F: TinyImageFormat_R32_SFLOAT;
 			case R16F:
-				DebugTrace.trace('WARNING This is very likely a render target w ${t.width} h ${t.height}');
+				DebugTrace.trace('RF16 WARNING This is very likely a render target w ${t.width} h ${t.height}');
 				TinyImageFormat_R16_SFLOAT;
 			default: throw "Unsupported texture format " + t.format;
 		};
@@ -890,7 +908,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		// Check for VSYNC
 		DebugTrace.trace('RENDERING BEGIN CLEAR Begin');
 		if (_queueResize) {
-			if (_currentFence != null)	 {
+			if (_currentFence != null) {
 				_renderer.waitFence(_currentFence);
 				_currentFence = null;
 			}
@@ -918,11 +936,12 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		_currentSwapIndex = _renderer.acquireNextImage(_sc, _ImageAcquiredSemaphore, null);
 
-		_currentRT = _swapRenderTargets[_currentSwapIndex];
-		_currentDepth = _defaultDepth;
+		_currentRT = _swapRenderBlocks[_currentSwapIndex];
+//		currentDepth = _defaultDepth;
 		_currentSem = _swapCompleteSemaphores[_frameIndex];
 		_currentFence = _swapCompleteFences[_frameIndex];
 
+		// wait for
 		_renderer.waitFence(_currentFence);
 
 		// Reset cmd pool for this frame
@@ -932,7 +951,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		_currentCmd.begin();
 		DebugTrace.trace('Inserting current RT begin ${_currentRT} ${_currentSwapIndex}'); // Crashes here
-		_currentCmd.insertBarrier(_currentRT.begin);
+		_currentCmd.insertBarrier(_currentRT.colorTargets[0].begin);
 		//		_currentCmd.renderBarrier( _currentRT.rt );
 		_frameBegun = true;
 		_firstDraw = true;
@@ -1219,7 +1238,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			}
 		 */
 
-		 DebugTrace.trace('RENDER Creating root signature');
+		DebugTrace.trace('RENDER Creating root signature');
 
 		var rootSig = _renderer.createRootSig(rootDesc);
 		p.rootSig = rootSig;
@@ -1251,7 +1270,8 @@ class ForgeDriver extends h3d.impl.Driver {
 			var tt = shader.fragment.textures;
 
 			for (i in 0...shader.fragment.texturesCount) {
-				if (tt == null) throw 'Null texture ${i}';
+				if (tt == null)
+					throw 'Null texture ${i}';
 				var arrayType = switch (tt.type) {
 					case TChannel(_): TEX_TYPE_RT;
 					case TSampler2D: TEX_TYPE_2D;
@@ -1359,7 +1379,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(VERTEX, GLOBALS));
 
 		trace('VERTEX DESCRIPTORS globals ${p.vertex.globalsIndex} ${p.vertex.params}');
-		
+
 		//		p.vertex.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0"); // doesn't seem to resolve
 		p.vertex.globalsLength = shader.vertex.globalsSize * FLOATS_PER_VECT; // vectors to floats
 		p.vertex.paramsLengthFloats = shader.vertex.paramsSize * FLOATS_PER_VECT; // vectors to floats
@@ -1395,7 +1415,7 @@ class ForgeDriver extends h3d.impl.Driver {
 				_swap_count); // need to use the swap chain depth, but 3 is enough for now
 			DebugTrace.trace('RENDER SHADER Creating fragment globals descriptor');
 			//			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, GLOBAL_DESCRIPTOR_SET);
-		}else {
+		} else {
 			trace('RENDER No fragment globals');
 		}
 
@@ -1642,7 +1662,6 @@ class ForgeDriver extends h3d.impl.Driver {
 			case Textures:
 				DebugTrace.trace('RENDER TEXTURES PIPELINE PROVIDED v ${buf.vertex.tex.length} f ${buf.fragment.tex.length} ');
 
-
 				_vertexTextures = buf.vertex.tex;
 				_fragmentTextures = buf.fragment.tex;
 
@@ -1663,8 +1682,7 @@ class ForgeDriver extends h3d.impl.Driver {
 						trace('RENDER TEXTURES vertex tex ${i} name ${tt.name} type ${tt.type}');
 						tt = tt.next;
 					}
-				}
-				{
+				} {
 					var tt = fragRuntimeData.textures;
 					for (i in 0...fragRuntimeData.texturesCount) {
 						trace('RENDER TEXTURES frag tex ${i} name ${tt.name} type ${tt.type}');
@@ -1866,7 +1884,8 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	function buildDepthState(d:forge.Native.DepthStateDesc, pass:h3d.mat.Pass) {
-		if (_currentDepth == null) {
+		var depth = _currentRT.depthBuffer;
+		if (depth == null) {
 			d.depthTest = false;
 			d.stencilTest = false;
 		} else {
@@ -2194,13 +2213,13 @@ class ForgeDriver extends h3d.impl.Driver {
 		// Unique hash code for pipeline
 		_hashBulder.reset(_pipelineSeed);
 		_hashBulder.addInt32(_curShader.id);
-		_hashBulder.addInt32(_currentRT.rt.format.toValue());
-		_hashBulder.addInt32(_currentRT.rt.sampleCount.toValue());
-		_hashBulder.addInt32(_currentRT.rt.sampleQuality);
-		var db = _currentDepth != null ? @:privateAccess _currentDepth.b.r : null;
+		_hashBulder.addInt32(_currentRT.colorTargets[0].nativeRT.format.toValue());
+		_hashBulder.addInt32(_currentRT.colorTargets[0].nativeRT.sampleCount.toValue());
+		_hashBulder.addInt32(_currentRT.colorTargets[0].nativeRT.sampleQuality);
+		var db = _currentRT.depthBuffer;
 		if (db != null) {
 			_hashBulder.addInt8(1);
-			_hashBulder.addInt32(db.format.toValue());
+			_hashBulder.addInt32(1); // TODO 
 		}
 
 		if (_curBuffer != null) {
@@ -2227,12 +2246,12 @@ class ForgeDriver extends h3d.impl.Driver {
 		DebugTrace.trace('RENDER PIPELINE Signature  xx.h ${hv.high} | xx.l ${hv.low} pipeid ${cmatidx}');
 
 		/*
-		var shaderFragTextureCount = _fragmentTextures.length;
-		for (i in 0...TEX_TYPE_COUNT) {
-			var shaderFragTextureCount = _curShader.fragment.textureCount(i); // .textures == null ? 0 : _curShader.fragment.textures.length;
-			DebugTrace.trace('RENDER PIPELINE texture count ${shaderFragTextureCount} vs ${_fragmentTextures[i].length}');
-		}
-		*/
+			var shaderFragTextureCount = _fragmentTextures.length;
+			for (i in 0...TEX_TYPE_COUNT) {
+				var shaderFragTextureCount = _curShader.fragment.textureCount(i); // .textures == null ? 0 : _curShader.fragment.textures.length;
+				DebugTrace.trace('RENDER PIPELINE texture count ${shaderFragTextureCount} vs ${_fragmentTextures[i].length}');
+			}
+		 */
 
 		if (cmat == null) {
 			cmat = new CompiledMaterial();
@@ -2266,9 +2285,9 @@ class ForgeDriver extends h3d.impl.Driver {
 			var pdesc = new forge.Native.PipelineDesc();
 			var gdesc = pdesc.graphicsPipeline();
 			gdesc.mPrimitiveTopo = PRIMITIVE_TOPO_TRI_LIST;
-			gdesc.pDepthState = _currentDepth != null ? _currentState.depth() : null;
+			gdesc.pDepthState = _currentRT.depthTarget != null ? _currentState.depth() : null;
 			gdesc.pBlendState = _currentState.blend();
-			gdesc.depthStencilFormat = _currentDepth != null ? @:privateAccess _currentDepth.b.r.format : TinyImageFormat_UNDEFINED;
+			gdesc.depthStencilFormat = _currentRT.depthTarget != null ?_currentRT.depthTarget.nativeRT.format : TinyImageFormat_UNDEFINED;
 			// gdesc.pColorFormats = &rt.mFormat;
 
 			gdesc.pVertexLayout = cmat._layout;
@@ -2277,8 +2296,11 @@ class ForgeDriver extends h3d.impl.Driver {
 			gdesc.pRasterizerState = _currentState.raster();
 			gdesc.mVRFoveatedRendering = false;
 			var rt = _currentRT;
-			pdesc.setRenderTargetGlobals(rt.rt.sampleCount, rt.rt.sampleQuality);
-			pdesc.addGraphicsRenderTarget(rt.rt.format);
+			pdesc.setRenderTargetGlobals(rt.sampleCount, rt.sampleQuality);
+			for (ct in rt.colorTargets) {
+				pdesc.addGraphicsColourTarget(ct.nativeRT.format);
+			}
+
 			var p = _renderer.createPipeline(pdesc);
 
 			cmat._pipeline = p;
@@ -2439,11 +2461,8 @@ class ForgeDriver extends h3d.impl.Driver {
 			block.beginUpdate();
 			block.fill(_renderer, _vertexTextures, _fragmentTextures);
 			block.bind(_currentCmd);
-			block.next();	
+			block.next();
 		}
-		
-		
-
 
 		#if OLD_NEW
 		for (i in 0...TEX_TYPE_COUNT) {
@@ -2847,38 +2866,38 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function clear(?color:h3d.Vector, ?depth:Float, ?stencil:Int) {
-		DebugTrace.trace('RENDER CALLSTACK TARGET CLEAR bind and clear ${_currentRT} and ${_currentDepth} ${color} ${depth} ${stencil}');
+		DebugTrace.trace('RENDER CALLSTACK TARGET CLEAR bind and clear ${_currentRT} and ${_currentRT.depthBuffer} ${color} ${depth} ${stencil}');
 		if (!renderReady())
 			return;
 
 		if (color != null) {
 			var x:h3d.Vector = color;
 			DebugTrace.trace('RENDER CLEAR ${x} : ${x.r}, ${x.g}, ${x.b}, ${x.a}');
-			_currentRT.rt.setClearColor(x.r, x.g, x.b, x.a);
+			_currentRT.colorTargets[0].nativeRT.setClearColor(x.r, x.g, x.b, x.a);
 		}
 
-		if (depth != null && _currentDepth != null) {
+		if (depth != null && _currentRT.depthTarget != null) {
 			var sten = stencil != null ? stencil : 0;
 			var d:Float = depth;
-			var rt = @:privateAccess _currentDepth.b.r;
+			var rt =  _currentRT.depthTarget.nativeRT;
 			if (rt != null)
 				rt.setClearDepthNormalized(d, sten);
 		}
 
 		DebugTrace.trace('RENDER CLEAR BINDING');
 		//
-		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
+		_currentCmd.bind(_currentRT.colorTargets[0].nativeRT, _currentRT.depthTarget == null ?  null :  _currentRT.depthTarget.nativeRT, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
 		DebugTrace.trace('RENDER CLEAR BINDING DONE');
 	}
 
 	public override function end() {
 		DebugTrace.trace('RENDER CALLSTACK TARGET end');
 		_currentCmd.unbindRenderTarget();
+		_currentCmd.insertBarrier(_currentRT.colorTargets[0].outBarrier); // needs to be full out barrier, not just read
 		DebugTrace.trace('Inserting current RT present');
-
-		_currentCmd.insertBarrier(_currentRT.present);
+		_currentRT = _swapRenderBlocks[_currentSwapIndex];
+		_currentCmd.insertBarrier(_currentRT.colorTargets[0].present);
 		_currentRT = null;
-		_currentDepth = null;
 		_currentCmd.end();
 
 		forge.Native.Globals.waitForAllResourceLoads();
@@ -2938,12 +2957,13 @@ class ForgeDriver extends h3d.impl.Driver {
 			_setRenderTargets(tmpTextures, layer, mipLevel);
 		}
 	 */
-	// var _currentDepth : DepthBuffer;
-	var _currentDepth:h3d.mat.DepthBuffer;
+	// var currentDepth : DepthBuffer;
+	//var currentDepth:h3d.mat.DepthBuffer;
 
-	function setRenderTargetsInternal(textures:Array<h3d.mat.Texture>, layer:Int, mipLevel:Int) {
+	function setRenderTargetsInternal(rtrt:RuntimeRenderTarget) { // textures:Array<h3d.mat.Texture>, layer:Int, mipLevel:Int) {
 		if (!renderReady())
 			return;
+
 		DebugTrace.trace('RENDER TARGET CALLSTACK setRenderTargetsInternal');
 
 		if (_currentCmd == null) {
@@ -2953,35 +2973,26 @@ class ForgeDriver extends h3d.impl.Driver {
 			_currentCmd.unbindRenderTarget();
 			DebugTrace.trace('Inserting current RT out');
 
-			_currentCmd.insertBarrier(_currentRT.outBarrier);
+			if (_currentRT != null)
+				_currentCmd.insertBarrier(_currentRT.colorTargets[0].outBarrier); // this should be implicit??
 		}
 
-		if (textures.length > 1)
-			throw "Multiple render targets are unsupported";
-
-		var tex = textures[0];
-
-		var depthBuffer = false;
-		if (tex.t == null) {
-			tex.alloc();
-		} else {
-			if (tex.depthBuffer != null) {
-				depthBuffer = true;
+		if (!rtrt.created) {
+			if (rtrt.texture == null) {
+				throw'RENDER TARGET  no input textures';
 			}
-		}
+			var tex = rtrt.texture;
+			if (tex.t == null) tex.alloc();
+			rtrt.heapsDepthBuffer = tex.depthBuffer;
 
-		var itex = tex.t;
-		if (itex.rt == null) {
-			DebugTrace.trace('RENDER TARGET  creating new render target on ${tex} w ${tex.width} h ${tex.height} db ${depthBuffer}');
+			DebugTrace.trace('RENDER TARGET  creating new render target on ${tex} w ${tex.width} h ${tex.height} db ${rtrt.heapsDepthBuffer}');
 			var renderTargetDesc = new forge.Native.RenderTargetDesc();
 			renderTargetDesc.arraySize = 1;
-			renderTargetDesc.setDepthClear(1.0, 0);
-			
+
 			//		renderTargetDesc.clearValue.depth = 1.0f;
 			//		renderTargetDesc.clearValue.stencil = 0;
-			renderTargetDesc.depth = 1;
 			renderTargetDesc.descriptors = DESCRIPTOR_TYPE_TEXTURE;
-			renderTargetDesc.format = depthBuffer ? TinyImageFormat_D32_SFLOAT : getTinyTextureFormat(tex.format);
+			renderTargetDesc.format = getTinyTextureFormat(tex.format);
 			renderTargetDesc.startState = RESOURCE_STATE_SHADER_RESOURCE;
 			renderTargetDesc.height = tex.width;
 			renderTargetDesc.width = tex.height;
@@ -2989,54 +3000,63 @@ class ForgeDriver extends h3d.impl.Driver {
 			renderTargetDesc.sampleQuality = 0;
 			//			renderTargetDesc.nativeHandle = itex.t.
 			renderTargetDesc.flags = forge.Native.TextureCreationFlags.TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT.toValue();
-			//renderTargetDesc.name = depthBuffer ? "Depth Render Target" : "Colour render target";
+			// renderTargetDesc.name = depthBuffer ? "Depth Render Target" : "Colour render target";
+			renderTargetDesc.depth = 1; // 3D texture
 
+			if (rtrt.heapsDepthBuffer != null) {
+				if (tex.depthBuffer != null && (tex.depthBuffer.width != tex.width || tex.depthBuffer.height != tex.height))
+					throw "Invalid depth buffer size : does not match render target size";
+				
+				renderTargetDesc.setDepthClear(1.0, 0);
+			} else {
+			}
 			var rt = _renderer.createRenderTarget(renderTargetDesc);
+			if (rt == null) throw 'RENDER TARGET  failed to create render target';
+
 			var inBarrier = new forge.Native.ResourceBarrierBuilder();
 
-			if (depthBuffer)
-				inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_DEPTH_WRITE);
-			else 
-				inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_RENDER_TARGET);
+			inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_RENDER_TARGET);
 
 			var outBarrier = new forge.Native.ResourceBarrierBuilder();
-			if (depthBuffer)
-				outBarrier.addRTBarrier(rt, RESOURCE_STATE_DEPTH_WRITE, RESOURCE_STATE_SHADER_RESOURCE);
-			else 
-				outBarrier.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_SHADER_RESOURCE);
-				
-			itex.rt = {
-				rt: rt,
-				inBarrier: inBarrier,
-				outBarrier: outBarrier,
-				begin: null,
-				present: null,
-				captureBuffer: null
-			};
+			outBarrier.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_SHADER_RESOURCE);
+
+			rtrt.nativeRT = rt;
+			rtrt.nativeDesc = renderTargetDesc;
+			rtrt.inBarrier = inBarrier;
+			rtrt.outBarrier = outBarrier;
+			rtrt.begin = null;
+			rtrt.present = null;
+			rtrt.captureBuffer = null;
+
+			rtrt.created = true;
 		} else {
-			DebugTrace.trace('RENDER TARGET  setting render target to existing ${tex} w ${tex.width} h ${tex.height}');
+			DebugTrace.trace('RENDER TARGET  setting render target to existing ${rtrt.texture} w ${rtrt.texture.width} h ${rtrt.texture.height}');
 		}
 
-		_currentRT = itex.rt;
+		_currentRT = new RenderTargetBlock();
+		_currentRT.colorTargets[0] = rtrt;
+		var db = rtrt.texture.depthBuffer;
+		var dbr = db != null ? @:privateAccess  db.b.r : null;
+
+		_currentRT.depthTarget = dbr;
 
 		//		curTexture = textures[0];
 
-		if (tex.depthBuffer != null && (tex.depthBuffer.width != tex.width || tex.depthBuffer.height != tex.height))
-			throw "Invalid depth buffer size : does not match render target size";
 
-		_currentDepth = @:privateAccess (tex.depthBuffer == null ? null : tex.depthBuffer);
-		DebugTrace.trace('RENDER TARGET  setting depth buffer target to existing ${_currentDepth} ${_currentDepth != null ? _currentDepth.width : null} ${_currentDepth != null ? _currentDepth.height : null}');
+		var tex = rtrt.texture;
+		var currentDepth = _currentRT.depthTarget;
+		DebugTrace.trace('RENDER TARGET  setting depth buffer target to existing ${currentDepth} ${currentDepth != null ? currentDepth.texture.width : null} ${currentDepth != null ? currentDepth.texture.height : null}');
 		DebugTrace.trace('Inserting current RT in barrier');
-		_currentCmd.insertBarrier(_currentRT.inBarrier);
+		_currentCmd.insertBarrier(_currentRT.colorTargets[0].inBarrier);
 
 		if (!tex.flags.has(WasCleared)) {
 			tex.flags.set(WasCleared); // once we draw to, do not clear again
 
 			DebugTrace.trace('RENDER TARGET CLEAR set render target internal cleared');
-			_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
+			_currentCmd.bind(_currentRT.colorTargets[0].nativeRT, currentDepth == null ? null : currentDepth.nativeRT, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
 		} else {
 			DebugTrace.trace('RENDER TARGET CLEAR set render target internal no clear');
-			_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);
+			_currentCmd.bind(_currentRT.colorTargets[0].nativeRT, currentDepth == null ? null : currentDepth.nativeRT, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);
 		}
 
 		if (_currentPass != null) {
@@ -3125,10 +3145,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		 */
 	}
 
-	var _tmpTextures = new Array<h3d.mat.Texture>();
-	var _targetsCount = 1;
-	var _curTexture:h3d.mat.Texture;
-	var _currentTargets = new Array<forge.Native.RenderTarget>();
+//	var _tmpTextures = new Array<h3d.mat.Texture>();
 
 	function setDefaultRenderTarget() {
 		DebugTrace.trace('RENDER CALLSTACK TARGET CLEAR setDefaultRenderTarget ');
@@ -3137,16 +3154,12 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		_currentCmd.unbindRenderTarget();
 		DebugTrace.trace('Inserting current RT out');
-		_currentCmd.insertBarrier(_currentRT.outBarrier);
-		_currentDepth = _defaultDepth;
-		_targetsCount = 1;
-		_curTexture = null;
+		_currentCmd.insertBarrier(_currentRT.colorTargets[0].outBarrier);
 		//		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
-		_currentRT = _swapRenderTargets[_currentSwapIndex];
-		_currentTargets[0] = _currentRT.rt;
+		_currentRT = _swapRenderBlocks[_currentSwapIndex];
 
-		_currentCmd.insertBarrier(_currentRT.inBarrier);
-		_currentCmd.bind(_currentRT.rt, _currentDepth != null ? @:privateAccess _currentDepth.b.r : null, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);
+		_currentCmd.insertBarrier(_currentRT.colorTargets[0].inBarrier);
+		_currentCmd.bind(_currentRT.colorTargets[0].nativeRT, _currentRT.depthTarget == null ? null : _currentRT.depthTarget.nativeRT, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);
 
 		if (_currentPass != null) {
 			selectMaterial(_currentPass);
@@ -3168,12 +3181,18 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	public override function setRenderTarget(tex:Null<h3d.mat.Texture>, layer = 0, mipLevel = 0) {
 		DebugTrace.trace('RENDER CALLSTACK TARGET setRenderTarget  ${tex} layer ${layer} mip ${mipLevel} db ${tex != null ? tex.depthBuffer : null}');
-
 		if (tex == null) {
 			setDefaultRenderTarget();
 		} else {
-			_tmpTextures[0] = tex;
-			setRenderTargetsInternal(_tmpTextures, layer, mipLevel);
+			if (tex.t.rt == null) {
+				var cfg = new RuntimeRenderTarget();
+				cfg.texture = tex;
+				cfg.layer = layer;
+				cfg.mip = mipLevel;
+				setRenderTargetsInternal(cfg);
+			} else {
+				setRenderTargetsInternal(tex.t.rt);
+			}
 		}
 		_currentPipeline = null;
 	}
@@ -3181,7 +3200,14 @@ class ForgeDriver extends h3d.impl.Driver {
 	public override function setRenderTargets(textures:Array<h3d.mat.Texture>) {
 		DebugTrace.trace('RENDER CALLSTACK TARGET setRenderTargets');
 
-		setRenderTargetsInternal(textures, 0, 0);
+		throw "not implemented";
+
+		var cfg = new RuntimeRenderTarget();
+		cfg.texture = textures[0];
+		cfg.layer = 0;
+		cfg.mip = 0;
+
+		setRenderTargetsInternal(cfg);
 	}
 
 	var _captureBuffer:haxe.io.Bytes;
@@ -3192,7 +3218,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		_renderer.resetCmdPool(_capturePool);
 
-		var size = rt.rt.captureSize();
+		var size = rt.nativeRT.captureSize();
 		DebugTrace.trace('CAPTURE Capturing buffer of size ${size} from w ${w} h ${h} at x ${x} y ${y} of format ${pixels.format}');
 		if (_captureBuffer == null || size > _captureBuffer.length) {
 			_captureBuffer = haxe.io.Bytes.alloc(size);
@@ -3202,11 +3228,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		var tmpBuffer = hl.Bytes.fromBytes(_captureBuffer);
 
 		DebugTrace.trace('CAPTURE TMP BUFFER IS ${tmpBuffer} : ${StringTools.hex(tmpBuffer.address().high)}${StringTools.hex(tmpBuffer.address().low)}');
-		if (!_renderer.captureAsBytes(_captureCmd, rt.rt, _queue, forge.Native.ResourceState.RESOURCE_STATE_PRESENT, hl.Bytes.fromBytes(_captureBuffer),
+		if (!_renderer.captureAsBytes(_captureCmd, rt.nativeRT, _queue, forge.Native.ResourceState.RESOURCE_STATE_PRESENT, hl.Bytes.fromBytes(_captureBuffer),
 			size)) {
 			throw "Capture Failed";
 		}
-		var rt_w = rt.rt.width;
+		var rt_w = rt.nativeRT.width;
 
 		DebugTrace.trace('CAPTURE blitting rows of length ${w}  into an image of ${rt_w} at x ${x} y ${y}');
 

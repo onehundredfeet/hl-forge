@@ -714,7 +714,7 @@ interface PipelineDesc {
 	void setName( String name );
 	void reset();
     void setRenderTargetGlobals(  SampleCount sampleCount, int sampleQuality );
-    int addGraphicsRenderTarget(  TinyImageFormat format );
+    int addGraphicsColourTarget(  TinyImageFormat format );
 };
 
 interface BufferBinder {
