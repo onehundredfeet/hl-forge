@@ -128,10 +128,16 @@ class PipelineTextureSetBlock {
 						funiques_id.push(id);
 						funiques_param.push(tt);
 						found = true;
-                        if (id == -1) throw 'ALLOCATE RENDER UNIQUE TEXTURE NOT FOUND ${tt.name}';
+                        if (id == -1) {
+                            trace('ALLOCATE RENDER UNIQUE TEXTURE NOT FOUND ${tt.name}');
+                            throw 'ALLOCATE RENDER UNIQUE TEXTURE NOT FOUND ${tt.name}';
+                        }
                         builder.addSlotTexture(ts, null);
                         builder.setSlotBindIndex(ts, id);
-                        if (ids != id + 1) throw 'RENDER UNIQUE TEXTURE SAMPLER NOT FOUND ${tt.name} ${ids} ${id}';
+                        if (ids != id + 1) {
+                            trace('RENDER UNIQUE TEXTURE SAMPLER MISMATCH ${tt.name}Smplr ${ids} ${id + 1}');
+                            throw 'RENDER UNIQUE TEXTURE SAMPLER MISMATCH ${tt.name}Smplr ${ids} ${id + 1}';
+                        }
                         builder.addSlotSampler(ss, samplers[i]);
                         builder.setSlotBindIndex(ss, id + 1);
 					case TArray(_):
