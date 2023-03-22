@@ -599,6 +599,15 @@ std::string getFilename(const std::string &path) {
     return path.substr(lastindex + 1);
 }
 
+DescriptorSet *forge_renderer_add_descriptor_set(Renderer *pRenderer,DescriptorSetDesc *dsd) {
+    DescriptorSet *tmp;
+
+    addDescriptorSet(pRenderer, dsd, &tmp);
+
+    printf("RENDER CREATE DESCRIPTOR sets %p with %d sets\n", tmp, maxSets);
+    return tmp;
+}
+
 DescriptorSet *forge_renderer_create_descriptor_set(Renderer *pRenderer, RootSignature *pRootSignature, int setIndex, uint maxSets, uint nodeIndex) {
     DescriptorSet *tmp;
     DescriptorSetDesc desc = {
@@ -608,6 +617,8 @@ DescriptorSet *forge_renderer_create_descriptor_set(Renderer *pRenderer, RootSig
         nodeIndex};
 
     addDescriptorSet(pRenderer, &desc, &tmp);
+
+    printf("RENDER CREATE DESCRIPTOR sets %p with %d sets\n", tmp, maxSets);
     return tmp;
 }
 

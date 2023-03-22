@@ -1557,6 +1557,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 			if (_curShader.lastFrame != _currentFrame) {
 				_curShader.lastFrame = _currentFrame;
+				DebugTrace.trace('RENDER RESETTING BLOCKS for ${shader.id} on current frame ${_currentFrame}');
 				_curShader.resetBlocks();
 			}
 		}
@@ -2218,9 +2219,12 @@ class ForgeDriver extends h3d.impl.Driver {
 		var db = _currentRT.depthBuffer;
 		if (db != null) {
 			_hashBulder.addInt8(1);
-			_hashBulder.addInt32(1); // TODO
+			_hashBulder.addInt32(cast(db.format,Int));
 		}
-
+		for (i in 0..._currentRT.colorTargets.length) {
+			_hashBulder.addInt8(i);
+			_hashBulder.addInt32(cast(_currentRT.colorTargets[i].nativeDesc.format,Int));
+		}
 		if (_curBuffer != null) {
 			if (_curBuffer.flags.has(RawFormat)) {
 				DebugTrace.trace('RENDER BUFFER BIND Raw format selected');
@@ -2469,7 +2473,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		}
 
 		if (_curShader.fragment.hasTextures() || _curShader.vertex.hasTextures()) {
-			#if !old_binder
+			#if !YEE_OLD_BINDER
 			for (i in 0...TEX_TYPE_COUNT) {
 				if (_vertexTextures[i].length < _curShader.vertex.textureCount(i))
 					throw 'Not enough vertex textures for array ${i}';
@@ -2481,12 +2485,16 @@ class ForgeDriver extends h3d.impl.Driver {
 					DebugTrace.trace('RENDER WARNING shader fragment texture count ${_curShader.fragment.textureCount(i)} doesn\'t match provided texture count ${_vertexTextures[i].length}');
 			}
 
+			trace('RENDER UPDATING TEXTURE BLOCK'); 
 			var block = getTextureBlock();
 			block.beginUpdate();
 			block.fill(_renderer, _vertexTextures, _fragmentTextures);
 			block.bind(_currentCmd);
 			block.next();
+
+			trace('RENDER DONE UPDATING TEXTURE BLOCK'); 
 			#else
+			throw ('Should not be here');
 			if (_curShader.fragment.hasTextures() || _curShader.vertex.hasTextures()) {
 				//		if (_curShader.vertex.textures.length == 0) return;
 				var fragmentSeed = 0x3917437;
@@ -2652,6 +2660,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 				DebugTrace.trace('RENDER BINDING TEXTURE descriptor tex ${shaderFragTextureCount} texCube ${shaderFragTextureCubeCount}');
 				_currentCmd.bindDescriptorSet(0, tds.ds);
+				DebugTrace.trace('RENDER DONE tex');
 			}
 			#end
 		} else {
@@ -3173,7 +3182,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (_currentPass != null) {
 			selectMaterial(_currentPass);
 		}
-
+		
 		// currentTargetResources[0] = null;
 
 		/*

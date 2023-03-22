@@ -477,6 +477,7 @@ class DescriptorDataBuilder {
             printf("\tSlot %d has name %s and mode %d with %lld size\n", i, _names[i].c_str(), _modes[i], _dataPointers[i]->size());
             switch (_modes[i]) {
                 case DBM_TEXTURES:
+
                     _data[i].ppTextures = (Texture **)(&(*_dataPointers[i])[0]);
                     break;
                 case DBM_SAMPLERS:
@@ -487,6 +488,12 @@ class DescriptorDataBuilder {
                     break;
                 default:
                     break;
+            }
+            for (int j = 0; j < _dataPointers[i]->size(); j++) {
+                if (_dataPointers[j] == nullptr) {
+                    printf("Empty sampler in slot %d at idx %d\n", i, j);
+                    exit(-1);
+                }
             }
             _data[i].mCount = (unsigned int)_dataPointers[i]->size();
         }
