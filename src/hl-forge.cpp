@@ -447,6 +447,11 @@ void forge_render_target_set_clear_depth(RenderTarget *rt, float depth, int sten
     rt->mClearValue.stencil = stencil;
     // DEBUG_PRINT("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
 }
+void forge_render_target_desc_setDepthClear( RenderTargetDesc *pDesc, float depth, int stencil) {
+    pDesc->mClearValue.depth = depth;
+    pDesc->mClearValue.stencil = stencil;
+}
+
 void forge_cmd_unbind(Cmd *cmd) {
     cmdBindRenderTargets(cmd, 0, NULL, NULL, NULL, NULL, NULL, -1, -1);
 }

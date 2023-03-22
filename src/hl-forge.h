@@ -498,6 +498,53 @@ class DescriptorDataBuilder {
     }
 };
 
+static std::string getResourceStateText( ResourceState state ) {
+    std::string text;
+
+    if (state & RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER) text += "|RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER";
+    if (state & RESOURCE_STATE_INDEX_BUFFER) text += "|RESOURCE_STATE_INDEX_BUFFER";
+    if (state & RESOURCE_STATE_RENDER_TARGET) text += "|RESOURCE_STATE_RENDER_TARGET";
+    if (state & RESOURCE_STATE_UNORDERED_ACCESS) text += "|RESOURCE_STATE_UNORDERED_ACCESS";
+    if (state & RESOURCE_STATE_DEPTH_WRITE) text += "|RESOURCE_STATE_DEPTH_WRITE";
+    if (state & RESOURCE_STATE_DEPTH_READ) text += "|RESOURCE_STATE_DEPTH_READ";
+    if (state & RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE) text += "|RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE";
+    if (state & RESOURCE_STATE_PIXEL_SHADER_RESOURCE) text += "|RESOURCE_STATE_PIXEL_SHADER_RESOURCE";
+    if (state & RESOURCE_STATE_SHADER_RESOURCE) text += "|RESOURCE_STATE_SHADER_RESOURCE";
+    if (state & RESOURCE_STATE_STREAM_OUT) text += "|RESOURCE_STATE_STREAM_OUT";
+    if (state & RESOURCE_STATE_INDIRECT_ARGUMENT) text += "|RESOURCE_STATE_INDIRECT_ARGUMENT";
+    if (state & RESOURCE_STATE_COPY_DEST) text += "|RESOURCE_STATE_COPY_DEST";
+    if (state & RESOURCE_STATE_COPY_SOURCE) text += "|RESOURCE_STATE_COPY_SOURCE";
+    if (state & RESOURCE_STATE_COPY_SOURCE) text += "|RESOURCE_STATE_COPY_SOURCE";
+    if (state & RESOURCE_STATE_PRESENT) text += "|RESOURCE_STATE_PRESENT";
+    if (state & RESOURCE_STATE_COMMON) text += "|RESOURCE_STATE_COMMON";
+    if (state & RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE) text += "|RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE";
+    if (state & RESOURCE_STATE_GENERIC_READ) text += "|RESOURCE_STATE_GENERIC_READ";
+    
+/*
+RESOURCE_STATE_UNDEFINED = 0,
+	RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER = 0x1,
+	RESOURCE_STATE_INDEX_BUFFER = 0x2,
+	RESOURCE_STATE_RENDER_TARGET = 0x4,
+	RESOURCE_STATE_UNORDERED_ACCESS = 0x8,
+	RESOURCE_STATE_DEPTH_WRITE = 0x10,
+	RESOURCE_STATE_DEPTH_READ = 0x20,
+	RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE = 0x40,
+	RESOURCE_STATE_PIXEL_SHADER_RESOURCE = 0x80,
+	RESOURCE_STATE_SHADER_RESOURCE = 0x40 | 0x80,
+	RESOURCE_STATE_STREAM_OUT = 0x100,
+	RESOURCE_STATE_INDIRECT_ARGUMENT = 0x200,
+	RESOURCE_STATE_COPY_DEST = 0x400,
+	RESOURCE_STATE_COPY_SOURCE = 0x800,
+	RESOURCE_STATE_GENERIC_READ = (((((0x1 | 0x2) | 0x40) | 0x80) | 0x200) | 0x800),
+	RESOURCE_STATE_PRESENT = 0x1000,
+	RESOURCE_STATE_COMMON = 0x2000,
+	RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE = 0x4000,
+	RESOURCE_STATE_SHADING_RATE_SOURCE = 0x8000,
+*/
+    return text;
+}
+	
+
 class ResourceBarrierBuilder {
    private:
     std::vector<RenderTargetBarrier> _rtBarriers;
@@ -532,6 +579,14 @@ class ResourceBarrierBuilder {
                 printf("Texture is invalid on reder target");
                 exit(-1);
             }
+        }
+        printf("INSERTING BARRIER OF LENGTH %lld bufs, %lld texs, %lld rts\n", _buffBarriers.size(),_texBarriers.size(), _rtBarriers.size());
+        for (int i = 0; i < _rtBarriers.size(); i++)  {
+            auto &x = _rtBarriers[i];
+            auto cs = getResourceStateText( x.mCurrentState );
+            auto ns = getResourceStateText( x.mNewState );
+            
+            printf("\tRT Barrier %s to %s\n", cs.c_str(), ns.c_str());
         }
         cmdResourceBarrier(cmd, _buffBarriers.size(), bbp, _texBarriers.size(), tbp, _rtBarriers.size(), rtbp);
     }
@@ -1012,6 +1067,7 @@ void destroyRenderer(Renderer *);
 Queue *createQueue(Renderer *renderer);
 DescriptorSet *forge_renderer_create_descriptor_set(Renderer *, RootSignature *, int setIndex, uint maxSets, uint nodeIndex);
 RenderTarget *forge_sdl_create_render_target(Renderer *, RenderTargetDesc *);
+void forge_render_target_desc_setDepthClear( RenderTargetDesc *, float depth, int stencil);
 CmdPool *forge_sdl_renderer_create_cmd_pool(Renderer *, Queue *);
 Cmd *forge_sdl_renderer_create_cmd(Renderer *, CmdPool *);
 Fence *forge_sdl_renderer_create_fence(Renderer *);
@@ -1075,6 +1131,7 @@ void forge_render_target_set_clear_colour(RenderTarget *rt, float r, float g, fl
 void forge_render_target_set_clear_depth(RenderTarget *rt, float depth, int stencil);
 void forge_render_target_capture(RenderTarget *rt, Buffer *pTransferBuffer, Semaphore *semaphore);
 int forge_render_target_capture_size(RenderTarget *pRenderTarget);
+
 
 // Blend State
 void forge_blend_state_desc_set_rt(BlendStateDesc *, BlendStateTargets rt, bool enabled);

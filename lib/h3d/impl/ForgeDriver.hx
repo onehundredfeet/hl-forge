@@ -890,6 +890,13 @@ class ForgeDriver extends h3d.impl.Driver {
 		// Check for VSYNC
 		DebugTrace.trace('RENDERING BEGIN CLEAR Begin');
 		if (_queueResize) {
+			if (_currentFence != null)	 {
+				_renderer.waitFence(_currentFence);
+				_currentFence = null;
+			}
+
+			forge.Native.Globals.waitForAllResourceLoads();
+
 			detach();
 			attach();
 			_queueResize = false;
@@ -2954,20 +2961,27 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var tex = textures[0];
 
+		var depthBuffer = false;
 		if (tex.t == null) {
 			tex.alloc();
+		} else {
+			if (tex.depthBuffer != null) {
+				depthBuffer = true;
+			}
 		}
 
 		var itex = tex.t;
 		if (itex.rt == null) {
-			DebugTrace.trace('RENDER TARGET  creating new render target on ${tex} w ${tex.width} h ${tex.height}');
+			DebugTrace.trace('RENDER TARGET  creating new render target on ${tex} w ${tex.width} h ${tex.height} db ${depthBuffer}');
 			var renderTargetDesc = new forge.Native.RenderTargetDesc();
 			renderTargetDesc.arraySize = 1;
+			renderTargetDesc.setDepthClear(1.0, 0);
+			
 			//		renderTargetDesc.clearValue.depth = 1.0f;
 			//		renderTargetDesc.clearValue.stencil = 0;
 			renderTargetDesc.depth = 1;
 			renderTargetDesc.descriptors = DESCRIPTOR_TYPE_TEXTURE;
-			renderTargetDesc.format = getTinyTextureFormat(tex.format);
+			renderTargetDesc.format = depthBuffer ? TinyImageFormat_D32_SFLOAT : getTinyTextureFormat(tex.format);
 			renderTargetDesc.startState = RESOURCE_STATE_SHADER_RESOURCE;
 			renderTargetDesc.height = tex.width;
 			renderTargetDesc.width = tex.height;
@@ -2975,14 +2989,22 @@ class ForgeDriver extends h3d.impl.Driver {
 			renderTargetDesc.sampleQuality = 0;
 			//			renderTargetDesc.nativeHandle = itex.t.
 			renderTargetDesc.flags = forge.Native.TextureCreationFlags.TEXTURE_CREATION_FLAG_OWN_MEMORY_BIT.toValue();
-			//		renderTargetDesc.name = "Shadow Map Render Target";
+			//renderTargetDesc.name = depthBuffer ? "Depth Render Target" : "Colour render target";
 
 			var rt = _renderer.createRenderTarget(renderTargetDesc);
 			var inBarrier = new forge.Native.ResourceBarrierBuilder();
-			inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_RENDER_TARGET);
-			var outBarrier = new forge.Native.ResourceBarrierBuilder();
-			outBarrier.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_SHADER_RESOURCE);
 
+			if (depthBuffer)
+				inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_DEPTH_WRITE);
+			else 
+				inBarrier.addRTBarrier(rt, RESOURCE_STATE_SHADER_RESOURCE, RESOURCE_STATE_RENDER_TARGET);
+
+			var outBarrier = new forge.Native.ResourceBarrierBuilder();
+			if (depthBuffer)
+				outBarrier.addRTBarrier(rt, RESOURCE_STATE_DEPTH_WRITE, RESOURCE_STATE_SHADER_RESOURCE);
+			else 
+				outBarrier.addRTBarrier(rt, RESOURCE_STATE_RENDER_TARGET, RESOURCE_STATE_SHADER_RESOURCE);
+				
 			itex.rt = {
 				rt: rt,
 				inBarrier: inBarrier,

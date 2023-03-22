@@ -818,6 +818,7 @@ interface RenderTargetDesc {
 	[Internal="mFormat"] attribute TinyImageFormat format;
 
 
+	[CObject, Internal="forge_render_target_desc_setDepthClear"] void setDepthClear( float depth, int stencil );
 	/*
 	
 	

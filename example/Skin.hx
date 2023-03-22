@@ -23,6 +23,7 @@ class Skin extends SampleApp {
 			if( t != null ) t.killAlpha = true;
 			m.mainPass.culling = None;
 			m.getPass("shadow").culling = None;
+			m.shadows = true;
 		}
 		cast(s3d.lightSystem,h3d.scene.fwd.LightSystem).ambientLight.set(0.4, 0.4, 0.4);
 
