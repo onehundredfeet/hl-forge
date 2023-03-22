@@ -2975,7 +2975,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			_currentCmd.unbindRenderTarget();
 			DebugTrace.trace('Inserting current RT out');
 
-			if (_currentRT != null)
+			if (_currentRT != null && _currentRT.colorTargets[0].outBarrier != null)
 				_currentCmd.insertBarrier(_currentRT.colorTargets[0].outBarrier); // this should be implicit??
 		}
 
@@ -3032,6 +3032,8 @@ class ForgeDriver extends h3d.impl.Driver {
 			rtrt.captureBuffer = null;
 
 			rtrt.created = true;
+
+			tex.t.t = rt.getTexture();
 		} else {
 			DebugTrace.trace('RENDER TARGET  setting render target to existing ${rtrt.texture} w ${rtrt.texture.width} h ${rtrt.texture.height}');
 		}
@@ -3047,7 +3049,8 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var tex = rtrt.texture;
 		var currentDepth = _currentRT.depthTarget;
-		DebugTrace.trace('RENDER TARGET  setting depth buffer target to existing ${currentDepth} ${currentDepth != null ? currentDepth.texture.width : null} ${currentDepth != null ? currentDepth.texture.height : null}');
+	
+		DebugTrace.trace('RENDER TARGET  setting depth buffer target to existing ${currentDepth} ');
 		DebugTrace.trace('Inserting current RT in barrier');
 		if (_currentRT.colorTargets[0].inBarrier != null)
 			_currentCmd.insertBarrier(_currentRT.colorTargets[0].inBarrier);
@@ -3186,10 +3189,11 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function setRenderTarget(tex:Null<h3d.mat.Texture>, layer = 0, mipLevel = 0) {
-		DebugTrace.trace('RENDER CALLSTACK TARGET setRenderTarget  ${tex} layer ${layer} mip ${mipLevel} db ${tex != null ? tex.depthBuffer : null}');
 		if (tex == null) {
+			DebugTrace.trace('RENDER setRenderTarget setting default');
 			setDefaultRenderTarget();
 		} else {
+			DebugTrace.trace('RENDER CALLSTACK TARGET setRenderTarget ${tex.name} ${tex.t}  layer ${layer} mip ${mipLevel} db ${tex != null ? tex.depthBuffer : null}');
 			if (tex.t.rt == null) {
 				var cfg = new RuntimeRenderTarget();
 				cfg.texture = tex;
