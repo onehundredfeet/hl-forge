@@ -250,8 +250,8 @@ class ForgeDriver extends h3d.impl.Driver {
 				var rtrt = new RuntimeRenderTarget();
 
 				rtrt.nativeRT = rt;
-				rtrt.inBarrier = inBarrier;
-				rtrt.outBarrier = outBarrier;
+				rtrt.inBarrier = null;
+				rtrt.outBarrier = null;
 				rtrt.begin = begin;
 				rtrt.present = present;
 				rtrt.captureBuffer = null;
@@ -949,7 +949,8 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		_currentCmd.begin();
 		DebugTrace.trace('Inserting current RT begin ${_currentRT} ${_currentSwapIndex}'); // Crashes here
-		_currentCmd.insertBarrier(_currentRT.colorTargets[0].begin);
+		if (_currentRT.colorTargets[0].begin != null)
+			_currentCmd.insertBarrier(_currentRT.colorTargets[0].begin);
 		//		_currentCmd.renderBarrier( _currentRT.rt );
 		_frameBegun = true;
 		_firstDraw = true;
@@ -2892,10 +2893,12 @@ class ForgeDriver extends h3d.impl.Driver {
 	public override function end() {
 		DebugTrace.trace('RENDER CALLSTACK TARGET end');
 		_currentCmd.unbindRenderTarget();
-		_currentCmd.insertBarrier(_currentRT.colorTargets[0].outBarrier); // needs to be full out barrier, not just read
+		if (_currentRT.colorTargets[0].outBarrier != null)
+			_currentCmd.insertBarrier(_currentRT.colorTargets[0].outBarrier); // needs to be full out barrier, not just read
 		DebugTrace.trace('Inserting current RT present');
 		_currentRT = _swapRenderBlocks[_currentSwapIndex];
-		_currentCmd.insertBarrier(_currentRT.colorTargets[0].present);
+		if (_currentRT.colorTargets[0].present != null)
+			_currentCmd.insertBarrier(_currentRT.colorTargets[0].present);
 		_currentRT = null;
 		_currentCmd.end();
 
@@ -3046,7 +3049,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		var currentDepth = _currentRT.depthTarget;
 		DebugTrace.trace('RENDER TARGET  setting depth buffer target to existing ${currentDepth} ${currentDepth != null ? currentDepth.texture.width : null} ${currentDepth != null ? currentDepth.texture.height : null}');
 		DebugTrace.trace('Inserting current RT in barrier');
-		_currentCmd.insertBarrier(_currentRT.colorTargets[0].inBarrier);
+		if (_currentRT.colorTargets[0].inBarrier != null)
+			_currentCmd.insertBarrier(_currentRT.colorTargets[0].inBarrier);
 
 		if (!tex.flags.has(WasCleared)) {
 			tex.flags.set(WasCleared); // once we draw to, do not clear again
@@ -3153,11 +3157,13 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		_currentCmd.unbindRenderTarget();
 		DebugTrace.trace('Inserting current RT out');
-		_currentCmd.insertBarrier(_currentRT.colorTargets[0].outBarrier);
+		if (_currentRT.colorTargets[0].outBarrier != null)
+			_currentCmd.insertBarrier(_currentRT.colorTargets[0].outBarrier);
 		//		_currentRT = _sc.getRenderTarget(_currentSwapIndex);
 		_currentRT = _swapRenderBlocks[_currentSwapIndex];
 
-		_currentCmd.insertBarrier(_currentRT.colorTargets[0].inBarrier);
+		if (_currentRT.colorTargets[0].inBarrier != null)
+			_currentCmd.insertBarrier(_currentRT.colorTargets[0].inBarrier);
 		_currentCmd.bind(_currentRT.colorTargets[0].nativeRT, _currentRT.depthTarget == null ? null : _currentRT.depthTarget.nativeRT, LOAD_ACTION_LOAD,
 			LOAD_ACTION_LOAD);
 
