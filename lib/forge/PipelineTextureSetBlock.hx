@@ -134,12 +134,9 @@ class PipelineTextureSetBlock {
                         }
                         builder.addSlotTexture(ts, null);
                         builder.setSlotBindIndex(ts, id);
-                        if (ids != id + 1) {
-                            trace('RENDER UNIQUE TEXTURE SAMPLER MISMATCH ${tt.name}Smplr ${ids} ${id + 1}');
-                            throw 'RENDER UNIQUE TEXTURE SAMPLER MISMATCH ${tt.name}Smplr ${ids} ${id + 1}';
-                        }
+
                         builder.addSlotSampler(ss, samplers[i]);
-                        builder.setSlotBindIndex(ss, id + 1);
+                        builder.setSlotBindIndex(ss,ids);
 					case TArray(_):
 					default:
 				}
