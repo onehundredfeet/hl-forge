@@ -3051,6 +3051,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			rtrt.created = true;
 
 			tex.t.t = rt.getTexture();
+			tex.t.rt = rtrt;
 		} else {
 			DebugTrace.trace('RENDER TARGET  setting render target to existing ${rtrt.texture} w ${rtrt.texture.width} h ${rtrt.texture.height}');
 		}
