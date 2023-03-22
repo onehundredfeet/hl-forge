@@ -2900,11 +2900,11 @@ class ForgeDriver extends h3d.impl.Driver {
 				rt.setClearDepthNormalized(d, sten);
 		}
 
-		DebugTrace.trace('RENDER CLEAR BINDING');
+		DebugTrace.trace('RENDER FORCE CLEAR BINDING');
 		//
 		_currentCmd.bind(_currentRT.colorTargets[0].nativeRT, _currentRT.depthTarget == null ? null : _currentRT.depthTarget.nativeRT, LOAD_ACTION_CLEAR,
 			LOAD_ACTION_CLEAR);
-		DebugTrace.trace('RENDER CLEAR BINDING DONE');
+		DebugTrace.trace('RENDER FORCE CLEAR BINDING DONE');
 	}
 
 	public override function end() {
@@ -3073,11 +3073,12 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (_currentRT.colorTargets[0].inBarrier != null)
 			_currentCmd.insertBarrier(_currentRT.colorTargets[0].inBarrier);
 
-		if (!tex.flags.has(WasCleared)) {
+		if (_currentFrame != _currentRT.colorTargets[0].lastClearedFrame) {
 			tex.flags.set(WasCleared); // once we draw to, do not clear again
 
 			DebugTrace.trace('RENDER TARGET CLEAR set render target internal cleared');
 			_currentCmd.bind(_currentRT.colorTargets[0].nativeRT, currentDepth == null ? null : currentDepth.nativeRT, LOAD_ACTION_CLEAR, LOAD_ACTION_CLEAR);
+			_currentRT.colorTargets[0].lastClearedFrame = _currentFrame;
 		} else {
 			DebugTrace.trace('RENDER TARGET CLEAR set render target internal no clear');
 			_currentCmd.bind(_currentRT.colorTargets[0].nativeRT, currentDepth == null ? null : currentDepth.nativeRT, LOAD_ACTION_LOAD, LOAD_ACTION_LOAD);

@@ -36,8 +36,8 @@ void heuristicTest2(float (*fn)(int));
 
 #define TWIN _ABSTRACT(sdl_window)
 
-// #define DEBUG_PRINT(...) fflush(stdout); printf(__VA_ARGS__)
-#define DEBUG_PRINT(...)
+#define DEBUG_PRINT(...) fflush(stdout); printf(__VA_ARGS__)
+//#define DEBUG_PRINT(...)
 
 class HashBuilder {
    private:

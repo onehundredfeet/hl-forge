@@ -430,12 +430,13 @@ void forge_render_target_bind(Cmd *cmd, RenderTarget *pRenderTarget, RenderTarge
     loadActions.mClearColorValues[0].b = pRenderTarget->mClearValue.b;
     loadActions.mClearColorValues[0].a = pRenderTarget->mClearValue.a;
 
-    // DEBUG_PRINT("RENDER CLEAR c++ %f %f %f %f - %f %d\n", loadActions.mClearColorValues[0].r, loadActions.mClearColorValues[0].g, loadActions.mClearColorValues[0].b, loadActions.mClearColorValues[0].a,  loadActions.mClearDepth.depth, loadActions.mClearDepth.stencil);
+     DEBUG_PRINT("RENDER CLEAR c++ r %f g %f b %f a %f - d %f s %d\n", loadActions.mClearColorValues[0].r, loadActions.mClearColorValues[0].g, loadActions.mClearColorValues[0].b, loadActions.mClearColorValues[0].a,  loadActions.mClearDepth.depth, loadActions.mClearDepth.stencil);
     cmdBindRenderTargets(cmd, 1, &pRenderTarget, pDepthStencilRT, &loadActions, NULL, NULL, -1, -1);
     cmdSetViewport(cmd, 0.0f, 0.0f, (float)pRenderTarget->mWidth, (float)pRenderTarget->mHeight, 0.0f, 1.0f);
     cmdSetScissor(cmd, 0, 0, pRenderTarget->mWidth, pRenderTarget->mHeight);
 }
 void forge_render_target_set_clear_colour(RenderTarget *rt, float r, float g, float b, float a) {
+    DEBUG_PRINT("RENDER EXISTING CLEAR SET COLOR %f %f %f %f\n",r,g,b,a );
     rt->mClearValue.r = r;
     rt->mClearValue.g = g;
     rt->mClearValue.b = b;
@@ -444,10 +445,9 @@ void forge_render_target_set_clear_colour(RenderTarget *rt, float r, float g, fl
     // DEBUG_PRINT("RENDER CLEAR SET %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
 }
 void forge_render_target_set_clear_depth(RenderTarget *rt, float depth, int stencil) {
-    DEBUG_PRINT("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
+    DEBUG_PRINT("RENDER EXISTING CLEAR SET DEPTH %f %df\n", depth, stencil );
     rt->mClearValue.depth = depth;
     rt->mClearValue.stencil = stencil;
-    DEBUG_PRINT("RENDER CLEAR SET DEPTH %f %f %f %f\n", rt->mClearValue.r, rt->mClearValue.g, rt->mClearValue.b, rt->mClearValue.a );
 }
 void forge_render_target_desc_setDepthClear( RenderTargetDesc *pDesc, float depth, int stencil) {
     pDesc->mClearValue.depth = depth;
