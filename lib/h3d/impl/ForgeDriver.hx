@@ -217,9 +217,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		setDesc.pRootSignature = _mipGen.rootsig;
 		setDesc.setIndex = forge.Native.DescriptorUpdateFrequency.DESCRIPTOR_UPDATE_FREQ_PER_DRAW.toValue();
 		setDesc.maxSets = MAX_MIP_LEVELS; // 2^13 = 8192
-		DebugTrace.trace('Creating default descriptors');
+		DebugTrace.trace('RENDER Creating default descriptors for mip generation');
 		_mipGenDescriptor = _renderer.addDescriptorSet(setDesc);
+		DebugTrace.trace('RENDER Creating default descriptors for mip array generation');
 		_mipGenArrayDescriptor = _renderer.addDescriptorSet(setDesc);
+		DebugTrace.trace('RENDER Default Descriptors done');
 
 		var s = _mipGenDB.addSlot(DBM_TEXTURES); // ?
 		_mipGenDB.setSlotBindName(s, "Source");
@@ -1107,7 +1109,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		var depth = vbuf != null ? vbuf.depth : fbuf.depth; // 2^13 = 8192
 		setDesc.maxSets = depth;
 
-		DebugTrace.trace('RENDER DESCRIPTORS Adding set ');
+		DebugTrace.trace('RENDER DESCRIPTORS Adding global descriptors set ');
 		var ds = _renderer.addDescriptorSet(setDesc);
 
 		DebugTrace.trace('RENDER DESCRIPTORS Filling set ');
@@ -2214,17 +2216,22 @@ class ForgeDriver extends h3d.impl.Driver {
 		// Unique hash code for pipeline
 		_hashBulder.reset(_pipelineSeed);
 		_hashBulder.addInt32(_curShader.id);
-		_hashBulder.addInt32(_currentRT.colorTargets[0].nativeRT.format.toValue());
-		_hashBulder.addInt32(_currentRT.colorTargets[0].nativeRT.sampleCount.toValue());
-		_hashBulder.addInt32(_currentRT.colorTargets[0].nativeRT.sampleQuality);
+		_hashBulder.addInt32(_currentRT.sampleCount.toValue());
+		_hashBulder.addInt32(_currentRT.sampleQuality);
 		var dt = _currentRT.depthTarget;
 		if (dt != null) {
 			_hashBulder.addInt8(1);
-			_hashBulder.addInt32(dt.nativeRT.format.toValue());
+			if (dt.nativeRT != null)
+				_hashBulder.addInt32(dt.nativeRT.format.toValue());
+			else
+				throw 'Native depth buffer RT is null';
 		}
 		for (i in 0..._currentRT.colorTargets.length) {
 			_hashBulder.addInt8(i);
-			_hashBulder.addInt32(_currentRT.colorTargets[i].nativeDesc.format.toValue());
+			if (_currentRT.colorTargets[i].nativeRT != null)
+				_hashBulder.addInt32(_currentRT.colorTargets[i].nativeRT.format.toValue());
+			else
+				throw 'Native color target ${i} RT is null';
 		}
 		if (_curBuffer != null) {
 			if (_curBuffer.flags.has(RawFormat)) {
@@ -2400,7 +2407,7 @@ class ForgeDriver extends h3d.impl.Driver {
 					setDesc.pRootSignature = _curShader.rootSig;
 					setDesc.setIndex = EDescriptorSetSlot.BUFFERS;
 					setDesc.maxSets = 3; // TODO: make this configurable
-					DebugTrace.trace('Creating descriptors for id ${_curShader.id}');
+					DebugTrace.trace('RENDER Creating descriptors for shader id ${_curShader.id}');
 					ds = _renderer.addDescriptorSet(setDesc);
 					var in_buf:sdl.Forge.Buffer = @:privateAccess hbuf.b;
 					DebugTrace.trace('Filling descriptor set');
@@ -3398,6 +3405,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			_mipGenDB.addSlotTexture(1, source.t.t);
 			_mipGenDB.setSlotUAVMipSlice(1, i);
 
+			trace('Updating MIP Gen');
 			_mipGenDB.update(_renderer, i - 1, _mipGenArrayDescriptor); // this is computation index not mip index
 		}
 

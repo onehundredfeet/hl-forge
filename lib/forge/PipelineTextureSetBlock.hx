@@ -64,7 +64,6 @@ class PipelineTextureSetBlock {
         buffer._vcs = vertex;
         buffer._fcs = fragment;
 
-		trace('RENDER PIPELINE TEXTURE BLOCK Allocating  with ${vertex.textureTotalCount()} vertex textures, ${fragment.textureTotalCount()}  fragment textures ${length} length, ${depth} depth');
 		//        buffer._vertexBytes = getQuadWordSize(vBytes);
 		//      buffer._fragmentBytes = getQuadWordSize(fBytes);
 
@@ -75,7 +74,9 @@ class PipelineTextureSetBlock {
 		setDesc.pRootSignature = rootsig;
 		setDesc.setIndex = EDescriptorSetSlot.TEXTURES;
 		setDesc.maxSets = buffer._depth * buffer._length; // 2^13 = 8192
+		trace('FRENDER PIPELINE TEXTURE BLOCK Allocating  with ${vertex.textureTotalCount()} vertex textures, ${fragment.textureTotalCount()}  fragment textures ${length} length, ${depth} depth');
 		buffer._ds = renderer.addDescriptorSet(setDesc);
+		trace('FRENDER PIPELINE TEXTURE BLOCK Done');
 
 		// this can be moved elsewhere to avoid repetition
 		var vidx = [];
@@ -185,8 +186,17 @@ class PipelineTextureSetBlock {
 		return buffer;
 	}
 
+	var _filled = -1;
+	var _filling = -1;
+
+	var _bound = false;
 	public function nextLayer() {
+		trace('RENDER TEXTURE SET BLOCK ADVANCING LAYER  cd ${_currentDepth} d ${_depth} head ${_writeHead} filled ${_filled} bound ${_bound} filling ${_filling}');
 		_writeHead = 0;
+		_filled = -1;
+		_bound = false;
+		_filling = -1;
+		
 		_currentDepth = (_currentDepth + 1) % _depth;
 	}
 
@@ -198,12 +208,24 @@ class PipelineTextureSetBlock {
 		if (_writeHead == _length) {
 			return false;
 		}
+		if (_filled >= _writeHead) throw "Already filled this texture descriptor";
+
+		_filling = _writeHead;
+		_bound = false;
+
 		return true;
 	}
 
     public function fill(renderer:Renderer, vertex:Vector<h3d.mat.Texture>, fragmentTex:Vector<h3d.mat.Texture>) {
 		var tt = _fcs.shader.textures;
         
+		if (_filling != _writeHead) throw "filling the rong descriptor";
+		if (_bound) throw "has already been bound";
+		if (_filled == _writeHead) throw 'Descriptor ${_ds} [${_writeHead}] has already been filled';
+
+		
+		trace('RENDER fill texture decriptor _filling ${_filling} filled ${_filled}bound  ${_bound}');
+
         var slotIdx = 0;
         for (i in 0..._fcs.shader.texturesCount) {
 			var found = false;
@@ -246,9 +268,10 @@ class PipelineTextureSetBlock {
 
 
         // actual update
-		var idx = _currentDepth * _writeHead + _currentDepth;
+		var idx = _depth * _writeHead + _currentDepth;
 		trace('RENDER Updating texture descriptor idx ${idx} head ${_writeHead} depth ${_currentDepth} ds ${_ds}');
 		_builder.update(renderer, idx, _ds);
+		_filled = _writeHead;
 	}
 
 #if old_new
@@ -282,15 +305,18 @@ class PipelineTextureSetBlock {
     #end
 
 	public function bind(cmd:forge.Native.Cmd) {
+		if (_bound) throw "duplicate binding";
 		var idx = _currentDepth * _writeHead + _currentDepth;
 
 		DebugTrace.trace('RENDER Binding texture descriptor idx ${idx} head ${_writeHead} depth ${_currentDepth}');
 		cmd.bindDescriptorSet(idx, _ds);
+		_bound = true;
+
 	}
 
 	public function next():Bool {
+		if (!_bound || _filled != _writeHead) throw "Not filled in or bound";
 		_writeHead++;
-
 		if (_writeHead == _length) {
 			return false;
 		}

@@ -82,7 +82,9 @@ class PipelineParamBufferBlock {
 		setDesc.pRootSignature = rootsig;
 		setDesc.setIndex = set;
 		setDesc.maxSets = buffer._depth * buffer._length; // 2^13 = 8192
+        trace('RENDER PIPELINE ALLOCATING desriptor sets ${setDesc.maxSets} length ${buffer._length} depth ${buffer._depth}');
 		buffer._ds = renderer.addDescriptorSet( setDesc );   
+        trace('RENDER PIPELINE ALLOCATING desriptor sets done ${buffer._ds}');
 
         var vidx = rootsig.getDescriptorIndexFromName( GLSLTranscoder.getVariableBufferName(VERTEX, set));
         var fidx = rootsig.getDescriptorIndexFromName( GLSLTranscoder.getVariableBufferName(FRAGMENT, set));
@@ -112,6 +114,7 @@ class PipelineParamBufferBlock {
     
     public function nextLayer() {
         _writeHead = 0;
+        _filled = -1;
         _currentDepth = (_currentDepth + 1) % _depth;
     }
 
@@ -119,10 +122,13 @@ class PipelineParamBufferBlock {
         return _writeHead == _length;
     }
 
+    var _filled = -1;
+
     public function beginUpdate() : Bool {
         if (_writeHead == _length) {
             return false;
         }
+        if (_filled == _writeHead) throw "Already updated this descriptor";
         return true;
     }
 
@@ -136,15 +142,18 @@ class PipelineParamBufferBlock {
             _fbuffers[_writeHead].setCurrent(_currentDepth);
             _fbuffers[_writeHead].update(fdata);
         }
+        _filled = _writeHead;
+
     }
 
     public function bind(cmd: forge.Native.Cmd) {
-        var idx = _currentDepth *  _writeHead + _currentDepth;
+        var idx = _depth *  _writeHead + _currentDepth;
         
         DebugTrace.trace('RENDER Binding descriptor set ${_set} to idx ${idx} head ${_writeHead} depth ${_currentDepth}');
         cmd.bindDescriptorSet(idx, _ds);
     }
     public function next() : Bool {
+        if (_filled != _writeHead) throw "Wasn't filled";
         _writeHead++;
 
         if (_writeHead == _length) {
