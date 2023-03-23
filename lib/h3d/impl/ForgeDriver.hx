@@ -1068,7 +1068,7 @@ class ForgeDriver extends h3d.impl.Driver {
 				var descName = '_uniformBuffer${i}';
 				var descIdx = rootsig.getDescriptorIndexFromName(descName);
 				if (descIdx != -1) {
-					// trace('buffer called  ${x.name} has descripter ${descIdx} under name ${descName}');
+					// DebugTrace.trace('buffer called  ${x.name} has descripter ${descIdx} under name ${descName}');
 				} else {
 					throw('buffer shader name ${x.name} not found under ${descName}');
 				}
@@ -1087,7 +1087,7 @@ class ForgeDriver extends h3d.impl.Driver {
 					gl.uniformBlockBinding(p.p,s.buffers[i],i + start);
 			 */
 		}
-		// trace('Done init shader');
+		// DebugTrace.trace('Done init shader');
 	}
 
 	static inline final SIZEOF_FLOAT = 4;
@@ -1138,7 +1138,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public function compileProgram(shader:hxsl.RuntimeShader):CompiledProgram {
-		trace('Compiling program ${shader.id}');
+		DebugTrace.trace('Compiling program ${shader.id}');
 		var flavour = switch (_backend) {
 			case Metal: EGLSLFlavour.Metal;
 			case Vulkan: EGLSLFlavour.Vulkan;
@@ -1380,7 +1380,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		p.vertex.constantsIndex = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(VERTEX, PARAMS));
 		p.vertex.globalsIndex = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(VERTEX, GLOBALS));
 
-		trace('VERTEX DESCRIPTORS globals ${p.vertex.globalsIndex} ${p.vertex.params}');
+		DebugTrace.trace('VERTEX DESCRIPTORS globals ${p.vertex.globalsIndex} ${p.vertex.params}');
 
 		//		p.vertex.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0"); // doesn't seem to resolve
 		p.vertex.globalsLength = shader.vertex.globalsSize * FLOATS_PER_VECT; // vectors to floats
@@ -1390,10 +1390,10 @@ class ForgeDriver extends h3d.impl.Driver {
 			p.vertex.globalsBuffer = DynamicUniformBuffer.allocate(p.vertex.globalsLength * SIZEOF_FLOAT, _swap_count);
 			DebugTrace.trace('RENDER SHADER Creating vertex globals descriptor');
 		} else {
-			trace('RENDER No vertex globals');
+			DebugTrace.trace('RENDER No vertex globals');
 		}
 		if (p.vertex.paramsLengthBytes == 0) {
-			trace('RENDER EMPTY No vertex params');
+			DebugTrace.trace('RENDER EMPTY No vertex params');
 		}
 
 		p.fragment.params = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(FRAGMENT, PARAMS));
@@ -1401,7 +1401,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		p.fragment.globalsLength = shader.fragment.globalsSize * 4; // vectors to floats
 		p.fragment.globalsIndex = rootSig.getDescriptorIndexFromName(GLSLTranscoder.getVariableBufferName(FRAGMENT, GLOBALS));
 		//		p.fragment.globalsDescriptorSetIndex = rootSig.getDescriptorIndexFromName( "spvDescriptorSetBuffer0");
-		trace('FRAGMENT DESCRIPTORS globals ${p.fragment.globalsIndex} ${p.fragment.params}');
+		DebugTrace.trace('FRAGMENT DESCRIPTORS globals ${p.fragment.globalsIndex} ${p.fragment.params}');
 
 		DebugTrace.trace('RENDER SHADER DESCRIPTOR p.vertex.globalsIndex ${p.vertex.globalsIndex} p.vertex.globalsDescriptorSetIndex ${p.vertex.globalsDescriptorSetIndex}');
 		DebugTrace.trace('RENDER SHADER DESCRIPTOR p.fragment.globalsIndex ${p.fragment.globalsIndex} p.fragment.globalsDescriptorSetIndex ${p.fragment.globalsDescriptorSetIndex}');
@@ -1410,7 +1410,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		p.fragment.paramsLengthBytes = shader.fragment.paramsSize * 16; // vectors to bytes
 
 		if (p.fragment.paramsLengthBytes == 0) {
-			trace('RENDER EMPTY No fragment params');
+			DebugTrace.trace('RENDER EMPTY No fragment params');
 		}
 		if (p.fragment.globalsLength > 0) {
 			p.fragment.globalsBuffer = DynamicUniformBuffer.allocate(p.fragment.globalsLength * SIZEOF_FLOAT,
@@ -1418,7 +1418,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			DebugTrace.trace('RENDER SHADER Creating fragment globals descriptor');
 			//			p.fragment.globalDescriptorSet = p.fragment.globalsBuffer.createDescriptors( _renderer, rootSig, p.fragment.globalsIndex, GLOBAL_DESCRIPTOR_SET);
 		} else {
-			trace('RENDER No fragment globals');
+			DebugTrace.trace('RENDER No fragment globals');
 		}
 
 		p.globalDescriptorSet = createGlobalDescriptors(rootSig, EDescriptorSetSlot.GLOBALS, p.vertex.globalsBuffer, p.vertex.globalsIndex,
@@ -1516,7 +1516,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		p.inputs = InputNames.get(attribNames);
 		p.naturalLayout = buildLayoutFromShader(p);
 
-		// trace('Done compiling shader ${shader.id}');
+		// DebugTrace.trace('Done compiling shader ${shader.id}');
 		return p;
 	}
 
@@ -1595,7 +1595,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		DebugTrace.trace('RENDER CALLSTACK uploadShaderBuffers ${which}');
 
 		switch (which) {
-			case Globals: // trace ('Ignoring globals'); // do nothing as it was all done by the globals
+			case Globals: // DebugTrace.trace ('Ignoring globals'); // do nothing as it was all done by the globals
 				if (_curShader.vertex.globalsLength > 0) {
 					if (buf.vertex.globals == null)
 						throw "Vertex Globals are expected on this shader";
@@ -1635,7 +1635,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			// Update buffer
 			//					gl.uniform4fv(s.globals, streamData(hl.Bytes.getArray(buf.globals.toData()), 0, s.shader.globalsSize * 16), 0, s.shader.globalsSize * 4);
 
-			case Params: // trace ('Upload Globals & Params');
+			case Params: // DebugTrace.trace ('Upload Globals & Params');
 				if (_curShader.vertex.paramsLengthFloats > 0) {
 					if (buf.vertex.params == null)
 						throw "Vertex Params are expected on this shader";
@@ -1682,13 +1682,13 @@ class ForgeDriver extends h3d.impl.Driver {
 				{
 					var tt = vertRuntimeData.textures;
 					for (i in 0...vertRuntimeData.texturesCount) {
-						trace('RENDER TEXTURES vertex tex ${i} name ${tt.name} type ${tt.type}');
+						DebugTrace.trace('RENDER TEXTURES vertex tex ${i} name ${tt.name} type ${tt.type}');
 						tt = tt.next;
 					}
 				} {
 					var tt = fragRuntimeData.textures;
 					for (i in 0...fragRuntimeData.texturesCount) {
-						trace('RENDER TEXTURES frag tex ${i} name ${tt.name} type ${tt.type}');
+						DebugTrace.trace('RENDER TEXTURES frag tex ${i} name ${tt.name} type ${tt.type}');
 						tt = tt.next;
 					}
 				}
@@ -1704,7 +1704,7 @@ class ForgeDriver extends h3d.impl.Driver {
 							if (t.t.t == null)
 								throw "Forge Cube texture is null";
 						} else if (t.flags.has(Target)) {
-							trace('RENDER TEXTURES target ${t.name}');
+							DebugTrace.trace('RENDER TEXTURES target ${t.name}');
 							targetTextureArrays[TEX_TYPE_RT].push(t);
 							if (t.t.rt == null)
 								throw "Render target is null";
@@ -2294,10 +2294,9 @@ class ForgeDriver extends h3d.impl.Driver {
 			gdesc.mPrimitiveTopo = PRIMITIVE_TOPO_TRI_LIST;
 			var pDepthState = _currentRT.depthTarget != null ? _currentState.depth() : null;
 			if (pDepthState != null) {
-				DebugTrace.trace('RENDER PIPELINE  DEPTH PARAMS depth target ${ _currentRT.depthTarget != null} test ${pDepthState.depthTest} write ${pDepthState.depthWrite}');
-
+				DebugTrace.trace('RENDER PIPELINE  DEPTH PARAMS depth target ${_currentRT.depthTarget != null} test ${pDepthState.depthTest} write ${pDepthState.depthWrite}');
 			} else {
-				DebugTrace.trace('RENDER PIPELINE  NO DEPTH BUFFER ');				
+				DebugTrace.trace('RENDER PIPELINE  NO DEPTH BUFFER ');
 			}
 
 			gdesc.pDepthState = pDepthState;
@@ -2481,7 +2480,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		#if OLD_NEW
 		for (i in 0...TEX_TYPE_COUNT) {
-			trace('RENDER CALLSTACK bindTextures ${i} verts ${_vertexTextures[i].length} frags ${_fragmentTextures[i].length}');
+			DebugTrace.trace('RENDER CALLSTACK bindTextures ${i} verts ${_vertexTextures[i].length} frags ${_fragmentTextures[i].length}');
 		}
 
 		if (_curShader.fragment.hasTextures() || _curShader.vertex.hasTextures()) {
@@ -2497,16 +2496,16 @@ class ForgeDriver extends h3d.impl.Driver {
 					DebugTrace.trace('RENDER WARNING shader fragment texture count ${_curShader.fragment.textureCount(i)} doesn\'t match provided texture count ${_vertexTextures[i].length}');
 			}
 
-			trace('RENDER UPDATING TEXTURE BLOCK'); 
+			DebugTrace.trace('RENDER UPDATING TEXTURE BLOCK');
 			var block = getTextureBlock();
 			block.beginUpdate();
 			block.fill(_renderer, _vertexTextures, _fragmentTextures);
 			block.bind(_currentCmd);
 			block.next();
 
-			trace('RENDER DONE UPDATING TEXTURE BLOCK'); 
+			DebugTrace.trace('RENDER DONE UPDATING TEXTURE BLOCK');
 			#else
-			throw ('Should not be here');
+			throw('Should not be here');
 			if (_curShader.fragment.hasTextures() || _curShader.vertex.hasTextures()) {
 				//		if (_curShader.vertex.textures.length == 0) return;
 				var fragmentSeed = 0x3917437;
@@ -2721,7 +2720,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		for (a in _curShader.attribs) {
 			var bb = curBufferView.buffer;
 			var mb = bb.buffer;
-			// trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
+			// DebugTrace.trace ('RENDER selectMultiBuffers with strid ${mb.stride}');
 			var isByteBuffer = mb.flags.has(ByteBuffer);
 			var elementSize = isByteBuffer ? 1 : 4;
 			var vb = @:privateAccess mb.vbuf;
@@ -3071,7 +3070,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 		var tex = rtrt.texture;
 		var currentDepth = _currentRT.depthTarget;
-	
+
 		DebugTrace.trace('RENDER TARGET  setting depth buffer target to existing ${currentDepth} ');
 		DebugTrace.trace('Inserting current RT in barrier');
 		if (_currentRT.colorTargets[0].inBarrier != null)
@@ -3196,7 +3195,7 @@ class ForgeDriver extends h3d.impl.Driver {
 		if (_currentPass != null) {
 			selectMaterial(_currentPass);
 		}
-		
+
 		// currentTargetResources[0] = null;
 
 		/*
@@ -3411,7 +3410,7 @@ class ForgeDriver extends h3d.impl.Driver {
 			_mipGenDB.addSlotTexture(1, source.t.t);
 			_mipGenDB.setSlotUAVMipSlice(1, i);
 
-			trace('Updating MIP Gen');
+			DebugTrace.trace('Updating MIP Gen');
 			_mipGenDB.update(_renderer, i - 1, _mipGenArrayDescriptor); // this is computation index not mip index
 		}
 

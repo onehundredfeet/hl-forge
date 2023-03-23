@@ -318,7 +318,7 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
     swapChainDesc.mHeight = height;
     swapChainDesc.mImageCount = chainCount;
 
-    printf("C>ForgeSDLWindow::createSwapChain - Swap chain dimensions %d %d handle %p \n", width, height, swapChainDesc.mWindowHandle.window);
+    DEBUG_PRINT("C>ForgeSDLWindow::createSwapChain - Swap chain dimensions %d %d handle %p \n", width, height, swapChainDesc.mWindowHandle.window);
 
     if (hdr10)
         swapChainDesc.mColorFormat = TinyImageFormat_R10G10B10A2_UNORM;
@@ -604,10 +604,10 @@ std::string getFilename(const std::string &path) {
 DescriptorSet *forge_renderer_add_descriptor_set(Renderer *pRenderer,DescriptorSetDesc *dsd) {
     DescriptorSet *tmp;
 
-    printf("C>RENDER CREATING %d sets\n",dsd->mMaxSets);
+    DEBUG_PRINT("C>RENDER CREATING %d sets\n",dsd->mMaxSets);
     fflush(stdout);
     addDescriptorSet(pRenderer, dsd, &tmp);
-    printf("C>RENDER CREATED DESCRIPTOR sets %p \n", tmp);
+    DEBUG_PRINT("C>RENDER CREATED DESCRIPTOR sets %p \n", tmp);
     fflush(stdout);
 
     return tmp;
@@ -623,7 +623,7 @@ DescriptorSet *forge_renderer_create_descriptor_set(Renderer *pRenderer, RootSig
 
     addDescriptorSet(pRenderer, &desc, &tmp);
 
-    printf("C>RENDER CREATE DESCRIPTOR sets %p with %d sets\n", tmp, maxSets);
+    DEBUG_PRINT("C>RENDER CREATE DESCRIPTOR sets %p with %d sets\n", tmp, maxSets);
     return tmp;
 }
 */
@@ -647,7 +647,7 @@ int forge_render_target_capture_size(RenderTarget *pRenderTarget) {
     return pRenderTarget->mWidth * pRenderTarget->mHeight * byteSize;
 }
 bool forge_render_target_capture_2(Renderer *pRenderer, Cmd *pCmd, RenderTarget *pRenderTarget, Queue *pQueue, ResourceState renderTargetCurrentState, uint8_t *alloc, int bufferSize) {
-    printf("C>CAPTURE alloc buffer is %p of size %d\n", alloc, bufferSize);
+    DEBUG_PRINT("C>CAPTURE alloc buffer is %p of size %d\n", alloc, bufferSize);
     // Wait for queue to finish rendering.
     waitQueueIdle(pQueue);
 
@@ -895,7 +895,7 @@ Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, 
     addShader(pRenderer, &shaderDesc, &tmp);
 
     if (tmp == nullptr) {
-        printf("C>Couldn't compile shader %s | %s\n",vertFN.c_str(), fragFN.c_str());
+        DEBUG_PRINT("C>Couldn't compile shader %s | %s\n",vertFN.c_str(), fragFN.c_str());
         ASSERT(tmp != nullptr);
         exit(-1);
     }
@@ -1259,7 +1259,7 @@ void requestShutdown()
 void requestReset(const ResetDesc* pResetDesc)
 {
 	//gResetDescriptor = *pResetDesc;
-        printf("C>!!!!!!!!!!!!!!!!!! DEVICE LOST !!!!!!!!!!!!!!!!\n");
+        DEBUG_PRINT("C>!!!!!!!!!!!!!!!!!! DEVICE LOST !!!!!!!!!!!!!!!!\n");
 
 }
 #endif
@@ -1267,7 +1267,7 @@ void requestReset(const ResetDesc* pResetDesc)
 void requestReload(const ReloadDesc* pReloadDesc)
 {
 	//gReloadDescriptor = *pReloadDesc;
-        printf("C>!!!!!!!!!!!!!!!!!! REQUEST RELOAD !!!!!!!!!!!!!!!!\n");
+        DEBUG_PRINT("C>!!!!!!!!!!!!!!!!!! REQUEST RELOAD !!!!!!!!!!!!!!!!\n");
 
 }
 

@@ -36,8 +36,8 @@ void heuristicTest2(float (*fn)(int));
 
 #define TWIN _ABSTRACT(sdl_window)
 
-#define DEBUG_PRINT(...) fflush(stdout); printf(__VA_ARGS__)
-//#define DEBUG_PRINT(...)
+//#define DEBUG_PRINT(...) fflush(stdout); printf(__VA_ARGS__)
+#define DEBUG_PRINT(...)
 
 class HashBuilder {
    private:
@@ -296,7 +296,7 @@ class BufferBinder {
 
     static void bindAsVertex(Cmd *cmd, BufferBinder *This) {
         if (This->_buffers.size() == 0) {
-            fflush(stdout); printf("C>Warning: binding 0 size buffer\n");
+            fflush(stdout); DEBUG_PRINT("C>Warning: binding 0 size buffer\n");
         }
         for (int i = 0; i < This->_buffers.size(); i++) {
             This->_buffersTmp[i] = This->_buffers[i]->current();
@@ -317,7 +317,7 @@ class Map64Int {
         return _map.find(key) != _map.end();
     }
     inline void set(int64 key, int value) {
-        //        fflush(stdout); printf("C>Signature : Setting key %lld, unsigned %llu n", key, (* ((uint64 *) &key)));
+        //        fflush(stdout); DEBUG_PRINT("C>Signature : Setting key %lld, unsigned %llu n", key, (* ((uint64 *) &key)));
 
         _map[key] = value;
     }
@@ -444,19 +444,19 @@ class DescriptorDataBuilder {
     }
 
     void setSlotData(int slot, int idx, Texture *data) {
-        fflush(stdout); printf("C>Setting slot %d idx %d to %p\n", slot, idx, data);
-        fflush(stdout); printf("C>pointers have length %lld\n", _dataPointers[slot]->size());
+        fflush(stdout); DEBUG_PRINT("C>Setting slot %d idx %d to %p\n", slot, idx, data);
+        fflush(stdout); DEBUG_PRINT("C>pointers have length %lld\n", _dataPointers[slot]->size());
         if (slot < _dataPointers.size()) {
             auto &a =  (*(_dataPointers[slot]));
-            fflush(stdout); printf("C>\tData has room for %d\n", a.size());
+            fflush(stdout); DEBUG_PRINT("C>\tData has room for %d\n", a.size());
             if (idx < a.size()) {
-                fflush(stdout); printf("C>\t\tSetting slot %d idx %d to %p\n", slot, idx, data);
+                fflush(stdout); DEBUG_PRINT("C>\t\tSetting slot %d idx %d to %p\n", slot, idx, data);
                 a[idx] = data;
             } else {
-                fflush(stdout); printf("C>ERROR: trying to set slot %d idx %d but only have %lld slots\n", slot, idx, a.size());
+                fflush(stdout); DEBUG_PRINT("C>ERROR: trying to set slot %d idx %d but only have %lld slots\n", slot, idx, a.size());
             }
         } else {
-            fflush(stdout); printf("C>ERROR: trying to set slot %d idx %d but only have %d slots\n", slot, idx, _dataPointers.size());
+            fflush(stdout); DEBUG_PRINT("C>ERROR: trying to set slot %d idx %d but only have %d slots\n", slot, idx, _dataPointers.size());
         }
   }
     void setSlotData(int slot, int idx, Sampler *data) {
@@ -473,7 +473,7 @@ class DescriptorDataBuilder {
     void update(Renderer *pRenderer, int index, DescriptorSet *set) {
         for (auto i = 0; i < _names.size(); i++) {
             _data[i].pName = _names[i].c_str();
-            printf("C>\tSlot %d has name %s and mode %d with %lld size\n", i, _names[i].c_str(), _modes[i], _dataPointers[i]->size()); fflush(stdout); 
+            DEBUG_PRINT("C>\tSlot %d has name %s and mode %d with %lld size\n", i, _names[i].c_str(), _modes[i], _dataPointers[i]->size()); fflush(stdout); 
             switch (_modes[i]) {
                 case DBM_TEXTURES:
 
@@ -490,14 +490,14 @@ class DescriptorDataBuilder {
             }
             for (int j = 0; j < _dataPointers[i]->size(); j++) {
                 if (_dataPointers[j] == nullptr) {
-                     printf("C>Empty sampler in slot %d at idx %d\n", i, j); fflush(stdout);
+                     DEBUG_PRINT("C>Empty sampler in slot %d at idx %d\n", i, j); fflush(stdout);
                     exit(-1);
                 }
             }
             _data[i].mCount = (unsigned int)_dataPointers[i]->size();
         }
 
-         printf("C>Updating descriptor set %p at index %d with %lld slots\n", set, index, _names.size()); fflush(stdout);
+         DEBUG_PRINT("C>Updating descriptor set %p at index %d with %lld slots\n", set, index, _names.size()); fflush(stdout);
         updateDescriptorSet(pRenderer, index, set, (unsigned int)_names.size(), &_data[0]);
     }
 
@@ -564,7 +564,7 @@ class ResourceBarrierBuilder {
         if (rt != nullptr) {
             DEBUG_PRINT("render target %p - texture %p\n", rt, rt->pTexture);
             if (rt->pTexture == (void *)(0xdeadbeefdeadbeef)) {
-                fflush(stdout); printf("C>Texture is invalid on reder target");
+                fflush(stdout); DEBUG_PRINT("C>Texture is invalid on reder target");
                 exit(-1);
             }
         }
@@ -583,18 +583,18 @@ class ResourceBarrierBuilder {
         if (_rtBarriers.size()) {
             RenderTarget *rt = rtbp[0].pRenderTarget;
             if (rt->pTexture == (void *)(0xdeadbeefdeadbeef)) {
-                fflush(stdout); printf("C>render target %p - texture %p\n", rt, rt->pTexture);
-                fflush(stdout); printf("C>Texture is invalid on reder target");
+                fflush(stdout); DEBUG_PRINT("C>render target %p - texture %p\n", rt, rt->pTexture);
+                fflush(stdout); DEBUG_PRINT("C>Texture is invalid on reder target");
                 exit(-1);
             }
         }
-        fflush(stdout); printf("C>INSERTING BARRIER OF LENGTH %lld bufs, %lld texs, %lld rts\n", _buffBarriers.size(),_texBarriers.size(), _rtBarriers.size());
+        fflush(stdout); DEBUG_PRINT("C>INSERTING BARRIER OF LENGTH %lld bufs, %lld texs, %lld rts\n", _buffBarriers.size(),_texBarriers.size(), _rtBarriers.size());
         for (int i = 0; i < _rtBarriers.size(); i++)  {
             auto &x = _rtBarriers[i];
             auto cs = getResourceStateText( x.mCurrentState );
             auto ns = getResourceStateText( x.mNewState );
             
-            fflush(stdout); printf("C>\tRT Barrier %s to %s\n", cs.c_str(), ns.c_str());
+            fflush(stdout); DEBUG_PRINT("C>\tRT Barrier %s to %s\n", cs.c_str(), ns.c_str());
         }
         cmdResourceBarrier(cmd, _buffBarriers.size(), bbp, _texBarriers.size(), tbp, _rtBarriers.size(), rtbp);
     }
@@ -669,7 +669,7 @@ class PolyMesh {
             auto offset = binarySize * idx;
 
             if (offset > data.size()) {
-                fflush(stdout); printf("C>ERROR: Index %d is out of bounds\n", idx);
+                fflush(stdout); DEBUG_PRINT("C>ERROR: Index %d is out of bounds\n", idx);
             }
             uint8_t *d = &data[offset];
 
@@ -751,10 +751,10 @@ class PolyMesh {
 
    public:
     PolyMesh(int targetCapacity = 100) : _begun(false), _targetCapacity(targetCapacity), _numVerts(0), _currentPolygonPolyNode(0) {
-        // fflush(stdout); printf("C>CREATING POLYMESH\n");
+        // fflush(stdout); DEBUG_PRINT("C>CREATING POLYMESH\n");
     }
     ~PolyMesh() {
-        // fflush(stdout); printf("C>DELETING POLY MESH\n");
+        // fflush(stdout); DEBUG_PRINT("C>DELETING POLY MESH\n");
     }
     void reserve(int polynodes) {
         _targetCapacity = polynodes;
@@ -899,12 +899,12 @@ class PolyMesh {
             PMVert v = {this, i};
             auto x = vertMap.find(v);
             if (x == vertMap.end()) {
-                // fflush(stdout); printf("C>Addign unique vert %d - %d\n", i, uniqueVerts);
+                // fflush(stdout); DEBUG_PRINT("C>Addign unique vert %d - %d\n", i, uniqueVerts);
                 vertMap[v] = compressedIndices.size();
                 vertIndexRemap.push_back(compressedIndices.size());
                 compressedIndices.push_back(i);
             } else {
-                // fflush(stdout); printf("C>Reusing vert %d - %d\n", i, x->second);
+                // fflush(stdout); DEBUG_PRINT("C>Reusing vert %d - %d\n", i, x->second);
                 vertIndexRemap.push_back(x->second);
             }
         }
@@ -932,7 +932,7 @@ class PolyMesh {
             for (auto t = 2; t < _polygonCount[i]; t++) {
                 newPolyCount.push_back(3);
 
-                // fflush(stdout); printf("C>intial vert of %d %d is %d - rh %d\n", i, t, _indices[readHead], readHead);
+                // fflush(stdout); DEBUG_PRINT("C>intial vert of %d %d is %d - rh %d\n", i, t, _indices[readHead], readHead);
                 //  Do a triangle Fan, only works for convex
                 triangleIndices.push_back(_indices[readHead]);
                 triangleIndices.push_back(_indices[readHead + t - 1]);
