@@ -1887,30 +1887,24 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	function buildDepthState(d:forge.Native.DepthStateDesc, pass:h3d.mat.Pass) {
-		var depth = _currentRT.depthBuffer;
-		if (depth == null) {
-			d.depthTest = false;
-			d.stencilTest = false;
-		} else {
-			d.depthTest = pass.depthTest != Always || pass.depthWrite;
-			d.depthWrite = pass.depthWrite;
-			//		d.depthTest = false;
-			//		DebugTrace.trace('DEPTH depth test ${pass.depthTest} write ${pass.depthWrite}');
-			d.depthFunc = convertDepthFunc(pass.depthTest);
-			//		d.depthFunc = CMP_GREATER;
-			//		DebugTrace.trace ('RENDERER DEPTH config ${d.depthTest} ${d.depthWrite} ${d.depthFunc}');
-			d.stencilTest = pass.stencil != null;
-			d.stencilReadMask = pass.colorMask;
-			d.stencilWriteMask = 0; // TODO
-			d.stencilFrontFunc = CMP_NEVER;
-			d.stencilFrontFail = STENCIL_OP_KEEP;
-			d.depthFrontFail = STENCIL_OP_KEEP;
-			d.stencilFrontPass = STENCIL_OP_KEEP;
-			d.stencilBackFunc = CMP_NEVER;
-			d.stencilBackFail = STENCIL_OP_KEEP;
-			d.depthBackFail = STENCIL_OP_KEEP;
-			d.stencilBackPass = STENCIL_OP_KEEP;
-		}
+		d.depthTest = pass.depthTest != Always || pass.depthWrite;
+		d.depthWrite = pass.depthWrite;
+		//		d.depthTest = false;
+		//		DebugTrace.trace('DEPTH depth test ${pass.depthTest} write ${pass.depthWrite}');
+		d.depthFunc = convertDepthFunc(pass.depthTest);
+		//		d.depthFunc = CMP_GREATER;
+		//		DebugTrace.trace ('RENDERER DEPTH config ${d.depthTest} ${d.depthWrite} ${d.depthFunc}');
+		d.stencilTest = pass.stencil != null;
+		d.stencilReadMask = pass.colorMask;
+		d.stencilWriteMask = 0; // TODO
+		d.stencilFrontFunc = CMP_NEVER;
+		d.stencilFrontFail = STENCIL_OP_KEEP;
+		d.depthFrontFail = STENCIL_OP_KEEP;
+		d.stencilFrontPass = STENCIL_OP_KEEP;
+		d.stencilBackFunc = CMP_NEVER;
+		d.stencilBackFail = STENCIL_OP_KEEP;
+		d.depthBackFail = STENCIL_OP_KEEP;
+		d.stencilBackPass = STENCIL_OP_KEEP;
 	}
 
 	function buildRasterState(r:forge.Native.RasterizerStateDesc, pass:h3d.mat.Pass) {
@@ -2218,9 +2212,11 @@ class ForgeDriver extends h3d.impl.Driver {
 		_hashBulder.addInt32(_curShader.id);
 		_hashBulder.addInt32(_currentRT.sampleCount.toValue());
 		_hashBulder.addInt32(_currentRT.sampleQuality);
+		_currentState.addToHash(_hashBulder);
 		var dt = _currentRT.depthTarget;
 		if (dt != null) {
 			_hashBulder.addInt8(1);
+
 			if (dt.nativeRT != null)
 				_hashBulder.addInt32(dt.nativeRT.format.toValue());
 			else
@@ -2296,7 +2292,15 @@ class ForgeDriver extends h3d.impl.Driver {
 			var pdesc = new forge.Native.PipelineDesc();
 			var gdesc = pdesc.graphicsPipeline();
 			gdesc.mPrimitiveTopo = PRIMITIVE_TOPO_TRI_LIST;
-			gdesc.pDepthState = _currentRT.depthTarget != null ? _currentState.depth() : null;
+			var pDepthState = _currentRT.depthTarget != null ? _currentState.depth() : null;
+			if (pDepthState != null) {
+				DebugTrace.trace('RENDER PIPELINE  DEPTH PARAMS depth target ${ _currentRT.depthTarget != null} test ${pDepthState.depthTest} write ${pDepthState.depthWrite}');
+
+			} else {
+				DebugTrace.trace('RENDER PIPELINE  NO DEPTH BUFFER ');				
+			}
+
+			gdesc.pDepthState = pDepthState;
 			gdesc.pBlendState = _currentState.blend();
 			gdesc.depthStencilFormat = _currentRT.depthTarget != null ? _currentRT.depthTarget.nativeRT.format : TinyImageFormat_UNDEFINED;
 			// gdesc.pColorFormats = &rt.mFormat;
@@ -2678,7 +2682,7 @@ class ForgeDriver extends h3d.impl.Driver {
 	}
 
 	public override function selectMaterial(pass:h3d.mat.Pass) {
-		//		DebugTrace.trace('RENDER MATERIAL SHADER selectMaterial PASS NAME: "${pass.name}" ${[for (s in pass.getShaders()) '${s.toString()} : ${s.name}']}');
+		DebugTrace.trace('RENDER MATERIAL SHADER selectMaterial PASS NAME: "${pass.name}" ${[for (s in pass.getShaders()) '${s.toString()} : ${s.name}']}');
 
 		// culling
 		// stencil
