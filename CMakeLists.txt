@@ -2,6 +2,15 @@ cmake_minimum_required(VERSION 3.15)
 cmake_policy(SET CMP0091 NEW)
 project (forge C CXX )
 
+include(config.cmake)
+
+IF(CMAKE_BUILD_TYPE MATCHES DEBUG)
+message("Building DEBUG config")
+set (GENERATE_DEBUG 1)
+else()
+message("Building ${CMAKE_BUILD_TYPE} config")
+endif()
+
 if(APPLE)
     message("Enabling Apple languages")
     enable_language(OBJC)
@@ -9,97 +18,53 @@ if(APPLE)
 endif()
 
 
-if (NOT FORGE_LIB_DIR)
-    set(FORGE_LIB_DIR "ext/forge")
-    set(FORGE_LIB_INC "${FORGE_LIB_DIR}/Common_3")
-    set(FORGE_LIB_SRC "${FORGE_LIB_DIR}/Common_3")
-    set(FORGE_OS_SRC "${FORGE_LIB_DIR}/Common_3/OS")
-    set(FORGE_INC_SRC "${FORGE_LIB_DIR}/Common_3/OS/Interfaces")
-    set(FORGE_APP_SRC "${FORGE_LIB_DIR}/Common_3/Application")
-    set(FORGE_APP_INC "${FORGE_APP_SRC}/Interfaces")
-    set(FORGE_UTIL_SRC "${FORGE_LIB_DIR}/Common_3/Utilities")
-    set(FORGE_UITL_INC "${FORGE_UTIL_SRC}/Interfaces")
-    set(FORGE_TOOLS_SRC_DIR "${FORGE_LIB_DIR}/Common_3/Tools")
-    set(FORGE_TP_SRC "${FORGE_LIB_DIR}/Common_3/Utilities/ThirdParty/OpenSource")
-    set(FORGE_RES_SRC "${FORGE_LIB_DIR}/Common_3/Resources")
-    set(FORGE_RES_INC "${FORGE_RES_SRC}/ResourceLoader/Interfaces")
-    set(FORGE_RES_TP_SRC "${FORGE_RES_SRC}/ResourceLoader/ThirdParty/OpenSource")
-    set(FORGE_MW_SRC "${FORGE_LIB_DIR}/Middleware_3")
-    set(FORGE_RDR_SRC "${FORGE_LIB_DIR}/Common_3/Renderer")
-    set(FORGE_GFX_SRC "${FORGE_LIB_DIR}/Common_3/Graphics")
-    set(FORGE_GFX_INC "${FORGE_GFX_SRC}/Interfaces")
-    set(FORGE_EASTL_DIR "${FORGE_TP_SRC}/EASTL")
-    set(FORGE_TP_INC ${FORGE_TP_SRC} )
+set(FORGE_LIB_INC "${FORGE_LIB_DIR}/Common_3")
+set(FORGE_LIB_SRC "${FORGE_LIB_DIR}/Common_3")
+set(FORGE_OS_SRC "${FORGE_LIB_DIR}/Common_3/OS")
+set(FORGE_INC_SRC "${FORGE_LIB_DIR}/Common_3/OS/Interfaces")
+set(FORGE_APP_SRC "${FORGE_LIB_DIR}/Common_3/Application")
+set(FORGE_APP_INC "${FORGE_APP_SRC}/Interfaces")
+set(FORGE_UTIL_SRC "${FORGE_LIB_DIR}/Common_3/Utilities")
+set(FORGE_UITL_INC "${FORGE_UTIL_SRC}/Interfaces")
+set(FORGE_TOOLS_SRC_DIR "${FORGE_LIB_DIR}/Common_3/Tools")
+set(FORGE_TP_SRC "${FORGE_LIB_DIR}/Common_3/Utilities/ThirdParty/OpenSource")
+set(FORGE_RES_SRC "${FORGE_LIB_DIR}/Common_3/Resources")
+set(FORGE_RES_INC "${FORGE_RES_SRC}/ResourceLoader/Interfaces")
+set(FORGE_RES_TP_SRC "${FORGE_RES_SRC}/ResourceLoader/ThirdParty/OpenSource")
+set(FORGE_MW_SRC "${FORGE_LIB_DIR}/Middleware_3")
+set(FORGE_RDR_SRC "${FORGE_LIB_DIR}/Common_3/Renderer")
+set(FORGE_GFX_SRC "${FORGE_LIB_DIR}/Common_3/Graphics")
+set(FORGE_GFX_INC "${FORGE_GFX_SRC}/Interfaces")
+set(FORGE_EASTL_DIR "${FORGE_TP_SRC}/EASTL")
+set(FORGE_TP_INC ${FORGE_TP_SRC} )
 
-    set(FORGE_INC_DIR
-    ${FORGE_APP_INC}
-    ${FORGE_GFX_INC}
-    ${FORGE_TP_INC}
-    ${FORGE_RES_INC}
-    ${FORGE_UITL_INC}
-    ${FORGE_RES_INC}
-    ${FORGE_INC_SRC}
-    )
-endif()
+set(FORGE_INC_DIR
+${FORGE_APP_INC}
+${FORGE_GFX_INC}
+${FORGE_TP_INC}
+${FORGE_RES_INC}
+${FORGE_UITL_INC}
+${FORGE_RES_INC}
+${FORGE_INC_SRC}
+)
+
 
 
 
 if (UNIX)
-if (NOT HL_LIB_DIR) 
-    set(HL_LIB_DIR "/usr/local/lib")
-endif()
-
-if (NOT COMMON_LIB_DIR) 
-    set(COMMON_LIB_DIR "/usr/local/lib")
-endif()
-
-if (NOT HDLL_DESTINATION) 
-    set(HDLL_DESTINATION "/usr/local/lib")
-endif()
-
-if (NOT HL_INCLUDE_DIR) 
-    set(HL_INCLUDE_DIR "/usr/local/include")
-endif()
 
 
 elseif(WIN32)
 
-if (NOT HL_LIB_DIR) 
-set(HL_LIB_DIR "./ext/lib")
-endif()
+set(VULKAN_INC_DIR "${VULKAN_ROOT}/include")
+set(VULKAN_LIB_DIR "${VULKAN_ROOT}/lib")
+set(SDL_INC_DIR "${SDL_ROOT}/include")
+set(SDL_LIB_DIR "${SDL_ROOT}/lib/x64")
 
-if (NOT COMMON_LIB_DIR) 
-set(COMMON_LIB_DIR "./ext/lib")
-endif()
-
-if (NOT HDLL_DESTINATION) 
-set(HDLL_DESTINATION "./installed/lib")
-endif()
-
-if (NOT HL_INCLUDE_DIR) 
-    set(HL_INCLUDE_DIR "./ext/include")
-endif()
-
-if (NOT VULKAN_VERSION)
-    set(VULKAN_VERSION "1.3.239.0")
-endif()
-
-if (NOT VULKAN_ROOT)
-    set(VULKAN_ROOT "C:/VulkanSDK/${VULKAN_VERSION}")
-    set(VULKAN_INC_DIR "${VULKAN_ROOT}/include")
-    set(VULKAN_LIB_DIR "${VULKAN_ROOT}/lib")
-endif() # vulkan root
-
-if (NOT SDL_ROOT)
-    set(SDL_ROOT "./ext/sdl2")
-    set(SDL_INC_DIR "${SDL_ROOT}/include")
-    set(SDL_LIB_DIR "${SDL_ROOT}/lib/x64")
-endif()
-
-if (NOT SPIRV_ROOT)
+#if (NOT SPIRV_ROOT)
 #    set( SPIRV_ROOT "${FORGE_TP_SRC}/SPRIV_Cross")
-    set( SPIRV_INC_DIR "${SPIRV_ROOT}")
-endif()
+#    set( SPIRV_INC_DIR "${SPIRV_ROOT}")
+#endif()
 
 if (NOT SHADERC_ROOT)
     #set(SHADERC_ROOT "./ext/shaderc")
@@ -110,15 +75,6 @@ if (NOT SHADERC_ROOT)
     #set(SHADERC_SRC "${SHADERC_ROOT}/libshaderc/src")
 endif()
 endif() # OS specific
-
-
-set(FP16_INC_DIR "ext/FP16/include")
-
-
-if (NOT XXHASH_ROOT_DIR) 
-    set(XXHASH_ROOT_DIR "ext/xxHash")
-endif()
-
 
 
 #platform specific OS
@@ -327,24 +283,25 @@ ${SPIRVCROSS_CORELIB}
 )
 
 find_library( SHADERC_LIB shaderc_combined HINTS ${VULKAN_LIB_DIR})
-add_definitions(-DFORGE_DEBUG)
 
+IF(GENERATE_DEBUG)
+target_compile_definitions(forge.hdll -DFORGE_DEBUG)
+else()
+endif()
 if (UNIX)
     # Some special flags are needed for GNU GCC compiler
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fpermissive")
-    #not sure why the ${HL_LIB_DIR} is necessary given the above.
     SET(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -shared  ")
-
-    find_library(LIBHL NAMES hl HINTS ${HL_LIB_DIR} )
 else()
-    find_library(LIBHL NAMES libhl HINTS ${HL_LIB_DIR} )
+
 endif (UNIX)
+
+find_library(LIBHL NAMES hl libhl HINTS ${HL_LIB_DIR} )
 
 if (APPLE)
 set_property (TARGET forge.hdll APPEND_STRING PROPERTY COMPILE_FLAGS " -mpclmul -fobjc-arc")
 elseif(WIN32)
-set_property (TARGET forge.hdll APPEND_STRING PROPERTY COMPILE_FLAGS "")
-endif() 
+endif()  
 
 
 target_link_libraries(forge.hdll ${LIBHL} ${OS_LIBS}   ${SDL_LIB} ${SHADERC_LIB} ${SPRIV_LIBS})
