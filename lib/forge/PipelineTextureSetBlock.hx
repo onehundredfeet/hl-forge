@@ -301,7 +301,7 @@ class PipelineTextureSetBlock {
 				slotIdx += 2;
 			}
 		}
-		var idx = _currentDepth * _writeHead + _currentDepth;
+		var idx = _depth * _writeHead + _currentDepth;
 		trace('RENDER Updating texture descriptor idx ${idx} head ${_writeHead} depth ${_currentDepth} ds ${_ds}');
 		_builder.update(renderer, idx, _ds);
 	}
@@ -309,7 +309,7 @@ class PipelineTextureSetBlock {
 
 	public function bind(cmd:forge.Native.Cmd) {
 		if (_bound) throw "duplicate binding";
-		var idx = _currentDepth * _writeHead + _currentDepth;
+		var idx = _depth * _writeHead + _currentDepth;
 
 		DebugTrace.trace('RENDER Binding texture descriptor idx ${idx} head ${_writeHead} depth ${_currentDepth}');
 		cmd.bindDescriptorSet(idx, _ds);
