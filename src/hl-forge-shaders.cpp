@@ -7,8 +7,8 @@
 #include "hl-forge-shaders.h"
 
 #ifndef DEBUG_PRINT
-#define DEBUG_PRINT(...) printf(__VA_ARGS__)
-//#define DEBUG_PRINT(...)
+//#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+#define DEBUG_PRINT(...)
 #endif
 // Compiles a shader to SPIR-V assembly. Returns the assembly text
 // as a string.
