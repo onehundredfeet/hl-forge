@@ -15,10 +15,10 @@
 	url = https://github.com/Maratyszcza/FP16.git
 [submodule "ext/spirv"]
 	path = ext/spirv
-	url = https://github.com/KhronosGroup/SPIRV-Tools.git
+	url = https://github.com/onehundredfeet/SPIRV-Tools.git
 [submodule "ext/spirv-cross"]
 	path = ext/spirv-cross
-	url = https://github.com/KhronosGroup/SPIRV-Cross.git
+	url = https://github.com/onehundredfeet/SPIRV-Cross.git
 [submodule "ext/SPIRV-Headers"]
 	path = ext/SPIRV-Headers
 	url = https://github.com/KhronosGroup/SPIRV-Headers.git
