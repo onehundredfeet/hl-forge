@@ -737,14 +737,14 @@ std::string forge_translate_glsl_native(const char *source, const char *filepath
     auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
     DEBUG_PRINT("\tCompiling to assembly\n");
     auto spirvASM = compile_file_to_assembly(filepath, shaderKind, source, false);
-    DEBUG_PRINT("\tTranslating assembly of length %d to spriv\n", spirvASM.length());
+    DEBUG_PRINT("\tTranslating assembly of length %lld to spriv\n", spirvASM.length());
     auto spvCode = assemble_to_spv(spirvASM);
     if (spvCode.size() == 0) {
             DEBUG_PRINT("ERROR: EMPTY SPIRV CODE\n");
             return "";
     }
 
-    DEBUG_PRINT("\tTranslating spriv of size %d to vulkan\n", spvCode.size());
+    DEBUG_PRINT("\tTranslating spriv of size %lld to vulkan\n", spvCode.size());
 
     auto vlknCode = getVulkanFromSPV(spvCode);
     if (spvCode.size() == 0) {
@@ -1226,7 +1226,7 @@ RootSignature *RootSignatureFactory::create(Renderer *pRenderer) {
         (uint32_t)_shaders.size(),
         0, // bindless textures
         pointers,
-        &_samplers[0],
+        _samplers.size() > 0 ? &_samplers[0] : nullptr,
         (uint32_t)_samplers.size(),
         ROOT_SIGNATURE_FLAG_NONE// flags
         };

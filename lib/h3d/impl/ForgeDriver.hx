@@ -907,7 +907,7 @@ class ForgeDriver extends h3d.impl.Driver {
 
 	public override function begin(frame:Int) {
 		// Check for VSYNC
-		DebugTrace.trace('RENDERING BEGIN CLEAR Begin');
+		DebugTrace.trace('RENDERING BEGIN CLEAR Begin ${_currentFrame}');
 		if (_queueResize) {
 			if (_currentFence != null) {
 				_renderer.waitFence(_currentFence);
@@ -1727,6 +1727,9 @@ class ForgeDriver extends h3d.impl.Driver {
 			case Buffers:
 				DebugTrace.trace('RENDER BUFFERS Upload Buffers v ${buf.vertex.buffers} f ${buf.fragment.buffers}');
 
+				if ((buf.fragment.buffers == null) != (_curShader.fragment != null)) throw "Buffer size mismatch";
+				if ((buf.vertex.buffers == null) != (_curShader.vertex != null)) throw "Buffer size mismatch";
+				
 				// throw ('Maybe ${_curShader} has buffers?');
 				if (_curShader.vertex.buffers != null) {
 					//				throw ("Not supported");
@@ -2349,6 +2352,8 @@ class ForgeDriver extends h3d.impl.Driver {
 		return cp.paramBuffers[cp.paramCurBuffer];
 	}
 
+	static inline final FLOATS_PER_QW = 4;
+
 	function pushParameters() {
 		DebugTrace.trace("RENDER CALLSTACK pushParameters");
 
@@ -2368,19 +2373,19 @@ class ForgeDriver extends h3d.impl.Driver {
 			pb.beginUpdate();
 			{
 				DebugTrace.trace('FILLING VERT PARAMS vert length ${_curShader.vertex.paramsLengthBytes}');
-				var qw = Std.int(_curShader.vertex.paramsLengthFloats / 4);
+				var qw = Std.int(_curShader.vertex.paramsLengthFloats / FLOATS_PER_QW);
 				for (i in 0...qw) {
-					DebugTrace.trace('\tVert qw ${i} ${_vertConstantBuffer[i * 4 + 0]},${_vertConstantBuffer[i * 4 + 1]},${_vertConstantBuffer[i * 4 + 2]},${_vertConstantBuffer[i * 4 + 3]}');
+					DebugTrace.trace('\tVert qw ${i} ${_vertConstantBuffer[i * FLOATS_PER_QW + 0]},${_vertConstantBuffer[i * FLOATS_PER_QW + 1]},${_vertConstantBuffer[i * FLOATS_PER_QW + 2]},${_vertConstantBuffer[i * FLOATS_PER_QW + 3]}');
 				}
 			}
 			{
 				DebugTrace.trace('FILLING FRAG PARAMS  flength ${_curShader.fragment.paramsLengthBytes}');
-				var qw = Std.int(_curShader.fragment.paramsLengthFloats / 4);
+				var qw = Std.int(_curShader.fragment.paramsLengthFloats / FLOATS_PER_QW);
 				for (i in 0...qw) {
-					DebugTrace.trace('\tVert qw ${i} ${_fragConstantBuffer[i * 4 + 0]},${_fragConstantBuffer[i * 4 + 1]},${_fragConstantBuffer[i * 4 + 2]},${_fragConstantBuffer[i * 4 + 3]}');
+					DebugTrace.trace('\tVert qw ${i} ${_fragConstantBuffer[i * FLOATS_PER_QW + 0]},${_fragConstantBuffer[i * FLOATS_PER_QW + 1]},${_fragConstantBuffer[i * FLOATS_PER_QW + 2]},${_fragConstantBuffer[i * FLOATS_PER_QW + 3]}');
 				}
 			}
-			pb.fill(hl.Bytes.getArray(_vertConstantBuffer), hl.Bytes.getArray(_fragConstantBuffer));
+			pb.fill(_curShader.vertex.paramsLengthBytes > 0 ? hl.Bytes.getArray(_vertConstantBuffer) : null, _curShader.fragment.paramsLengthBytes > 0 ? hl.Bytes.getArray(_fragConstantBuffer) : null);
 			pb.bind(_currentCmd);
 			pb.next();
 		}
