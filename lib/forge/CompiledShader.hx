@@ -96,7 +96,7 @@ class CompiledShader {
 	public var bufferCount:Int;
 	public var buffers:Array<DescriptorIndex>;
 	public var shader:hxsl.RuntimeShader.RuntimeShaderData;
-
+	public var name : String;
 //	public var textureArrays:Array<CompiledTextureArray>;
 	public var argBuffers:Array<CompiledArgBuffer>;
     public var shaderVarNames : Map<Int, String>;

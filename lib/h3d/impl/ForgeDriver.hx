@@ -1190,7 +1190,9 @@ class ForgeDriver extends h3d.impl.Driver {
 		var fgShader = _renderer.createShader(vertpath + ".glsl", fragpath + ".glsl");
 		p.forgeShader = fgShader;
 		p.vertex = new CompiledShader(fgShader, true, shader.vertex);
+		p.vertex.name = vertpath + ".glsl";
 		p.fragment = new CompiledShader(fgShader, false, shader.fragment);
+		p.fragment.name = fragpath + ".glsl";
 		p.vertex.md5 = vert_md5;
 		p.fragment.md5 = frag_md5;
 		DebugTrace.trace('RENDER SHADER caching remapped variable names');
@@ -1727,8 +1729,13 @@ class ForgeDriver extends h3d.impl.Driver {
 			case Buffers:
 				DebugTrace.trace('RENDER BUFFERS Upload Buffers v ${buf.vertex.buffers} f ${buf.fragment.buffers}');
 
-				if ((buf.fragment.buffers == null) != (_curShader.fragment != null)) throw "Buffer size mismatch";
-				if ((buf.vertex.buffers == null) != (_curShader.vertex != null)) throw "Buffer size mismatch";
+				if ((buf.fragment.buffers == null) != (_curShader.fragment.buffers == null)) {
+					if (_curShader.fragment.buffers != null) {
+						trace('${_curShader.fragment.buffers.length} frag buffers expected in shade ${_curShader.fragment.name} ');
+						throw 'Fragment Argument Buffer size mismatch given ${buf.fragment.buffers} wants ${_curShader.fragment.buffers}';
+					}
+				}
+				if ((buf.vertex.buffers == null) != (_curShader.vertex.buffers == null)) throw 'Vertex Argument  Buffer size mismatch given ${buf.vertex.buffers} wants ${_curShader.vertex.buffers}';
 				
 				// throw ('Maybe ${_curShader} has buffers?');
 				if (_curShader.vertex.buffers != null) {
