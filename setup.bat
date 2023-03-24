@@ -1,0 +1,1 @@
+cmake -GNinja -DPATH_TO_IDL=e:\git\hl-idl -DHL_LIB_DIR=e:\git\hashlink\x64\Debug  -DHL_INC_DIR=e:\git\hashlink\src -DSDL_ROOT=e:\git\hashlink\include\sdl -B build

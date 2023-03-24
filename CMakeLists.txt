@@ -50,30 +50,34 @@ ${FORGE_INC_SRC}
 
 
 
+#SPIRV-CROSS
+set (SPIRV_CROSS_SRCS
+    #${SPIRV_CROSS_SRC_DIR}/spirv_cross.cpp
+   # ${SPIRV_CROSS_SRC_DIR}/spirv_glsl.cpp
+   # ${SPIRV_CROSS_SRC_DIR}/spirv_parser.cpp
+    #${SPIRV_CROSS_SRC_DIR}/spirv_reflect.cpp
+)
+
+set (SPIRV_TOOLS_SRCS
+    ${SPIRV_REFLECT_SRC_DIR}/spirv_reflect.c
+#    ${SPIRV_TOOLS_SRC_DIR}/spirv_optimizer_options.cpp
+ #   ${SPIRV_TOOLS_SRC_DIR}/opt/optimizer.cpp
+)
+
+set (SHADERC_SRCS
+    ${LIB_SHADERC_SRC_DIR}/shaderc.cc
+    ${LIB_SHADERC_UTIL_SRC_DIR}/compiler.cc
+    ${LIB_SHADERC_UTIL_SRC_DIR}/shader_stage.cc
+    ${LIB_SHADERC_UTIL_SRC_DIR}/spirv_tools_wrapper.cc
+
+)
 
 if (UNIX)
 
 
 elseif(WIN32)
 
-set(VULKAN_INC_DIR "${VULKAN_ROOT}/include")
-set(VULKAN_LIB_DIR "${VULKAN_ROOT}/lib")
-set(SDL_INC_DIR "${SDL_ROOT}/include")
-set(SDL_LIB_DIR "${SDL_ROOT}/lib/x64")
 
-#if (NOT SPIRV_ROOT)
-#    set( SPIRV_ROOT "${FORGE_TP_SRC}/SPRIV_Cross")
-#    set( SPIRV_INC_DIR "${SPIRV_ROOT}")
-#endif()
-
-if (NOT SHADERC_ROOT)
-    #set(SHADERC_ROOT "./ext/shaderc")
-    #set(SHADERC_INC 
-    #"${SHADERC_ROOT}/libshaderc/include"
-    #"${SHADERC_ROOT}/libshaderc_util/include"
-   # )
-    #set(SHADERC_SRC "${SHADERC_ROOT}/libshaderc/src")
-endif()
 endif() # OS specific
 
 
@@ -134,6 +138,7 @@ set (FORGE_TP_SRCS
 #    ${FORGE_TP_SRC}/FluidStudios/MemoryManager/mmgr.c
 )
 
+
 if (APPLE)
 set( FORGE_OS_RENDER_SRCS
 ${FORGE_GFX_SRC}/Metal/MetalRenderer.mm
@@ -142,7 +147,6 @@ ${FORGE_GFX_SRC}/Metal/MetalShaderReflection.mm
 )
 elseif(WIN32)
 set( FORGE_OS_RENDER_SRCS
-#${SHADERC_SRC}/shaderc.cc
 ${FORGE_GFX_SRC}/Vulkan/Vulkan.cpp
 ${FORGE_GFX_SRC}/Vulkan/VulkanRayTracing.cpp
 ${FORGE_GFX_SRC}/Vulkan/VulkanShaderReflection.cpp
@@ -191,6 +195,9 @@ ${FORGE_TP_SRCS}
 ${FORGE_RENDERER_SRCS}
 ${FORGE_MW_SRCS}
 ${FORGE_EASTL_SRCS}
+#${SPIRV_CROSS_SRCS}
+#${SPIRV_TOOLS_SRCS}
+#${SHADERC_SRCS}
 src/hl-forge.cpp
 src/hl-forge-shaders.cpp
 src/idl_hl.cpp
@@ -210,7 +217,7 @@ add_library(forge.hdll SHARED
 set_target_properties(forge.hdll
 PROPERTIES
 PREFIX ""
-OUTPUT_NAME forge
+OUTPUT_NAME forge${CONFIG_POSTFIX}
 SUFFIX .hdll
 )
 
@@ -220,14 +227,15 @@ cmake_policy(SET CMP0015 NEW)
 
 target_include_directories(forge.hdll
 PRIVATE
+${SPIRV_HEADER_DIRS}
+${SHADERC_INC_DIR}
 ${VULKAN_INC_DIR}
-${SHADERC_INC}
 ${FORGE_INC_DIR}
 ${FORGE_APP_INC}
 ${FORGE_GFX_INC}
 ${FORGE_RES_INC}
 ${FORGE_LIB_INC}
-${HL_INCLUDE_DIR}
+${HL_INC_DIR}
 ${FORGE_TP_INC}
 ${FP16_INC_DIR}
 ${SDL_INC_DIR}
@@ -248,9 +256,7 @@ find_library( COREGRAPHICSLIB CoreGraphics)
 
 set( OS_LIBS  ${METAL_LIB} ${QUARTZ_LIB} ${FOUNDATION_LIB} ${IOKIT_LIB} ${METAL_PERF_SHADER_LIB} ${APPKITLIB} ${COREGRAPHICSLIB} ${METALKIT_LIB}   )
 elseif(WIN32)
-set(CMAKE_MSVC_RUNTIME_LIBRARY  "MultiThreadedDLL")
-set_property(TARGET forge.hdll PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
-#set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MD")
+#set_property(TARGET forge.hdll PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
 find_library( VULKAN_LIB vulkan-1 HINTS ${VULKAN_LIB_DIR})
 find_library( VOLK_LIB volk HINTS ${VULKAN_LIB_DIR})
@@ -258,36 +264,76 @@ set( OS_LIBS ${VULKAN_LIB} ${VOLK_LIB})
 endif()
 
 find_library( SDL_LIB SDL2 HINTS ${SDL_LIB_DIR})
-find_library( SPIRV_LIB SPIRV HINTS ${VULKAN_LIB_DIR})
-find_library( SPIRVCROSS_CORELIB spirv-cross-core HINTS ${VULKAN_LIB_DIR})
-find_library( SPIRVCROSS_UTIL_LIB spirv-cross-util HINTS ${VULKAN_LIB_DIR})
-find_library( SPIRVCROSS_GLSLLIB spirv-cross-glsl HINTS ${VULKAN_LIB_DIR})
-find_library( SPIRVCROSS_HLSL_LIB spirv-cross-hlsl HINTS ${VULKAN_LIB_DIR})
-find_library( SPIRVCROSS_REFLECT_LIB spirv-cross-reflect HINTS ${VULKAN_LIB_DIR})
-find_library( SPIRVCROSS_CPP_LIB spirv-cross-cpp HINTS ${VULKAN_LIB_DIR})
-find_library( SPIRVTOOLS_LIB SPIRV-Tools HINTS ${VULKAN_LIB_DIR})
-find_library( SPIRVTOOLS_OPT_LIB SPIRV-Tools-opt HINTS ${VULKAN_LIB_DIR})
-find_library( SPIRVCROSS_METALLIB spirv-cross-msl HINTS ${VULKAN_LIB_DIR})
+find_library( SPIRV_TOOLS_LIB  SPIRV-Tools${CONFIG_POSTFIX} HINTS ${SPIRV_TOOLS_LIB_DIR})
 
-set(SPRIV_LIBS
-${SPIRVTOOLS_OPT_LIB}
-${SPIRVTOOLS_LIB} 
-${SPIRVCROSS_REFLECT_LIB}
-${SPIRVCROSS_METALLIB}
-${SPIRVCROSS_GLSLLIB}
-${SPIRVCROSS_UTIL_LIB}
-${SPIRVCROSS_CPP_LIB}
-${SPIRVCROSS_HLSL_LIB}
-${SPIRV_LIB}
-${SPIRVCROSS_CORELIB}
+set(SPIRV_LIB_POSTFIX "d")
+
+
+find_library( SPIRV_CROSS_GLSL_LIB  spirv-cross-glsl${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
+find_library( SPIRV_CROSS_HLSL_LIB  spirv-cross-hlsl${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
+find_library( SPIRV_CROSS_CPP_LIB  spirv-cross-cpp${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
+find_library( SPIRV_CROSS_REFLECT_LIB  spirv-cross-reflect${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
+find_library( SPIRV_CROSS_MSL_LIB  spirv-cross-msl${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
+find_library( SPIRV_CROSS_UTIL_LIB  spirv-cross-util${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
+find_library( SPIRV_CROSS_CORE_LIB  spirv-cross-core${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
+
+set(CONFIG_POSTFIX "_d")
+message("SHADERC_LIB_DIR is '${SHADERC_LIB_DIR}' looking for 'shaderc_combined${SPIRV_LIB_POSTFIX}")
+find_library( SHADERC_LIB shaderc_combined${CONFIG_POSTFIX} HINTS ${SHADERC_LIB_DIR})
+
+set( SPIRV_CROSS_LIBS 
+${SPIRV_CROSS_GLSL_LIB}
+${SPIRV_CROSS_HLSL_LIB}
+${SPIRV_CROSS_CPP_LIB}
+${SPIRV_CROSS_REFLECT_LIB}
+${SPIRV_CROSS_MSL_LIB}
+${SPIRV_CROSS_UTIL_LIB}
+${SPIRV_CROSS_CORE_LIB}
+
 )
 
-find_library( SHADERC_LIB shaderc_combined HINTS ${VULKAN_LIB_DIR})
 
-IF(GENERATE_DEBUG)
+
+
+
+
+#find_library( SPIRV_LIB SPIRV HINTS ${VULKAN_LIB_DIR})
+#find_library( SPIRVCROSS_CORELIB spirv-cross-core HINTS ${VULKAN_LIB_DIR})
+#find_library( SPIRVCROSS_UTIL_LIB spirv-cross-util HINTS ${VULKAN_LIB_DIR})
+#find_library( SPIRVCROSS_GLSLLIB spirv-cross-glsl HINTS ${VULKAN_LIB_DIR})
+#find_library( SPIRVCROSS_HLSL_LIB spirv-cross-hlsl HINTS ${VULKAN_LIB_DIR})
+#find_library( SPIRVCROSS_REFLECT_LIB spirv-cross-reflect HINTS ${VULKAN_LIB_DIR})
+#find_library( SPIRVCROSS_CPP_LIB spirv-cross-cpp HINTS ${VULKAN_LIB_DIR})
+#find_library( SPIRVTOOLS_LIB SPIRV-Tools HINTS ${VULKAN_LIB_DIR})
+#find_library( SPIRVTOOLS_OPT_LIB SPIRV-Tools-opt HINTS ${VULKAN_LIB_DIR})
+#find_library( SPIRVCROSS_METALLIB spirv-cross-msl HINTS ${VULKAN_LIB_DIR})
+
+set(SPRIV_LIBS
+${SHADERC_LIB}
+#${SPIRV_TOOLS_LIB}
+${SPIRV_CROSS_LIBS}
+#${SPIRVTOOLS_OPT_LIB}
+#${SPIRVTOOLS_LIB} 
+#${SPIRVCROSS_REFLECT_LIB}
+#${SPIRVCROSS_METALLIB}
+#${SPIRVCROSS_GLSLLIB}
+#${SPIRVCROSS_UTIL_LIB}
+#${SPIRVCROSS_CPP_LIB}
+#${SPIRVCROSS_HLSL_LIB}
+#${SPIRV_LIB}
+#${SPIRVCROSS_CORELIB}
+)
+
+
+
+if(GENERATE_DEBUG)
 target_compile_definitions(forge.hdll -DFORGE_DEBUG)
 else()
 endif()
+
+target_compile_definitions(forge.hdll PRIVATE -DENABLE_HLSL)
+
+
 if (UNIX)
     # Some special flags are needed for GNU GCC compiler
     SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fpermissive")
@@ -296,7 +342,8 @@ else()
 
 endif (UNIX)
 
-find_library(LIBHL NAMES hl libhl HINTS ${HL_LIB_DIR} )
+message("looking for libhl${CONFIG_POSTFIX} in ${HL_LIB_DIR}")
+find_library(LIBHL NAMES libhl${CONFIG_POSTFIX} HINTS ${HL_LIB_DIR} )
 
 if (APPLE)
 set_property (TARGET forge.hdll APPEND_STRING PROPERTY COMPILE_FLAGS " -mpclmul -fobjc-arc")
@@ -304,6 +351,6 @@ elseif(WIN32)
 endif()  
 
 
-target_link_libraries(forge.hdll ${LIBHL} ${OS_LIBS}   ${SDL_LIB} ${SHADERC_LIB} ${SPRIV_LIBS})
+target_link_libraries(forge.hdll ${LIBHL} ${OS_LIBS}   ${SDL_LIB}  ${SPRIV_LIBS})
 
 install(TARGETS forge.hdll )

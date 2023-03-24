@@ -594,6 +594,11 @@ std::string removeExtension(const std::string &path) {
     return path.substr(0, lastindex);
 }
 
+std::string getExtension(const std::string &path) {
+    size_t lastindex = path.find_last_of(".");
+    return path.substr(lastindex + 1);
+}
+
 std::string getFilename(const std::string &path) {
     size_t lastindex = path.find_last_of("/");
     if (lastindex < 0) return path;
@@ -728,11 +733,25 @@ std::string forge_translate_glsl_native(const char *source, const char *filepath
 }
 #elif defined(WIN32)
 std::string forge_translate_glsl_native(const char *source, const char *filepath, bool fragment) {
-    DEBUG_PRINT("Translating to vulkan\n");
+    DEBUG_PRINT("Translating to vulkan : file %s\n", filepath);
     auto shaderKind = fragment ? HLFG_SHADER_FRAGMENT : HLFG_SHADER_VERTEX;
+    DEBUG_PRINT("\tCompiling to assembly\n");
     auto spirvASM = compile_file_to_assembly(filepath, shaderKind, source, false);
+    DEBUG_PRINT("\tTranslating assembly of length %d to spriv\n", spirvASM.length());
     auto spvCode = assemble_to_spv(spirvASM);
-    return getVulkanFromSPV(spvCode);
+    if (spvCode.size() == 0) {
+            DEBUG_PRINT("ERROR: EMPTY SPIRV CODE\n");
+            return "";
+    }
+
+    DEBUG_PRINT("\tTranslating spriv of size %d to vulkan\n", spvCode.size());
+
+    auto vlknCode = getVulkanFromSPV(spvCode);
+    if (spvCode.size() == 0) {
+            DEBUG_PRINT("ERROR: EMPTY VULKAN CODE\n");
+            return "";
+    }
+    return vlknCode;
 }
 #endif
 
@@ -806,6 +825,22 @@ void generateNativeShader(const std::string &glslPath, const std::string &vulkan
     }
 }
 #endif
+
+// requires format name.stage.glsl
+std::string forge_shader_shader_glsl_path_to_native(const char *path) {
+    std::string noGLSL = removeExtension(path); // removes glsl
+    std::string stage = getExtension( noGLSL );
+    std::string noStage =  removeExtension(noGLSL); // removes stage
+
+    #ifdef __APPLE__
+    auto stageNativeSourcePath = noStage + ".metal.glsl" + stage;
+    #elif defined(_WINDOWS)
+    auto stageNativeSourcePath = noStage + ".vulkan.glsl" + stage;
+    #endif
+
+    return stageNativeSourcePath;
+}
+
 
 Shader *forge_renderer_shader_create(Renderer *pRenderer, const char *vertFile, const char *fragFile) {
 

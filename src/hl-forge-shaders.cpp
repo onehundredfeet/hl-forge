@@ -1,14 +1,14 @@
 #include <fstream>
 #include <iostream>
 #include <shaderc/shaderc.hpp>
-#include <spirv_cross/spirv_cross.hpp>
-#include <spirv_cross/spirv_msl.hpp>
+#include <spirv_cross.hpp>
+#include <spirv_msl.hpp>
 
 #include "hl-forge-shaders.h"
 
 #ifndef DEBUG_PRINT
-//#define DEBUG_PRINT(...) printf(__VA_ARGS__)
-#define DEBUG_PRINT(...)
+#define DEBUG_PRINT(...) printf(__VA_ARGS__)
+//#define DEBUG_PRINT(...)
 #endif
 // Compiles a shader to SPIR-V assembly. Returns the assembly text
 // as a string.
@@ -130,6 +130,9 @@ std::string getVulkanFromSPV( const std::vector<uint32_t> &spirv_binary ) {
 	glslCompiler.set_common_options(common_options);
 	// Compile to MSL
 	std::string source = glslCompiler.compile();
+
+    DEBUG_PRINT("\tDone with source size %d\n", source.size());
+
     return source;
 
 }

@@ -9,8 +9,8 @@ void heuristicTest2(float (*fn)(int));
 
 #endif  // APPLE
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_syswm.h>
+#include <SDL.h>
+#include <SDL_syswm.h>
 
 #ifndef SDL_MAJOR_VERSION
 #error "SDL2 SDK not found"
@@ -36,8 +36,9 @@ void heuristicTest2(float (*fn)(int));
 
 #define TWIN _ABSTRACT(sdl_window)
 
-//#define DEBUG_PRINT(...) fflush(stdout); printf(__VA_ARGS__)
-#define DEBUG_PRINT(...)
+
+#define DEBUG_PRINT(...) fflush(stdout); printf(__VA_ARGS__)
+//#define DEBUG_PRINT(...)
 
 class HashBuilder {
    private:
