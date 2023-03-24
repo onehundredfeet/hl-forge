@@ -4,7 +4,7 @@ project (forge C CXX )
 
 include(config.cmake)
 
-IF(CMAKE_BUILD_TYPE MATCHES DEBUG)
+IF(CMAKE_BUILD_TYPE MATCHES Debug)
 message("Building DEBUG config")
 set (GENERATE_DEBUG 1)
 else()
@@ -266,8 +266,12 @@ endif()
 find_library( SDL_LIB SDL2 HINTS ${SDL_LIB_DIR})
 find_library( SPIRV_TOOLS_LIB  SPIRV-Tools${CONFIG_POSTFIX} HINTS ${SPIRV_TOOLS_LIB_DIR})
 
-set(SPIRV_LIB_POSTFIX "d")
+if(CMAKE_BUILD_TYPE MATCHES Debug)
 
+if (WIN32)
+set(SPIRV_LIB_POSTFIX "d")
+endif()
+endif()
 
 find_library( SPIRV_CROSS_GLSL_LIB  spirv-cross-glsl${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
 find_library( SPIRV_CROSS_HLSL_LIB  spirv-cross-hlsl${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
@@ -277,8 +281,8 @@ find_library( SPIRV_CROSS_MSL_LIB  spirv-cross-msl${SPIRV_LIB_POSTFIX} HINTS ${S
 find_library( SPIRV_CROSS_UTIL_LIB  spirv-cross-util${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
 find_library( SPIRV_CROSS_CORE_LIB  spirv-cross-core${SPIRV_LIB_POSTFIX} HINTS ${SPIRV_CROSS_LIB_DIR})
 
-set(CONFIG_POSTFIX "_d")
-message("SHADERC_LIB_DIR is '${SHADERC_LIB_DIR}' looking for 'shaderc_combined${SPIRV_LIB_POSTFIX}")
+
+#message("SHADERC_LIB_DIR is '${SHADERC_LIB_DIR}' looking for 'shaderc_combined${SPIRV_LIB_POSTFIX}")
 find_library( SHADERC_LIB shaderc_combined${CONFIG_POSTFIX} HINTS ${SHADERC_LIB_DIR})
 
 set( SPIRV_CROSS_LIBS 
@@ -327,7 +331,7 @@ ${SPIRV_CROSS_LIBS}
 
 
 if(GENERATE_DEBUG)
-target_compile_definitions(forge.hdll -DFORGE_DEBUG)
+target_compile_definitions(forge.hdll PRIVATE -DFORGE_DEBUG)
 else()
 endif()
 
@@ -342,8 +346,7 @@ else()
 
 endif (UNIX)
 
-message("looking for libhl${CONFIG_POSTFIX} in ${HL_LIB_DIR}")
-find_library(LIBHL NAMES libhl${CONFIG_POSTFIX} HINTS ${HL_LIB_DIR} )
+find_library(LIBHL NAMES ${HL_LIB_NAME}${CONFIG_POSTFIX} HINTS ${HL_LIB_DIR} )
 
 if (APPLE)
 set_property (TARGET forge.hdll APPEND_STRING PROPERTY COMPILE_FLAGS " -mpclmul -fobjc-arc")
