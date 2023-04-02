@@ -17,6 +17,30 @@
 #include <iostream>
 #include <sstream>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#ifndef WIN32
+#include <unistd.h>
+#endif
+
+#ifdef WIN32
+#define stat _stat
+#endif
+
+auto filename = "/path/to/file";
+
+
+
+long long getFileModTime( const char *path) {
+    struct stat result;
+    if(stat(path, &result)==0)
+    {
+        auto mod_time = result.st_mtime;
+        return mod_time;
+    }
+    return -1;
+}
+
 #include "hl-forge-shaders.h"
 
 #define HL_NAME(x) forge_##x
@@ -756,11 +780,24 @@ std::string forge_translate_glsl_native(const char *source, const char *filepath
 #endif
 
 bool isTargetFileOutOfDate(const std::string &source, const std::string &target) {
-    if (!std::filesystem::exists(source)) return false;
-    if (!std::filesystem::exists(target)) return true;
-    auto sourceTime = std::filesystem::last_write_time(source);  // read back from the filesystem
-    auto targetTime = std::filesystem::last_write_time(target);  // read back from the filesystem
-    return sourceTime > targetTime;
+    if (!std::filesystem::exists(source)) {
+        return false;
+    }
+    if (!std::filesystem::exists(target)) {
+        DEBUG_PRINT("isTargetFileOutOfDate: Target path %s does not exist, out of date\n", target.c_str());
+        return true;
+    }
+
+    auto sourceTime = getFileModTime(source.c_str());
+    auto targetTime = getFileModTime( target.c_str());
+
+    auto ood = sourceTime > targetTime || targetTime < 0;
+    if (ood) {
+        DEBUG_PRINT("isTargetFileOutOfDate: target time is smaller than source time %lld vs target time %lld \n", sourceTime, targetTime);
+    } else {
+        DEBUG_PRINT("isTargetFileOutOfDate: target is not out of date\n");
+    }
+    return ood;
 }
 
 #if __APPLE__
@@ -788,8 +825,8 @@ void generateNativeShader(const std::string &glslPath, const std::string &metalP
 }
 #elif defined(WIN32)
 void generateNativeShader(const std::string &glslPath, const std::string &vulkanPath, bool fragment) {
-    DEBUG_PRINT("Generating vulkan shader %s to %s\n", glslPath.c_str(), vulkanPath.c_str());
-    if (isTargetFileOutOfDate(glslPath, vulkanPath) || true) {
+    if (isTargetFileOutOfDate(glslPath, vulkanPath)) {
+        DEBUG_PRINT("Generating vulkan shader %s to %s\n", glslPath.c_str(), vulkanPath.c_str());
         auto src = getShaderSource(glslPath);
         DEBUG_PRINT("\tGetting source\n");
 
@@ -800,29 +837,10 @@ void generateNativeShader(const std::string &glslPath, const std::string &vulkan
 
         auto vulkan = forge_translate_glsl_native(src.c_str(), glslPath.c_str(), fragment);
 
-/*
-        auto updateFreqSpot = vulkan.find("(set = 3,");
-
-        while (updateFreqSpot != std::string::npos) {
-            vulkan = vulkan.replace(updateFreqSpot + 1, 7, "UPDATE_FREQ_PER_DRAW");
-            updateFreqSpot = vulkan.find("(set = 3,");
-        }*/
-        /*
-        if (fragment) {
-            auto bufferspot = msl.find("spvDescriptorSet0 [[buffer(");
-            if (bufferspot != std::string::npos) {
-                DEBUG_PRINT("RENDER modifying metal shader code at %d\n", bufferspot);
-                bufferspot += sizeof("spvDescriptorSet0 [[buffer(") - 1;
-                msl = msl.replace(bufferspot, 1, "UPDATE_FREQ_PER_DRAW");
-            }
-        }
-        */
         DEBUG_PRINT("\twriting source to %s\n", vulkanPath.c_str());
 
         writeShaderSource(vulkanPath, vulkan);
-    } else {
-        DEBUG_PRINT("\tUp to date\n");
-    }
+    } 
 }
 #endif
 

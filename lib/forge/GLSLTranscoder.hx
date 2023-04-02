@@ -1154,6 +1154,7 @@ class GLSLTranscoder {
 			prebuild();
 			buildStage(EShaderStage.VERTEX);
 			buildStage(EShaderStage.FRAGMENT);
+			trace('Done building shader');
 		} catch (e:haxe.Exception) {
 			trace("Error building shader: " + e.message);
 			trace(e.stack);
@@ -1167,6 +1168,7 @@ class GLSLTranscoder {
 	}
 
 	function buildStage(stage:EShaderStage) {
+		trace('Building stage ${stage}');
 		_currentStage = stage;
 		var s = _shaderData[stage];
 		locals = new Map();
