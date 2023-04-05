@@ -24,14 +24,14 @@ function overwriteIfDifferentString( path : String, content : String ) : Bool {
             var stringCrc = Crc32.make( contentBytes );
 
             if (fileCrc == stringCrc) {
-                trace('The contents match, skipping ${path}');
+//                trace('The contents match, skipping ${path}');
                 return false;
             }
-            trace('The contents have the same length, but differ somewhere, CRC ${fileCrc} vs ${stringCrc}, overwriting contents');
+  //          trace('The contents have the same length, but differ somewhere, CRC ${fileCrc} vs ${stringCrc}, overwriting contents');
         }
-        trace('Path ${path} has a different length, ${fileBytes.length} vs ${contentBytes.length}, overwriting contents');
+    //    trace('Path ${path} has a different length, ${fileBytes.length} vs ${contentBytes.length}, overwriting contents');
     }else {
-        trace('Path ${path} doesn\'t exist, saving contents');
+      //  trace('Path ${path} doesn\'t exist, saving contents');
 
     }
 

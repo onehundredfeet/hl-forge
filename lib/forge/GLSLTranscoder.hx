@@ -772,12 +772,15 @@ class GLSLTranscoder {
 //		trace('varName: ' + v.name + ' ' + v.id);
 		n = getCleanName(v.name);
 		if (allNames.exists(n)) {
-			trace ('Duplicate variable name ${n}');
+			var original = n;
+
 			var k = 2;
 			n += "_";
 			while (allNames.exists(n + k))
 				k++;
 			n += k;
+
+			trace ('Duplicate variable name ${original}, renaming second to ${n} : ${v}');
 		}
 		_stageVarNames[_currentStage].set(v.id, n);
 		allNames.set(n, v.id);
@@ -999,7 +1002,7 @@ class GLSLTranscoder {
 				#end
 				totalSize += getSize(v);
 			}
-			trace('RENDER PARAMS OFFSET ${_buildPushConstantSize} TOTAL SIZE ${totalSize} for stage ${stage}');
+			//trace('RENDER PARAMS OFFSET ${_buildPushConstantSize} TOTAL SIZE ${totalSize} for stage ${stage}');
 			_buildPushConstantSize += totalSize;
 
 			add('} ${getVariableBufferName(stage, EDescriptorSetSlot.PARAMS, _flavour)};\n');
@@ -1048,7 +1051,7 @@ class GLSLTranscoder {
 				};
 
 				var vs = {id: v.id, name : tn, type : vsType, kind : v.kind, parent : v.parent, qualifiers : v.qualifiers};
-				trace('WTF : vt ${vt.name} vs ${vs.name}');
+//				trace('WTF : vt ${vt.name} vs ${vs.name}');
 				add('layout( ${getLayoutSpec(stage, EDescriptorSetSlot.TEXTURES, tex_binding_idx++)} ) uniform ');
 				initVar(vs);
 
@@ -1154,7 +1157,7 @@ class GLSLTranscoder {
 			prebuild();
 			buildStage(EShaderStage.VERTEX);
 			buildStage(EShaderStage.FRAGMENT);
-			trace('Done building shader');
+			//trace('Done building shader');
 		} catch (e:haxe.Exception) {
 			trace("Error building shader: " + e.message);
 			trace(e.stack);
@@ -1168,7 +1171,7 @@ class GLSLTranscoder {
 	}
 
 	function buildStage(stage:EShaderStage) {
-		trace('Building stage ${stage}');
+		//trace('Building stage ${stage}');
 		_currentStage = stage;
 		var s = _shaderData[stage];
 		locals = new Map();
