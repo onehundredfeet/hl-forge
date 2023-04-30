@@ -12,7 +12,7 @@ enum abstract EGLSLFlavour(Int) {
 }
 
 // Mediocre abstraction until this is under control
-@:enum abstract EDescriptorSetSlot(Int) to Int {
+enum abstract EDescriptorSetSlot(Int) to Int {
 	var GLOBALS = 0;
 	var PARAMS;
 	var TEXTURES;
@@ -20,14 +20,14 @@ enum abstract EGLSLFlavour(Int) {
 	var NONE;
 }
 
-@:enum abstract EShaderStage(Int) to Int {
+enum abstract EShaderStage(Int) to Int {
 	var VERTEX = 0;
 	var FRAGMENT;
 	var COMPUTE;
 	var NONE;
 }
 
-@:enum abstract ETextureType(Int) to Int from Int{
+enum abstract ETextureType(Int) to Int from Int{
 	var TEX_TYPE_2D = 0;
 	var TEX_TYPE_CUBE;
 	var TEX_TYPE_RT;

@@ -350,7 +350,7 @@ SwapChain *ForgeSDLWindow::createSwapChain(Renderer *renderer, Queue *queue, int
         swapChainDesc.mColorFormat = getRecommendedSwapchainFormat(false, true);
 
     swapChainDesc.mColorClearValue = {{1, 1, 1, 1}};
-    swapChainDesc.mEnableVsync = false;
+    swapChainDesc.mEnableVsync = true;
     SwapChain *pSwapChain = nullptr;
     addSwapChain(renderer, &swapChainDesc, &pSwapChain);
     return pSwapChain;

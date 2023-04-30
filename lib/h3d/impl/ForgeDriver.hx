@@ -41,7 +41,7 @@ private class CompiledMaterial {
 	public var _stride:Int;
 }
 
-@:enum abstract ForgeBackend(Int) {
+enum abstract ForgeBackend(Int) {
 	var Metal = 0;
 	var Vulkan;
 }

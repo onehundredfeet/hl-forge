@@ -53,13 +53,13 @@ class CompiledArgBuffer {
 }
 
 
-@:enum abstract ECompiledArgBuffer(Int) from Int to Int {
+enum abstract ECompiledArgBuffer(Int) from Int to Int {
 	var GLOBALS = 0;
 	var PARAMS = 1;
 	var PUSH = 2;
 }
 
-@:enum
+enum
 abstract CompiledAttributeType(Int) from Int to Int {
 	public var UNKNOWN = 0;
 	public var BYTE = 1;
